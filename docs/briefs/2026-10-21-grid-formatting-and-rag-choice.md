@@ -1,5 +1,7 @@
 # Build brief: conditional grid formatting and RAG choice PCF controls for Dataverse model-driven apps
 
+> **Repo note (22 Oct 2026):** this brief was written for a standalone `wb-grid-formatting` repo. It now lives in the shared William Buck PCF controls repo, so its **§4.2 repo layout** and the **single `WBGridFormatting` solution** in §4.3 / §9 are superseded by the root `README.md` conventions and `docs/adr/`: each control lives in `controls/<ControlName>/` with its own solution (`WBGridFormatter`, `WBRagChoice`), and shared code lives in `packages/shared`. Everything else in the brief still applies.
+
 > **Audience:** an AI coding agent (or developer) building two Power Apps Component Framework (PCF) controls.
 > **Author context:** internal Power Platform developer at William Buck (code "WB"), a Microsoft-only accounting firm. Apps are Dataverse model-driven apps on Power Platform, deployed through dev → UAT → prod environments.
 > **Date written:** 21 October 2026. Microsoft APIs below were checked against Microsoft Learn and the `microsoft/PowerApps-Samples` repo on that date. Where something could not be confirmed, it is marked **VERIFY** — prove it with a spike before building on it.

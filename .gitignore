@@ -1,0 +1,23 @@
+# dependencies (npm workspaces hoist to the root)
+node_modules/
+
+# pcf-scripts output
+**/generated/
+**/out/
+
+# msbuild / solution output
+**/bin/
+**/obj/
+*.binlog
+*.pcfproj.user
+.vs/
+
+# test output
+coverage/
+
+# Claude Code personal settings and worktrees
+.claude/settings.local.json
+.claude/worktrees/
+
+# macOS
+.DS_Store

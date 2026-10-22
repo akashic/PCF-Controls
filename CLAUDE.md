@@ -1,0 +1,61 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repo is
+
+William Buck's long-term monorepo for PCF (Power Apps Component Framework) controls used in Dataverse model-driven apps, deployed dev → UAT → prod. It will move from `akashic/PCF-Controls` to the `William-Buck-Australia` enterprise GitHub org, so don't hard-code the org or repo name anywhere.
+
+`README.md` is the team's standard for PCF development and deployment (conventions, commands, adding a control, release and deploy steps). Read it before structural work, and keep it current when conventions change. Decisions behind the layout are in `docs/adr/`. Product-owner briefs for each piece of work are in `docs/briefs/`.
+
+As of 22 Oct 2026 no controls exist yet. The first two (`GridFormatter`, `RagChoice`) are specified in `docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md` and broken down into GitHub issues. Work from the issues. The brief's §4.2 layout and single `WBGridFormatting` solution are **superseded** by the layout below.
+
+## Commands
+
+Run from the repo root (npm workspaces). Workspace names are `@wb-pcf/<kebab-name>`.
+
+```sh
+npm ci                                            # installs every control and package
+npm run lint | npm test | npm run build           # across all workspaces
+npm run build -w @wb-pcf/rag-choice               # one control (same for lint, test)
+npm test -w @wb-pcf/rag-choice -- tests/x.test.ts # a single test file
+npm run start:watch -w @wb-pcf/rag-choice         # PCF test harness (field controls only)
+npm run check:controls                            # publisher + version conventions (also in CI)
+dotnet build controls/<ControlName>/solution -c Release   # managed + unmanaged zips in solution/bin/Release
+cd controls/<ControlName> && pac pcf push --publisher-prefix wb   # dev environment only
+```
+
+Until the first workspace exists (`packages/shared` or a control), root `npm run lint/test/build` fail with "No workspaces found". CI skips those steps in that case.
+
+`pac` is a .NET global tool at `~/.dotnet/tools/pac` (2.14.1). If `pac` isn't found in a non-login shell, call it by that full path.
+
+## Architecture
+
+- **One control = one folder = one PCF project = one npm workspace = one Dataverse solution** ([ADR-0001](docs/adr/0001-one-solution-per-control.md)). `controls/<ControlName>/` holds the pcfproj, the control source in `controls/<ControlName>/<ControlName>/`, Jest tests in `tests/`, spike write-ups in `docs/decisions.md`, and the solution in `solution/` (unique name `WB<ControlName>`). A control's solution contains only the control and its own environment variables. Adding a control to a table's form or view belongs to the *project's* solution, not this repo's.
+- **Shared code** lives in `packages/shared` and is bundled into each control by `pcf-scripts` ([ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md)). That bundling, and `dotnet build` working with a root-hoisted `node_modules`, are unproven until the first spike. If either fails, switch to a relative import and update ADR-0002.
+- **Controls are virtual (React) controls.** React and Fluent come from the platform as `<platform-library>` entries and must never be bundled. Shared packages take them as peer dependencies only.
+- **Configuration, not code:** controls are reused across projects, so they never hard-code table or column names, option values or colours. Values that vary per environment go in a `wb_<ControlName><Purpose>` environment variable inside the control's solution, validated by a JSON Schema in the control's `config/`.
+
+## Repo-specific rules and gotchas
+
+- **Publisher must match everywhere** ([ADR-0003](docs/adr/0003-wb-publisher.md)): `WilliamBuck` / `wb` / option value prefix `94879`, namespace `WB`. `pac solution init` writes a *random* `CustomizationOptionValuePrefix` every run. Always replace it, then run `npm run check:controls`.
+- **Versions live in three places and must agree:** the manifest `<control version>`, `package.json` `version`, and `Solution.xml` `<Version>` (`x.y.z.0`). Bump the manifest version on every deployment, or Dataverse may keep serving the cached bundle. Release by tagging `<ControlName>-v<x.y.z>`.
+- **Fluent version is unresolved:** `pac` 2.14.1 generates `<platform-library name="Fluent" version="9.68.0">`, but the brief recorded a declared range of `<=9.46.2`. Microsoft's grid customizer template still uses Fluent 8. Don't use Fluent APIs newer than the declared version.
+- **Grid customizers:** only one per grid, renderers must be pure and idempotent, never mutate grid data, and don't override editors. The local harness can't host them, so test in the dev environment.
+- **No new npm packages without approval** (managed corporate environment). Anything beyond the Microsoft template dependencies plus Jest goes in the PR description for sign-off.
+- **VERIFY items in briefs** are platform unknowns. Prove them with a spike in dev and record the outcome in the control's `docs/decisions.md` before building on them.
+- Everything must build on macOS. No Visual Studio-only MSBuild steps; `dotnet build` is fine.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues on `akashic/PCF-Controls` (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `GLOSSARY.md` plus `docs/adr/`, created lazily as needed. See `docs/agents/domain.md`.

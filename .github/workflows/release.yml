@@ -1,0 +1,43 @@
+name: Release
+
+# Push a tag named <ControlName>-v<x.y.z>, e.g. GridFormatter-v1.0.0.
+on:
+  push:
+    tags: ["*-v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Check tag matches the control's versions
+        run: node scripts/check-controls.mjs --tag "$GITHUB_REF_NAME"
+      - id: control
+        name: Resolve control from tag
+        run: echo "name=${GITHUB_REF_NAME%-v*}" >> "$GITHUB_OUTPUT"
+      - name: Install
+        run: npm ci
+      - name: Lint and test
+        run: |
+          npm run lint
+          npm test
+      - name: Build solution (managed + unmanaged)
+        run: dotnet build "controls/${{ steps.control.outputs.name }}/solution" -c Release
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "${{ steps.control.outputs.name }} ${GITHUB_REF_NAME##*-v}" \
+            --generate-notes \
+            controls/${{ steps.control.outputs.name }}/solution/bin/Release/*.zip
