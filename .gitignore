@@ -21,3 +21,6 @@ coverage/
 
 # macOS
 .DS_Store
+
+# pac sometimes writes its user settings to a literal "~" folder in the working directory
+**/~/
