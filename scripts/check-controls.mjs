@@ -5,6 +5,7 @@
 // Usage: node scripts/check-controls.mjs [--tag <ControlName>-v<x.y.z>]
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // `pac solution init` generates a random option value prefix on every run,
 // so every new solution must be edited to match these values.
@@ -14,7 +15,7 @@ const PUBLISHER = {
   CustomizationOptionValuePrefix: "94879",
 };
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const controlsDir = join(root, "controls");
 const errors = [];
 
@@ -40,6 +41,16 @@ for (const name of controls) {
     versions.manifest = readFileSync(manifestPath, "utf8").match(/<control\b[^>]*\bversion="([^"]+)"/)?.[1];
   } else {
     errors.push(`${name}: missing ${name}/ControlManifest.Input.xml`);
+  }
+
+  // npm workspaces hoist node_modules to the repo root (ADR-0002), which breaks two `pac pcf init` defaults.
+  const pcfprojPath = join(dir, `${name}.pcfproj`);
+  if (existsSync(pcfprojPath) && !/<PcfEnableAutoNpmInstall>false<\/PcfEnableAutoNpmInstall>/.test(readFileSync(pcfprojPath, "utf8"))) {
+    errors.push(`${name}: ${name}.pcfproj must set <PcfEnableAutoNpmInstall>false</PcfEnableAutoNpmInstall>`);
+  }
+  const tsconfigPath = join(dir, "tsconfig.json");
+  if (existsSync(tsconfigPath) && /"(\.\/)?node_modules\//.test(readFileSync(tsconfigPath, "utf8"))) {
+    errors.push(`${name}: tsconfig.json must extend "pcf-scripts/tsconfig_base.json" and use "../../node_modules/@types"`);
   }
 
   const pkgPath = join(dir, "package.json");

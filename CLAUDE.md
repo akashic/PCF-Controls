@@ -25,14 +25,15 @@ dotnet build controls/<ControlName>/solution -c Release   # managed + unmanaged 
 cd controls/<ControlName> && pac pcf push --publisher-prefix wb   # dev environment only
 ```
 
-Until the first workspace exists (`packages/shared` or a control), root `npm run lint/test/build` fail with "No workspaces found". CI skips those steps in that case.
+Jest settings are shared through the root `jest.config.base.js`. Each workspace's `jest.config.js` spreads it and sets its own coverage thresholds (`packages/shared` requires 100%).
 
 `pac` is a .NET global tool at `~/.dotnet/tools/pac` (2.14.1). If `pac` isn't found in a non-login shell, call it by that full path.
 
 ## Architecture
 
 - **One control = one folder = one PCF project = one npm workspace = one Dataverse solution** ([ADR-0001](docs/adr/0001-one-solution-per-control.md)). `controls/<ControlName>/` holds the pcfproj, the control source in `controls/<ControlName>/<ControlName>/`, Jest tests in `tests/`, spike write-ups in `docs/decisions.md`, and the solution in `solution/` (unique name `WB<ControlName>`). A control's solution contains only the control and its own environment variables. Adding a control to a table's form or view belongs to the *project's* solution, not this repo's.
-- **Shared code** lives in `packages/shared` and is bundled into each control by `pcf-scripts` ([ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md)). That bundling, and `dotnet build` working with a root-hoisted `node_modules`, are unproven until the first spike. If either fails, switch to a relative import and update ADR-0002.
+- **Shared code** lives in `packages/shared` (`@wb-pcf/shared`, TypeScript source, no build step) and is bundled into each control by `pcf-scripts` ([ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md)). Colour utilities take a branded `HexColor` that only `normalizeHex` produces, so untrusted colours are validated once and nothing downstream throws.
+- **Hoisted `node_modules` breaks two `pac pcf init` defaults.** Every control's `.pcfproj` needs `<PcfEnableAutoNpmInstall>false</PcfEnableAutoNpmInstall>`, and its `tsconfig.json` must extend `pcf-scripts/tsconfig_base.json` with `typeRoots: ["../../node_modules/@types"]`. `check:controls` enforces both. A broken tsconfig shows up as misleading ESLint errors (`strictNullChecks`, `error`-typed `ComponentFramework`).
 - **Controls are virtual (React) controls.** React and Fluent come from the platform as `<platform-library>` entries and must never be bundled. Shared packages take them as peer dependencies only.
 - **Configuration, not code:** controls are reused across projects, so they never hard-code table or column names, option values or colours. Values that vary per environment go in a `wb_<ControlName><Purpose>` environment variable inside the control's solution, validated by a JSON Schema in the control's `config/`.
 

@@ -22,6 +22,7 @@ Update this table when a control is added, released or retired.
 ├── README.md                     # this standard
 ├── CLAUDE.md                     # guidance for AI coding agents
 ├── package.json                  # npm workspaces root (packages/*, controls/*)
+├── jest.config.base.js           # shared Jest settings, spread by each workspace's jest.config.js
 ├── controls/
 │   └── <ControlName>/            # one folder per control = one PCF project = one npm workspace
 │       ├── README.md             # what it does, configuration, per-table/per-form setup, changelog
@@ -120,7 +121,11 @@ All commands below run from the repo root unless noted.
    mkdir controls/<ControlName> && cd controls/<ControlName>
    pac pcf init --namespace WB --name <ControlName> --template field --framework react --run-npm-install false
    ```
-   Then in `package.json`, set `"name": "@wb-pcf/<kebab-name>"` and `"version"` to match the manifest (start at `0.1.0`), and add a `test` script. Delete the generated `.gitignore`; the root one covers it.
+   Then make it work as an npm workspace ([ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md) explains why):
+   - `package.json`: set `"name": "@wb-pcf/<kebab-name>"`, `"private": true`, and `"version"` to match the manifest (start at `0.1.0`). Add `"@wb-pcf/shared": "*"` to `dependencies` if the control uses shared code, and add a `"test": "jest"` script with a `jest.config.js` that spreads `../../jest.config.base`.
+   - `tsconfig.json`: `"extends": "pcf-scripts/tsconfig_base.json"` and `"typeRoots": ["../../node_modules/@types"]`.
+   - `<ControlName>.pcfproj`: add `<PcfEnableAutoNpmInstall>false</PcfEnableAutoNpmInstall>` to the first `<PropertyGroup>` that sets `OutputPath`.
+   - Delete the generated `.gitignore` (the root one covers it). Never commit a `package-lock.json` inside a control folder.
 3. **Create the solution** and point it at the control:
    ```sh
    mkdir solution && cd solution
