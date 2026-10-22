@@ -11,7 +11,7 @@ This README is the standard for building and shipping a WB control: conventions,
 | Control | Type | Solution | Logical name | Status | Docs |
 |---|---|---|---|---|---|
 | GridFormatter | Power Apps grid customizer (views and subgrids) | `WBGridFormatter` | `wb_WB.GridFormatter` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
-| RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_WB.RagChoice` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
+| RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_WB.RagChoice` | In development | [README](controls/RagChoice/README.md) |
 
 Update this table when a control is added, released or retired.
 
@@ -147,7 +147,7 @@ All commands below run from the repo root unless noted.
 
 - **Build virtual (React) controls.** Set `control-type="virtual"` and declare React and Fluent as `<platform-library>` resources so the platform supplies them at runtime. **Never bundle React or Fluent.** In a virtual control, `init` gets no container and `updateView` returns a `ReactElement`.
 - **Prefer Fluent 9** so controls pick up the app's modern theme and dark mode automatically. Fluent 8 and 9 can't both be declared in one manifest. Keep `package.json` versions aligned with the declared platform library versions, and don't use APIs newer than what's declared.
-- **Declared platform library versions:** `pac` 2.14.1 generates `Fluent 9.68.0` and `React 16.14.0`. The Oct 2026 brief recorded a supported declared Fluent 9 range of `>=9.4.0 <=9.46.2`. Confirm which is correct against Microsoft Learn before the first release and update this line.
+- **Declared platform library versions:** declare `React 16.14.0` and `Fluent 9.46.2`, and pin `"@fluentui/react-components": "9.46.2"` (exact) in `devDependencies`. `pac` 2.14.1 generates `9.68.0`, so change it in the manifest and `package.json` after `pac pcf init`. Microsoft Learn's [supported platform libraries list](https://learn.microsoft.com/power-apps/developer/component-framework/react-controls-platform-libraries#supported-platform-libraries-list) allows `>=9.4.0 <=9.46.2` and loads `9.68.0` at runtime. `pcf-scripts` 1.49.3+ also builds `9.68.0`, but Learn doesn't document it. Revisit when Learn raises the range. Sources and reasoning: [docs/research/fluent-platform-library-version.md](docs/research/fluent-platform-library-version.md).
 - Use `pac` 2.14+ (virtual controls need at least 1.37).
 - Keep `<external-service-usage enabled="false">` unless the control genuinely calls an external service. Declaring one makes the control premium-licensed.
 
