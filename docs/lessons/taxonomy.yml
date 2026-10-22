@@ -1,0 +1,73 @@
+# Closed vocabularies for lesson frontmatter (docs/lessons/*.md).
+# Never invent a value: use the nearest one and record what you wanted in the
+# lesson's proposed_tags. Add a value here once three lessons want it.
+
+lesson_type:
+  - pitfall        # something that goes wrong; defensive knowledge
+  - convention     # the settled way we do something
+  - heuristic      # how to decide between options
+  - estimate       # what things actually cost or take
+  - tool-choice    # we picked A over B; what we learned
+  - anti-pattern   # we did this and would not again
+  - workaround     # known-bad but necessary; needs `expires`
+
+phase:
+  - scoping
+  - design
+  - implementation
+  - testing
+  - deployment
+  - operation
+  - handover
+
+domain:
+  - pcf-controls        # building PCF controls: manifest, lifecycle, bundling
+  - grid-customizer     # Power Apps grid customizers (GridFormatter)
+  - model-driven-forms  # forms, form XML, field controls
+  - dataverse-metadata  # tables, columns, choices, web resources, solutions' metadata
+  - solutions-alm       # solution packaging, import, versions, dev -> UAT -> prod
+  - accessibility
+  - testing             # test environment, browser testing, harness, Jest
+  - ci                  # GitHub Actions and repo checks
+  - agent-workflow      # how agents and subagents work in this repo
+
+tech:
+  - pcf
+  - dataverse
+  - power-apps-grid
+  - fluent-ui
+  - react
+  - pac-cli
+  - dataverse-web-api
+  - jest
+  - github-actions
+  - claude-in-chrome
+
+scope:
+  - universal
+  - this-org
+  - this-stack
+  - this-project
+
+cost_if_ignored:
+  - minor
+  - rework
+  - outage
+  - project-level
+
+confidence:
+  - one-off
+  - repeated
+  - established
+
+status:
+  - active
+  - superseded
+  - retired
+
+source:
+  - incident
+  - retro
+  - pr-review
+  - direct-experience
+  - handover-doc
