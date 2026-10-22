@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "unknown-token",
+      "when": { "column": "statecode", "op": "eq", "value": 1 },
+      "scope": "row",
+      "style": { "backgroundColor": { "token": "colorNeutralBackgroundGrey" } }
+    }
+  ]
+}

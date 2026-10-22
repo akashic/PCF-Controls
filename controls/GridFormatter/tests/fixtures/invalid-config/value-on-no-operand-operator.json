@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "value-on-no-operand-operator",
+      "when": { "column": "wb_ragstatus", "op": "isNull", "value": null },
+      "style": { "fontStyle": "italic" }
+    }
+  ]
+}

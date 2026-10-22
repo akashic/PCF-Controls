@@ -1,0 +1,1282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WB GridFormatter table config",
+  "description": "Conditional formatting rules for one Dataverse table's grids (views and subgrids). One file per table, deployed as the web resource wb_/GridFormatter/<table logical name>.json; the file name says which table the rules apply to.",
+  "type": "object",
+  "required": [
+    "version",
+    "rules"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "Path to this schema, for autocomplete and inline errors in VS Code. Ignored by the control.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Config format version. Must be 1. A file with any other version is ignored with a console warning.",
+      "const": 1
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults"
+    },
+    "rules": {
+      "description": "The formatting rules for this table. Rules are evaluated per row in ascending priority (ties keep array order); the first rule to set a style property for a cell wins.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "$defs": {
+    "defaults": {
+      "description": "Settings shared by every rule in this file.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tintAlpha": {
+          "description": "Alpha (opacity, above 0 up to 1) used when a fromOption colour says \"alpha\": \"tint\".",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "default": 0.18
+        },
+        "fallbackColor": {
+          "description": "Colour used when fromOption finds no colour (unknown option, no colour set, or an invalid hex). null means the rule doesn't set that property, so a later rule may.",
+          "default": null,
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/staticColor"
+            }
+          ]
+        }
+      }
+    },
+    "rule": {
+      "description": "A rule: when (condition) + style (what) + scope (where) + priority and stop (how it combines).",
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Unique id for this rule within the file. Used in console warnings and debug logs.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+          "maxLength": 64
+        },
+        "description": {
+          "description": "What the rule is for, in plain words. Not shown to users.",
+          "type": "string"
+        },
+        "priority": {
+          "description": "Evaluation order: lower numbers are evaluated first and win any property they set. Ties keep array order. Defaults to 0.",
+          "type": "integer",
+          "default": 0
+        },
+        "when": {
+          "$ref": "#/$defs/condition",
+          "description": "Condition that decides whether the rule applies to a row. Omit it to apply the rule to every row. A rule only fires on views that include all the columns its condition reads (the grid only supplies values for columns in the view)."
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "display": {
+          "description": "How the style is applied. \"style\" (default) keeps the grid's own cell rendering and applies the style properties. \"pill\" renders the cell's formatted value as a rounded pill filled with backgroundColor and auto-contrast text (color is ignored); cell scope only.",
+          "enum": [
+            "style",
+            "pill"
+          ],
+          "enumDescriptions": [
+            "Apply the style properties and keep the grid's own cell rendering.",
+            "Render the formatted value as a pill filled with backgroundColor. Needs cell scope and a backgroundColor."
+          ],
+          "default": "style"
+        },
+        "style": {
+          "$ref": "#/$defs/style"
+        },
+        "stop": {
+          "description": "When true and this rule matches, no further rules are evaluated for the row. A rule with stop: true may omit style to stop formatting without styling.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "allOf": [
+        {
+          "description": "A rule needs a style unless it only stops evaluation.",
+          "if": {
+            "not": {
+              "required": [
+                "stop"
+              ],
+              "properties": {
+                "stop": {
+                  "const": true
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "style"
+            ]
+          }
+        },
+        {
+          "description": "Without a leaf condition there is no column to default the scope to, so scope is required.",
+          "if": {
+            "not": {
+              "required": [
+                "when"
+              ],
+              "properties": {
+                "when": {
+                  "type": "object",
+                  "required": [
+                    "column"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "scope"
+            ]
+          }
+        },
+        {
+          "description": "A pill needs cell scope and a backgroundColor.",
+          "if": {
+            "required": [
+              "display"
+            ],
+            "properties": {
+              "display": {
+                "const": "pill"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "style"
+            ],
+            "properties": {
+              "scope": {
+                "$ref": "#/$defs/cellScope"
+              },
+              "style": {
+                "type": "object",
+                "required": [
+                  "backgroundColor"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scope": {
+      "description": "Where the style goes. \"row\" styles every cell in the row; { \"columns\": [...] } styles only those cells. If omitted on a rule whose when is a single leaf condition, it defaults to that condition's column.",
+      "oneOf": [
+        {
+          "const": "row",
+          "description": "Style every cell in the row."
+        },
+        {
+          "$ref": "#/$defs/cellScope"
+        }
+      ]
+    },
+    "cellScope": {
+      "description": "Style only the cells of these columns.",
+      "type": "object",
+      "required": [
+        "columns"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "description": "Logical names of the columns whose cells are styled. Columns not in the current view are skipped.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/columnName"
+          }
+        }
+      }
+    },
+    "columnName": {
+      "description": "Column logical name as it appears in the view (lower case, for example wb_duedate). A column from a related table uses the view's alias prefix (alias.column).",
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)?$"
+    },
+    "condition": {
+      "description": "A leaf { column, op, value } or a group { all: [...] } / { any: [...] } / { not: condition }. Conditions nest at most 5 levels deep: when is level 1 and each group adds a level.",
+      "$ref": "#/$defs/conditionDepth1"
+    },
+    "conditionDepth1": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/leafCondition"
+        },
+        {
+          "type": "object",
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "description": "True when every condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth2"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "description": "True when at least one condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth2"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/conditionDepth2",
+              "description": "True when the condition is false."
+            }
+          }
+        }
+      ]
+    },
+    "conditionDepth2": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/leafCondition"
+        },
+        {
+          "type": "object",
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "description": "True when every condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth3"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "description": "True when at least one condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth3"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/conditionDepth3",
+              "description": "True when the condition is false."
+            }
+          }
+        }
+      ]
+    },
+    "conditionDepth3": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/leafCondition"
+        },
+        {
+          "type": "object",
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "description": "True when every condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth4"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "description": "True when at least one condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth4"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/conditionDepth4",
+              "description": "True when the condition is false."
+            }
+          }
+        }
+      ]
+    },
+    "conditionDepth4": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/leafCondition"
+        },
+        {
+          "type": "object",
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "description": "True when every condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth5"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "description": "True when at least one condition in the list is true.",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/conditionDepth5"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/conditionDepth5",
+              "description": "True when the condition is false."
+            }
+          }
+        }
+      ]
+    },
+    "conditionDepth5": {
+      "description": "Deepest level: only leaf conditions are allowed here.",
+      "$ref": "#/$defs/leafCondition"
+    },
+    "leafCondition": {
+      "description": "Compares one column of the row with an operand. The rule only fires where the column is in the view. Choice, status and status reason compare by numeric option value (never the label); Yes/No by true/false; lookups by GUID; dates by ISO date string.",
+      "type": "object",
+      "required": [
+        "column",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "$ref": "#/$defs/columnName"
+        },
+        "op": {
+          "$ref": "#/$defs/operator"
+        },
+        "value": {
+          "description": "The operand. Its shape depends on op: a single value, an array, [min, max], a number of days, a { \"column\": ... } reference, or nothing at all."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "eq",
+                  "ne"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "A number (also choice option values), string (text, GUID or ISO date), boolean (Yes/No), or { \"column\": ... } to compare with another column.",
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/scalar"
+                  },
+                  {
+                    "$ref": "#/$defs/columnOperand"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "in",
+                  "notIn"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "A non-empty array of numbers (option values), strings (text or GUIDs) or booleans.",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/scalar"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "gt",
+                  "gte",
+                  "lt",
+                  "lte"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "A number, an ISO date (\"2026-12-31\"), or { \"column\": ... } to compare with another column.",
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "$ref": "#/$defs/isoDate"
+                  },
+                  {
+                    "$ref": "#/$defs/columnOperand"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "const": "between"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "[min, max], inclusive: two numbers or two ISO dates.",
+                "oneOf": [
+                  {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "minItems": 2,
+                    "maxItems": 2
+                  },
+                  {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "$ref": "#/$defs/isoDate"
+                      },
+                      {
+                        "$ref": "#/$defs/isoDate"
+                      }
+                    ],
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "contains",
+                  "startsWith",
+                  "endsWith"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "Text to look for (case-insensitive).",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "olderThanDays",
+                  "withinNextDays"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "Number of days (whole number, 0 or more), counted from the user's local date.",
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "containsAny",
+                  "containsAll"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "description": "A non-empty array of multi-select option values (numbers).",
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "isNull",
+                  "isNotNull",
+                  "beforeToday",
+                  "onOrAfterToday"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "description": "This operator takes no value.",
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "operator": {
+      "description": "Comparison operator. The value's shape depends on it.",
+      "enum": [
+        "eq",
+        "ne",
+        "in",
+        "notIn",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "between",
+        "isNull",
+        "isNotNull",
+        "contains",
+        "startsWith",
+        "endsWith",
+        "beforeToday",
+        "onOrAfterToday",
+        "olderThanDays",
+        "withinNextDays",
+        "containsAny",
+        "containsAll"
+      ],
+      "enumDescriptions": [
+        "Equals value (any scalar type, or { column }).",
+        "Not equal to value (any scalar type, or { column }).",
+        "Equals one of the values in the array.",
+        "Equals none of the values in the array.",
+        "Greater than value (numbers, currency, dates).",
+        "Greater than or equal to value (numbers, currency, dates).",
+        "Less than value (numbers, currency, dates).",
+        "Less than or equal to value (numbers, currency, dates).",
+        "Between [min, max] inclusive (numbers, currency, dates).",
+        "Column is empty. No value.",
+        "Column has a value. No value.",
+        "Text contains value (case-insensitive).",
+        "Text starts with value (case-insensitive).",
+        "Text ends with value (case-insensitive).",
+        "Date is before today (user's local date). No value.",
+        "Date is today or later (user's local date). No value.",
+        "Date is more than value days before today.",
+        "Date is between today and value days from today.",
+        "Multi-select includes at least one of the option values.",
+        "Multi-select includes every one of the option values."
+      ]
+    },
+    "scalar": {
+      "description": "A number (also choice, status and status reason option values), string (text, lookup GUID or ISO date) or boolean (Yes/No).",
+      "type": [
+        "number",
+        "string",
+        "boolean"
+      ]
+    },
+    "isoDate": {
+      "description": "ISO 8601 date (\"2026-12-31\") or date and time (\"2026-12-31T17:00:00Z\").",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})?)?$"
+    },
+    "columnOperand": {
+      "description": "Compare with another column of the same row (for example wb_actualcost gt wb_budget). Both columns must be in the view.",
+      "type": "object",
+      "required": [
+        "column"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "$ref": "#/$defs/columnName"
+        }
+      }
+    },
+    "style": {
+      "description": "Style properties to apply. Only these properties are allowed: no raw CSS, class names or other keys.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "backgroundColor": {
+          "$ref": "#/$defs/colorValue",
+          "description": "Cell background colour. For display: \"pill\" this is the pill's fill."
+        },
+        "color": {
+          "$ref": "#/$defs/colorValue",
+          "description": "Text (font) colour. Ignored for display: \"pill\", which picks black or white text by contrast."
+        },
+        "fontWeight": {
+          "description": "Font weight.",
+          "enum": [
+            "normal",
+            "semibold",
+            "bold"
+          ],
+          "enumDescriptions": [
+            "Regular weight (400).",
+            "Semibold (600).",
+            "Bold (700)."
+          ]
+        },
+        "fontStyle": {
+          "description": "Font style.",
+          "enum": [
+            "normal",
+            "italic"
+          ]
+        },
+        "textDecoration": {
+          "description": "Text decoration.",
+          "enum": [
+            "none",
+            "line-through",
+            "underline"
+          ]
+        }
+      }
+    },
+    "colorValue": {
+      "description": "A colour: \"#RRGGBB\", { \"hex\", \"alpha\" }, { \"token\" } (Fluent 9 theme token, adapts to dark mode), or { \"fromOption\" } (the colour set on the row's selected choice option).",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/staticColor"
+        },
+        {
+          "$ref": "#/$defs/fromOptionColor"
+        }
+      ]
+    },
+    "staticColor": {
+      "description": "A fixed colour or a Fluent 9 theme token.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/hexColor"
+        },
+        {
+          "$ref": "#/$defs/hexAlphaColor"
+        },
+        {
+          "$ref": "#/$defs/tokenColor"
+        }
+      ]
+    },
+    "hexColor": {
+      "description": "Fixed colour as #RGB or #RRGGBB, for example \"#C50F1F\". Doesn't adapt to dark mode.",
+      "type": "string",
+      "pattern": "^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$"
+    },
+    "hexAlphaColor": {
+      "description": "Fixed colour at an alpha (opacity).",
+      "type": "object",
+      "required": [
+        "hex",
+        "alpha"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "hex": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "alpha": {
+          "$ref": "#/$defs/alpha"
+        }
+      }
+    },
+    "tokenColor": {
+      "description": "Fluent 9 theme colour token. Adapts to the app's light or dark theme.",
+      "type": "object",
+      "required": [
+        "token"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "token": {
+          "$ref": "#/$defs/fluentColorToken"
+        }
+      }
+    },
+    "fromOptionColor": {
+      "description": "The colour configured on the row's selected option of a choice column. Falls back to defaults.fallbackColor when the option has no valid colour.",
+      "type": "object",
+      "required": [
+        "fromOption"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fromOption": {
+          "$ref": "#/$defs/columnName",
+          "description": "Logical name of the choice (or status reason) column whose option colour is used. It must be in the view."
+        },
+        "alpha": {
+          "description": "\"tint\" uses defaults.tintAlpha; a number from 0 to 1 sets the alpha. Omit for a solid colour.",
+          "oneOf": [
+            {
+              "const": "tint"
+            },
+            {
+              "$ref": "#/$defs/alpha"
+            }
+          ]
+        }
+      }
+    },
+    "alpha": {
+      "description": "Alpha (opacity) from 0 (transparent) to 1 (solid).",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "fluentColorToken": {
+      "description": "Fluent 9 colour token name. Generated by scripts/generate-token-list.mjs; don't edit by hand.",
+      "$comment": "Colour tokens present in @fluentui/tokens@1.0.0-alpha.13 and @fluentui/tokens@1.0.0-alpha.21.",
+      "enum": [
+        "colorBackgroundOverlay",
+        "colorBrandBackground",
+        "colorBrandBackground2",
+        "colorBrandBackground2Hover",
+        "colorBrandBackground2Pressed",
+        "colorBrandBackgroundHover",
+        "colorBrandBackgroundInverted",
+        "colorBrandBackgroundInvertedHover",
+        "colorBrandBackgroundInvertedPressed",
+        "colorBrandBackgroundInvertedSelected",
+        "colorBrandBackgroundPressed",
+        "colorBrandBackgroundSelected",
+        "colorBrandBackgroundStatic",
+        "colorBrandForeground1",
+        "colorBrandForeground2",
+        "colorBrandForeground2Hover",
+        "colorBrandForeground2Pressed",
+        "colorBrandForegroundInverted",
+        "colorBrandForegroundInvertedHover",
+        "colorBrandForegroundInvertedPressed",
+        "colorBrandForegroundLink",
+        "colorBrandForegroundLinkHover",
+        "colorBrandForegroundLinkPressed",
+        "colorBrandForegroundLinkSelected",
+        "colorBrandForegroundOnLight",
+        "colorBrandForegroundOnLightHover",
+        "colorBrandForegroundOnLightPressed",
+        "colorBrandForegroundOnLightSelected",
+        "colorBrandShadowAmbient",
+        "colorBrandShadowKey",
+        "colorBrandStroke1",
+        "colorBrandStroke2",
+        "colorBrandStroke2Contrast",
+        "colorBrandStroke2Hover",
+        "colorBrandStroke2Pressed",
+        "colorCompoundBrandBackground",
+        "colorCompoundBrandBackgroundHover",
+        "colorCompoundBrandBackgroundPressed",
+        "colorCompoundBrandForeground1",
+        "colorCompoundBrandForeground1Hover",
+        "colorCompoundBrandForeground1Pressed",
+        "colorCompoundBrandStroke",
+        "colorCompoundBrandStrokeHover",
+        "colorCompoundBrandStrokePressed",
+        "colorNeutralBackground1",
+        "colorNeutralBackground1Hover",
+        "colorNeutralBackground1Pressed",
+        "colorNeutralBackground1Selected",
+        "colorNeutralBackground2",
+        "colorNeutralBackground2Hover",
+        "colorNeutralBackground2Pressed",
+        "colorNeutralBackground2Selected",
+        "colorNeutralBackground3",
+        "colorNeutralBackground3Hover",
+        "colorNeutralBackground3Pressed",
+        "colorNeutralBackground3Selected",
+        "colorNeutralBackground4",
+        "colorNeutralBackground4Hover",
+        "colorNeutralBackground4Pressed",
+        "colorNeutralBackground4Selected",
+        "colorNeutralBackground5",
+        "colorNeutralBackground5Hover",
+        "colorNeutralBackground5Pressed",
+        "colorNeutralBackground5Selected",
+        "colorNeutralBackground6",
+        "colorNeutralBackgroundAlpha",
+        "colorNeutralBackgroundAlpha2",
+        "colorNeutralBackgroundDisabled",
+        "colorNeutralBackgroundInverted",
+        "colorNeutralBackgroundInvertedDisabled",
+        "colorNeutralBackgroundStatic",
+        "colorNeutralForeground1",
+        "colorNeutralForeground1Hover",
+        "colorNeutralForeground1Pressed",
+        "colorNeutralForeground1Selected",
+        "colorNeutralForeground1Static",
+        "colorNeutralForeground2",
+        "colorNeutralForeground2BrandHover",
+        "colorNeutralForeground2BrandPressed",
+        "colorNeutralForeground2BrandSelected",
+        "colorNeutralForeground2Hover",
+        "colorNeutralForeground2Link",
+        "colorNeutralForeground2LinkHover",
+        "colorNeutralForeground2LinkPressed",
+        "colorNeutralForeground2LinkSelected",
+        "colorNeutralForeground2Pressed",
+        "colorNeutralForeground2Selected",
+        "colorNeutralForeground3",
+        "colorNeutralForeground3BrandHover",
+        "colorNeutralForeground3BrandPressed",
+        "colorNeutralForeground3BrandSelected",
+        "colorNeutralForeground3Hover",
+        "colorNeutralForeground3Pressed",
+        "colorNeutralForeground3Selected",
+        "colorNeutralForeground4",
+        "colorNeutralForegroundDisabled",
+        "colorNeutralForegroundInverted",
+        "colorNeutralForegroundInverted2",
+        "colorNeutralForegroundInvertedDisabled",
+        "colorNeutralForegroundInvertedHover",
+        "colorNeutralForegroundInvertedLink",
+        "colorNeutralForegroundInvertedLinkHover",
+        "colorNeutralForegroundInvertedLinkPressed",
+        "colorNeutralForegroundInvertedLinkSelected",
+        "colorNeutralForegroundInvertedPressed",
+        "colorNeutralForegroundInvertedSelected",
+        "colorNeutralForegroundOnBrand",
+        "colorNeutralForegroundStaticInverted",
+        "colorNeutralShadowAmbient",
+        "colorNeutralShadowAmbientDarker",
+        "colorNeutralShadowAmbientLighter",
+        "colorNeutralShadowKey",
+        "colorNeutralShadowKeyDarker",
+        "colorNeutralShadowKeyLighter",
+        "colorNeutralStencil1",
+        "colorNeutralStencil1Alpha",
+        "colorNeutralStencil2",
+        "colorNeutralStencil2Alpha",
+        "colorNeutralStroke1",
+        "colorNeutralStroke1Hover",
+        "colorNeutralStroke1Pressed",
+        "colorNeutralStroke1Selected",
+        "colorNeutralStroke2",
+        "colorNeutralStroke3",
+        "colorNeutralStrokeAccessible",
+        "colorNeutralStrokeAccessibleHover",
+        "colorNeutralStrokeAccessiblePressed",
+        "colorNeutralStrokeAccessibleSelected",
+        "colorNeutralStrokeAlpha",
+        "colorNeutralStrokeAlpha2",
+        "colorNeutralStrokeDisabled",
+        "colorNeutralStrokeInvertedDisabled",
+        "colorNeutralStrokeOnBrand",
+        "colorNeutralStrokeOnBrand2",
+        "colorNeutralStrokeOnBrand2Hover",
+        "colorNeutralStrokeOnBrand2Pressed",
+        "colorNeutralStrokeOnBrand2Selected",
+        "colorNeutralStrokeSubtle",
+        "colorPaletteAnchorBackground2",
+        "colorPaletteAnchorBorderActive",
+        "colorPaletteAnchorForeground2",
+        "colorPaletteBeigeBackground2",
+        "colorPaletteBeigeBorderActive",
+        "colorPaletteBeigeForeground2",
+        "colorPaletteBerryBackground1",
+        "colorPaletteBerryBackground2",
+        "colorPaletteBerryBackground3",
+        "colorPaletteBerryBorder1",
+        "colorPaletteBerryBorder2",
+        "colorPaletteBerryBorderActive",
+        "colorPaletteBerryForeground1",
+        "colorPaletteBerryForeground2",
+        "colorPaletteBerryForeground3",
+        "colorPaletteBlueBackground2",
+        "colorPaletteBlueBorderActive",
+        "colorPaletteBlueForeground2",
+        "colorPaletteBrassBackground2",
+        "colorPaletteBrassBorderActive",
+        "colorPaletteBrassForeground2",
+        "colorPaletteBrownBackground2",
+        "colorPaletteBrownBorderActive",
+        "colorPaletteBrownForeground2",
+        "colorPaletteCornflowerBackground2",
+        "colorPaletteCornflowerBorderActive",
+        "colorPaletteCornflowerForeground2",
+        "colorPaletteCranberryBackground2",
+        "colorPaletteCranberryBorderActive",
+        "colorPaletteCranberryForeground2",
+        "colorPaletteDarkGreenBackground2",
+        "colorPaletteDarkGreenBorderActive",
+        "colorPaletteDarkGreenForeground2",
+        "colorPaletteDarkOrangeBackground1",
+        "colorPaletteDarkOrangeBackground2",
+        "colorPaletteDarkOrangeBackground3",
+        "colorPaletteDarkOrangeBorder1",
+        "colorPaletteDarkOrangeBorder2",
+        "colorPaletteDarkOrangeBorderActive",
+        "colorPaletteDarkOrangeForeground1",
+        "colorPaletteDarkOrangeForeground2",
+        "colorPaletteDarkOrangeForeground3",
+        "colorPaletteDarkRedBackground2",
+        "colorPaletteDarkRedBorderActive",
+        "colorPaletteDarkRedForeground2",
+        "colorPaletteForestBackground2",
+        "colorPaletteForestBorderActive",
+        "colorPaletteForestForeground2",
+        "colorPaletteGoldBackground2",
+        "colorPaletteGoldBorderActive",
+        "colorPaletteGoldForeground2",
+        "colorPaletteGrapeBackground2",
+        "colorPaletteGrapeBorderActive",
+        "colorPaletteGrapeForeground2",
+        "colorPaletteGreenBackground1",
+        "colorPaletteGreenBackground2",
+        "colorPaletteGreenBackground3",
+        "colorPaletteGreenBorder1",
+        "colorPaletteGreenBorder2",
+        "colorPaletteGreenBorderActive",
+        "colorPaletteGreenForeground1",
+        "colorPaletteGreenForeground2",
+        "colorPaletteGreenForeground3",
+        "colorPaletteGreenForegroundInverted",
+        "colorPaletteLavenderBackground2",
+        "colorPaletteLavenderBorderActive",
+        "colorPaletteLavenderForeground2",
+        "colorPaletteLightGreenBackground1",
+        "colorPaletteLightGreenBackground2",
+        "colorPaletteLightGreenBackground3",
+        "colorPaletteLightGreenBorder1",
+        "colorPaletteLightGreenBorder2",
+        "colorPaletteLightGreenBorderActive",
+        "colorPaletteLightGreenForeground1",
+        "colorPaletteLightGreenForeground2",
+        "colorPaletteLightGreenForeground3",
+        "colorPaletteLightTealBackground2",
+        "colorPaletteLightTealBorderActive",
+        "colorPaletteLightTealForeground2",
+        "colorPaletteLilacBackground2",
+        "colorPaletteLilacBorderActive",
+        "colorPaletteLilacForeground2",
+        "colorPaletteMagentaBackground2",
+        "colorPaletteMagentaBorderActive",
+        "colorPaletteMagentaForeground2",
+        "colorPaletteMarigoldBackground1",
+        "colorPaletteMarigoldBackground2",
+        "colorPaletteMarigoldBackground3",
+        "colorPaletteMarigoldBorder1",
+        "colorPaletteMarigoldBorder2",
+        "colorPaletteMarigoldBorderActive",
+        "colorPaletteMarigoldForeground1",
+        "colorPaletteMarigoldForeground2",
+        "colorPaletteMarigoldForeground3",
+        "colorPaletteMinkBackground2",
+        "colorPaletteMinkBorderActive",
+        "colorPaletteMinkForeground2",
+        "colorPaletteNavyBackground2",
+        "colorPaletteNavyBorderActive",
+        "colorPaletteNavyForeground2",
+        "colorPalettePeachBackground2",
+        "colorPalettePeachBorderActive",
+        "colorPalettePeachForeground2",
+        "colorPalettePinkBackground2",
+        "colorPalettePinkBorderActive",
+        "colorPalettePinkForeground2",
+        "colorPalettePlatinumBackground2",
+        "colorPalettePlatinumBorderActive",
+        "colorPalettePlatinumForeground2",
+        "colorPalettePlumBackground2",
+        "colorPalettePlumBorderActive",
+        "colorPalettePlumForeground2",
+        "colorPalettePumpkinBackground2",
+        "colorPalettePumpkinBorderActive",
+        "colorPalettePumpkinForeground2",
+        "colorPalettePurpleBackground2",
+        "colorPalettePurpleBorderActive",
+        "colorPalettePurpleForeground2",
+        "colorPaletteRedBackground1",
+        "colorPaletteRedBackground2",
+        "colorPaletteRedBackground3",
+        "colorPaletteRedBorder1",
+        "colorPaletteRedBorder2",
+        "colorPaletteRedBorderActive",
+        "colorPaletteRedForeground1",
+        "colorPaletteRedForeground2",
+        "colorPaletteRedForeground3",
+        "colorPaletteRedForegroundInverted",
+        "colorPaletteRoyalBlueBackground2",
+        "colorPaletteRoyalBlueBorderActive",
+        "colorPaletteRoyalBlueForeground2",
+        "colorPaletteSeafoamBackground2",
+        "colorPaletteSeafoamBorderActive",
+        "colorPaletteSeafoamForeground2",
+        "colorPaletteSteelBackground2",
+        "colorPaletteSteelBorderActive",
+        "colorPaletteSteelForeground2",
+        "colorPaletteTealBackground2",
+        "colorPaletteTealBorderActive",
+        "colorPaletteTealForeground2",
+        "colorPaletteYellowBackground1",
+        "colorPaletteYellowBackground2",
+        "colorPaletteYellowBackground3",
+        "colorPaletteYellowBorder1",
+        "colorPaletteYellowBorder2",
+        "colorPaletteYellowBorderActive",
+        "colorPaletteYellowForeground1",
+        "colorPaletteYellowForeground2",
+        "colorPaletteYellowForeground3",
+        "colorPaletteYellowForegroundInverted",
+        "colorScrollbarOverlay",
+        "colorStatusDangerBackground1",
+        "colorStatusDangerBackground2",
+        "colorStatusDangerBackground3",
+        "colorStatusDangerBorder1",
+        "colorStatusDangerBorder2",
+        "colorStatusDangerBorderActive",
+        "colorStatusDangerForeground1",
+        "colorStatusDangerForeground2",
+        "colorStatusDangerForeground3",
+        "colorStatusDangerForegroundInverted",
+        "colorStatusSuccessBackground1",
+        "colorStatusSuccessBackground2",
+        "colorStatusSuccessBackground3",
+        "colorStatusSuccessBorder1",
+        "colorStatusSuccessBorder2",
+        "colorStatusSuccessBorderActive",
+        "colorStatusSuccessForeground1",
+        "colorStatusSuccessForeground2",
+        "colorStatusSuccessForeground3",
+        "colorStatusSuccessForegroundInverted",
+        "colorStatusWarningBackground1",
+        "colorStatusWarningBackground2",
+        "colorStatusWarningBackground3",
+        "colorStatusWarningBorder1",
+        "colorStatusWarningBorder2",
+        "colorStatusWarningBorderActive",
+        "colorStatusWarningForeground1",
+        "colorStatusWarningForeground2",
+        "colorStatusWarningForeground3",
+        "colorStatusWarningForegroundInverted",
+        "colorStrokeFocus1",
+        "colorStrokeFocus2",
+        "colorSubtleBackground",
+        "colorSubtleBackgroundHover",
+        "colorSubtleBackgroundInverted",
+        "colorSubtleBackgroundInvertedHover",
+        "colorSubtleBackgroundInvertedPressed",
+        "colorSubtleBackgroundInvertedSelected",
+        "colorSubtleBackgroundLightAlphaHover",
+        "colorSubtleBackgroundLightAlphaPressed",
+        "colorSubtleBackgroundLightAlphaSelected",
+        "colorSubtleBackgroundPressed",
+        "colorSubtleBackgroundSelected",
+        "colorTransparentBackground",
+        "colorTransparentBackgroundHover",
+        "colorTransparentBackgroundPressed",
+        "colorTransparentBackgroundSelected",
+        "colorTransparentStroke",
+        "colorTransparentStrokeDisabled",
+        "colorTransparentStrokeInteractive"
+      ]
+    }
+  }
+}

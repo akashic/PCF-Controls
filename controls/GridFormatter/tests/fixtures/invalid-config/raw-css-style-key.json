@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "raw-css-style-key",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "style": { "fontWeight": "bold", "border": "1px solid red" }
+    }
+  ]
+}

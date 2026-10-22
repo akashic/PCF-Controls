@@ -1,0 +1,19 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "overdue",
+      "description": "Overdue due date in bold red, unless RAG is Green",
+      "priority": 30,
+      "when": {
+        "all": [
+          { "column": "wb_duedate", "op": "beforeToday" },
+          { "not": { "column": "wb_ragstatus", "op": "eq", "value": 948790002 } }
+        ]
+      },
+      "scope": { "columns": ["wb_duedate"] },
+      "style": { "color": "#C50F1F", "fontWeight": "bold" }
+    }
+  ]
+}

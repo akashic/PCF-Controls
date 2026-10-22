@@ -1,0 +1,14 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "rag-pill",
+      "description": "Show RAG status as a coloured pill",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "scope": { "columns": ["wb_ragstatus"] },
+      "display": "pill",
+      "style": { "backgroundColor": { "fromOption": "wb_ragstatus" } }
+    }
+  ]
+}

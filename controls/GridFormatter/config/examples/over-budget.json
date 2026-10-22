@@ -1,0 +1,22 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "over-budget",
+      "description": "Actual cost above budget in red (column-to-column comparison)",
+      "when": {
+        "all": [
+          { "column": "wb_budget", "op": "isNotNull" },
+          { "column": "wb_actualcost", "op": "gt", "value": { "column": "wb_budget" } }
+        ]
+      },
+      "scope": { "columns": ["wb_actualcost"] },
+      "style": {
+        "backgroundColor": { "hex": "#C50F1F", "alpha": 0.12 },
+        "color": { "token": "colorPaletteRedForeground1" },
+        "fontWeight": "semibold"
+      }
+    }
+  ]
+}

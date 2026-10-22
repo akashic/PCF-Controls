@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "rag",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "style": { "fontWeight": "bold" }
+    },
+    {
+      "id": "rag",
+      "when": { "column": "wb_ragstatus", "op": "isNull" },
+      "style": { "fontStyle": "italic" }
+    }
+  ]
+}

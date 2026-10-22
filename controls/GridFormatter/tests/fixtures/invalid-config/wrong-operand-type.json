@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "wrong-operand-type",
+      "when": { "column": "wb_duedate", "op": "olderThanDays", "value": "30" },
+      "style": { "fontWeight": "bold" }
+    }
+  ]
+}
