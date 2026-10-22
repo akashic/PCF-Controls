@@ -10,6 +10,9 @@ export type IndicatorStyle = "dot" | "bar";
 /** Placeholder for an empty choice, matching the platform's own text. */
 export const PLACEHOLDER = "--Select--";
 
+/** What the platform's read-only choice shows when it's empty. */
+export const READ_ONLY_EMPTY = "---";
+
 /** What the platform shows for a field the user can't read (field security). */
 export const MASKED_VALUE = "***";
 
@@ -21,6 +24,11 @@ export interface OptionMetadataLike {
   Label?: unknown;
   Value?: unknown;
   Color?: unknown;
+  /**
+   * The option's **Hidden** property. It isn't in the PCF typings or docs,
+   * but the model-driven form host sends it (verified in dev, issue #7).
+   */
+  IsHidden?: unknown;
 }
 
 /** One entry in the dropdown list. */
@@ -32,6 +40,8 @@ export interface ChoiceItem {
   label: string;
   /** Indicator colour, or `null` for no indicator. */
   color: HexColor | null;
+  /** Listed but not selectable: a hidden option that is the current value. */
+  disabled: boolean;
 }
 
 /** What the closed dropdown shows. */
@@ -94,23 +104,37 @@ export function isRequired(requiredLevel: unknown): boolean {
  * The dropdown's options in metadata order, each with its indicator colour,
  * plus a blank option at the top unless the column is required. Entries
  * without a numeric value, and repeated values, are skipped.
+ *
+ * Hidden options are left out, as in the platform's own dropdown, unless one
+ * is the `selected` value. That one stays in the list, disabled, so the
+ * current value still shows but can't be picked again.
  */
-export function buildChoiceItems(options: unknown, fallback: HexColor | null, required: boolean): ChoiceItem[] {
-  const items: ChoiceItem[] = required ? [] : [{ key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null }];
+export function buildChoiceItems(
+  options: unknown,
+  fallback: HexColor | null,
+  required: boolean,
+  selected: number | null = null,
+): ChoiceItem[] {
+  const items: ChoiceItem[] = required
+    ? []
+    : [{ key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null, disabled: false }];
   if (!Array.isArray(options)) return items;
 
   const seen = new Set<number>();
   for (const option of options as unknown[]) {
     if (typeof option !== "object" || option === null) continue;
-    const { Label, Value, Color } = option as OptionMetadataLike;
+    const { Label, Value, Color, IsHidden } = option as OptionMetadataLike;
     const value = normalizeRawValue(Value);
     if (value === null || seen.has(value)) continue;
     seen.add(value);
+    const hidden = IsHidden === true;
+    if (hidden && value !== selected) continue;
     items.push({
       key: String(value),
       value,
       label: typeof Label === "string" && Label !== "" ? Label : String(value),
       color: resolveIndicatorColor(Color, fallback),
+      disabled: hidden,
     });
   }
   return items;
@@ -145,9 +169,17 @@ export function resolveFieldState(input: FieldStateInput): FieldState {
   return { readable, editable };
 }
 
-/** `aria-label` from the column's display name; blank or missing means none. */
-export function ariaLabelFor(displayName: unknown): string | undefined {
-  return typeof displayName === "string" && displayName.trim() !== "" ? displayName : undefined;
+/**
+ * `aria-label` for the dropdown. The form doesn't associate its field label
+ * with a custom control (verified in dev, issue #7), so the control names
+ * itself: the form label (`context.mode.label`) first, as the platform's own
+ * controls do, then the column's display name. Blank or missing means none.
+ */
+export function ariaLabelFor(formLabel: unknown, displayName: unknown): string | undefined {
+  for (const text of [formLabel, displayName]) {
+    if (typeof text === "string" && text.trim() !== "") return text;
+  }
+  return undefined;
 }
 
 /** The control's view of the bound value between `updateView` calls. */
