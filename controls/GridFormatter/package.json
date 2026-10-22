@@ -11,7 +11,8 @@
     "start": "pcf-scripts start",
     "start:watch": "pcf-scripts start watch",
     "refreshTypes": "pcf-scripts refreshTypes",
-    "validate:config": "node scripts/validate-config.mjs"
+    "validate:config": "node scripts/validate-config.mjs",
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "react": "^16.14.0",
