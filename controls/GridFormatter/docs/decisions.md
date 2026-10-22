@@ -14,14 +14,14 @@ Results of the VERIFY spikes in the brief (`docs/briefs/2026-10-21-grid-formatti
 |---|---|---|
 | V1 `rowData` shape | Keyed by column logical name; types listed below | `getValue` normalises using these shapes; fixtures in `tests/fixtures/rowdata.wb_gridspike.json` |
 | V2 Columns not in the view | **Not present** in `rowData` | A rule only fires on views that include its condition columns. This is documented for config authors |
-| V3 `webAPI` and `getEntityMetadata` | Both available and working in the customizer's `init` | Use them; option colours from `attributeDescriptor.OptionSet` (see V3) |
+| V3 `webAPI` and `getEntityMetadata` | Both available and working in the customizer's `init`; option colours only in the undocumented `attributeDescriptor.OptionSet[].Color` | Read `attributeDescriptor.OptionSet` defensively, falling back to the Web API metadata endpoint |
 | V4 Table and view | Table: `context.page.entityTypeName` ✅. View id: only in the URL or internal fields ❌ | Rules are keyed by table (ADR-0004). Filtering by view is **not supported** |
 | V5 Async load vs `fireEvent` | Delaying `fireEvent` by 2 s still applies the customizer | Load config and metadata in `init`, then `fireEvent`, with a ~3 s timeout that fires anyway with no styling |
 | V6 Row styling technique | Container `background-image` layer fills the whole cell for every type, and hover and selection stay visible | Backgrounds: container + translucent `background-image` |
 | V7 Font properties | Italic and underline inherit; colour and bold do not | Colour and bold only by drawing simple types ourselves (see V7) |
 | V8 Environment variable size | **Max 2,000 characters** | The environment variable is dropped; one JSON web resource per table (ADR-0004) |
 | Theme tokens | `var(--colorNeutralBackground3)` resolves inside grid cells (`#f5f5f5`), not on `:root` | Theme tokens in config are emitted as CSS `var(--token, fallback)` on the cell |
-| Fluent 9 declaration | 0.0.4 declares Fluent 9.46.2 (still being checked, see open items) | Follow PR #18: Fluent 9.46.2 |
+| Fluent 9 declaration | 0.0.4 declares Fluent 9.46.2 in place of the template's Fluent 8; the customizer loads and styles as before | Declare Fluent 9.46.2 (as PR #18 recommends) |
 
 ## V1: `rowData` shape
 
@@ -52,7 +52,17 @@ On the system "Active Grid spikes" view (Name and Created On only), `rowData` he
 ## V3: Web API and metadata
 
 - `context.webAPI.retrieveMultipleRecords("environmentvariabledefinition", "?$select=…&$expand=environmentvariabledefinition_environmentvariablevalue($select=value)")` worked. The expand name is valid. This no longer matters for config (ADR-0004).
-- `context.utils.getEntityMetadata(table, [columns])` works in `init` and returns `XrmAttributeMetadata` objects. For choice, status and multi-select columns, the options are an array in `attributeDescriptor.OptionSet`: 4 for `wb_ragstatus`, 2 each for `statecode` and `statuscode`, and 3 for `wb_tags`. **The exact field name for each option's colour is still being confirmed** (open items).
+- `context.utils.getEntityMetadata(table, [columns])` works in `init` and returns `XrmAttributeMetadata` objects.
+- **Where option colours are:**
+
+  | Path | Shape | Colour? |
+  |---|---|---|
+  | `metadata.Attributes.get(col).OptionSet` (documented) | `{ "<value>": { text, value } }` | ❌ none |
+  | `metadata.Attributes.get(col).attributeDescriptor.OptionSet` (not in the typings) | `[{ Value, Label, Color, IsHidden, TransitionData }]` | ✅ `Color` (e.g. `"#D13438"`); **missing** when the option has none |
+
+  Captured for `wb_ragstatus`: Red `#D13438`, Amber `#FFB900`, Green `#107C10`, and Unknown with no `Color` key. Status, status reason and multi-select columns have the same shape.
+- **Decision:** `metadataStore` reads `attributeDescriptor.OptionSet[].Color` through a defensive accessor that checks every step and never throws. If that shape is missing, it falls back to the documented Web API metadata endpoint, `/api/data/v9.2/EntityDefinitions(LogicalName='<table>')/Attributes(LogicalName='<col>')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$select=LogicalName&$expand=OptionSet` (or `MultiSelectPicklistAttributeMetadata`, `StateAttributeMetadata`, `StatusAttributeMetadata`), called once per table. A missing or invalid colour falls back to `defaults.fallbackColor`, and otherwise the rule doesn't style.
+- `IsHidden` is exposed here too, which is useful for RagChoice's hidden-option question (#7).
 
 ## V4: Table and view
 
@@ -130,8 +140,8 @@ At about 150–250 characters per rule, that's 8–12 rules per environment, far
 
 ## Open items
 
-- [ ] **Option colour field:** confirm the field name holding each option's colour in `attributeDescriptor.OptionSet[]` (expected `Color`).
-- [ ] **Fluent 9.46.2 declaration (0.0.4):** confirm the grid still loads the customizer.
-- [ ] **Dark mode:** screenshot of the tinted rows.
+- [x] **Option colour field:** `attributeDescriptor.OptionSet[].Color` (see V3).
+- [x] **Fluent 9.46.2 declaration (0.0.4):** confirmed. The tint still applies.
+- [ ] **Dark mode:** screenshot of the tinted rows. Deferred to the manual test matrix (#15).
 - [ ] Mobile, subgrids on forms, editable grid, and 250+ rows: covered by the manual test matrix (#15).
 - [ ] Screenshots: add the light-mode container, render-mode and hover/selection captures to `docs/screenshots/`.
