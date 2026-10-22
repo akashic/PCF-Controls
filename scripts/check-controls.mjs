@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Checks every control under controls/ against the repo conventions (see README.md):
-//   - its solution declares the canonical WB publisher exactly
+//   - its manifest uses the PCF namespace "Controls" and its solution declares the canonical WB publisher exactly
 //   - manifest, package.json and Solution.xml versions agree
 // Usage: node scripts/check-controls.mjs [--tag <ControlName>-v<x.y.z>]
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 
 // `pac solution init` generates a random option value prefix on every run,
 // so every new solution must be edited to match these values.
+const NAMESPACE = "Controls";
+
 const PUBLISHER = {
   UniqueName: "WilliamBuck",
   CustomizationPrefix: "wb",
@@ -38,7 +40,10 @@ for (const name of controls) {
 
   const manifestPath = join(dir, name, "ControlManifest.Input.xml");
   if (existsSync(manifestPath)) {
-    versions.manifest = readFileSync(manifestPath, "utf8").match(/<control\b[^>]*\bversion="([^"]+)"/)?.[1];
+    const manifest = readFileSync(manifestPath, "utf8");
+    versions.manifest = manifest.match(/<control\b[^>]*\bversion="([^"]+)"/)?.[1];
+    const namespace = manifest.match(/<control\b[^>]*\bnamespace="([^"]+)"/)?.[1];
+    if (namespace !== NAMESPACE) errors.push(`${name}: manifest namespace is "${namespace}", expected "${NAMESPACE}"`);
   } else {
     errors.push(`${name}: missing ${name}/ControlManifest.Input.xml`);
   }

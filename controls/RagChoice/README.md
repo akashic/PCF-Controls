@@ -4,7 +4,7 @@ A form field control for a **single-select choice** column. It is a normal Fluen
 
 | | |
 |---|---|
-| Logical name | `wb_WB.RagChoice` |
+| Logical name | `wb_Controls.RagChoice` |
 | Display name in the form designer | **RAG Choice (colour)** |
 | Solution | `WBRagChoice` (display name "WB RAG Choice") |
 | Binds to | Choice (`OptionSet`) columns only |

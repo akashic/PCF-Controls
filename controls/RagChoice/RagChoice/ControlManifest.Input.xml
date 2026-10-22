@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="WB" constructor="RagChoice" version="0.1.0"
+  <control namespace="Controls" constructor="RagChoice" version="0.1.0"
            display-name-key="RAG Choice (colour)" description-key="Choice dropdown that shows each option's configured colour"
            control-type="virtual">
     <!-- No external services: declaring one would make the control premium-licensed. -->
