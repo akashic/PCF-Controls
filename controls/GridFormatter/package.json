@@ -5,7 +5,7 @@
   "scripts": {
     "build": "pcf-scripts build",
     "clean": "pcf-scripts clean",
-    "lint": "pcf-scripts lint",
+    "lint": "pcf-scripts refreshTypes && pcf-scripts lint",
     "lint:fix": "pcf-scripts lint fix",
     "rebuild": "pcf-scripts rebuild",
     "start": "pcf-scripts start",
