@@ -10,8 +10,8 @@ This README is the standard for building and shipping a WB control: conventions,
 
 | Control | Type | Solution | Logical name | Status | Docs |
 |---|---|---|---|---|---|
-| GridFormatter | Power Apps grid customizer (views and subgrids) | `WBGridFormatter` | `wb_WB.GridFormatter` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
-| RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_WB.RagChoice` | In development | [README](controls/RagChoice/README.md) |
+| GridFormatter | Power Apps grid customizer (views and subgrids) | `WBGridFormatter` | `wb_Controls.GridFormatter` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
+| RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_Controls.RagChoice` | In development | [README](controls/RagChoice/README.md) |
 
 Update this table when a control is added, released or retired.
 
@@ -50,9 +50,9 @@ Why this layout: [ADR-0001](docs/adr/0001-one-solution-per-control.md) (one solu
 | Item | Convention | Example |
 |---|---|---|
 | Publisher | Unique name `WilliamBuck`, display name `William Buck`, prefix `wb`, option value prefix `94879` | — |
-| PCF namespace | `WB` | — |
+| PCF namespace | `Controls` | — |
 | Control constructor | PascalCase, describes the job rather than the project | `GridFormatter` |
-| Control logical name | `wb_WB.<ControlName>` | `wb_WB.RagChoice` |
+| Control logical name | `wb_Controls.<ControlName>` | `wb_Controls.RagChoice` |
 | Folder | `controls/<ControlName>/` | `controls/RagChoice/` |
 | Solution unique name | `WB<ControlName>` | `WBRagChoice` |
 | npm workspace name | `@wb-pcf/<kebab-case-name>` | `@wb-pcf/rag-choice` |
@@ -120,7 +120,7 @@ All commands below run from the repo root unless noted.
 2. **Create the PCF project.** Pick the template that fits: `field`, `dataset`, or (for grid customizers) a copy of Microsoft's [`GridCustomizerControlTemplate`](https://github.com/microsoft/PowerApps-Samples/tree/master/component-framework/resources/GridCustomizerControlTemplate).
    ```sh
    mkdir controls/<ControlName> && cd controls/<ControlName>
-   pac pcf init --namespace WB --name <ControlName> --template field --framework react --run-npm-install false
+   pac pcf init --namespace Controls --name <ControlName> --template field --framework react --run-npm-install false
    ```
    Then make it work as an npm workspace ([ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md) explains why):
    - `package.json`: set `"name": "@wb-pcf/<kebab-name>"`, `"private": true`, and `"version"` to match the manifest (start at `0.1.0`). Add `"@wb-pcf/shared": "*"` to `dependencies` if the control uses shared code, and add a `"test": "jest"` script with a `jest.config.js` that spreads `../../jest.config.base`.
