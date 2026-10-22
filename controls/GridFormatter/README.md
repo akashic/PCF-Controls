@@ -10,7 +10,7 @@ A **Power Apps grid customizer** that formats rows and cells of a table's views 
 | Solution | `WBGridFormatter` (display name "WB Grid Formatter") |
 | Works with | The **Power Apps grid control** on main grids and subgrids |
 | Configuration | One web resource per table: `wb_/GridFormatter/<table>.json` ([configuration guide](docs/configuration.md)) |
-| Version | 0.1.0 |
+| Version | 0.2.0 |
 | Decisions | [ADR-0004](../../docs/adr/0004-gridformatter-config-per-table-web-resource.md) (config per table), [spike results](docs/decisions.md) |
 | Spec | [brief §5](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#5-control-a--gridformatter-views-and-subgrids), superseded where ADR-0004 and the spike results differ |
 

@@ -8,6 +8,7 @@ A form field control for a **single-select choice** column. It is a normal Fluen
 | Display name in the form designer | **RAG Choice (colour)** |
 | Solution | `WBRagChoice` (display name "WB RAG Choice") |
 | Binds to | Choice (`OptionSet`) columns only |
+| Configuration | Option colours on the choice, plus two control properties ([configuration guide](docs/configuration.md)) |
 | Version | 0.1.2 |
 | Spec | [brief §6](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#6-control-b--ragchoice-form-field) |
 | Dev test results | [docs/decisions.md](docs/decisions.md) (issue #7) |
@@ -44,12 +45,14 @@ There are no environment variables.
 
 Adding the control to a form is a customisation of that table's form, so it belongs to the **project** solution that owns the table, not to `WBRagChoice`. Import `WBRagChoice` into the environment first.
 
-1. Make sure each option of the choice column has a colour (in the column's choice settings in the maker portal).
+1. Give each option of the choice column a colour (the colour picker beside each option's label), then publish.
 2. Open the form in the **modern form designer**, inside the project solution.
 3. Select the choice field → **Components** → **+ Component** → **RAG Choice (colour)**.
 4. Optionally set **Indicator style** and **Fallback colour**.
-5. Choose where it shows: **Web** (and optionally **Phone** and **Tablet**).
-6. **Save and publish** the form.
+5. Choose where it shows: **Web** (and optionally **Mobile** and **Tablet**; the phone app isn't tested yet).
+6. **Save and publish** the form, then hard-reload a record.
+
+The **[configuration guide](docs/configuration.md)** has the full steps (including the classic designer), what users see in each state, business rules and scripts, moving to UAT and prod, accessibility and troubleshooting.
 
 ## Develop and test
 
