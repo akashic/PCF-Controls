@@ -9,7 +9,7 @@
       "when": { "column": "statecode", "op": "eq", "value": 1 },
       "scope": "row",
       "style": {
-        "backgroundColor": { "token": "colorNeutralBackground3" },
+        "backgroundColor": { "token": "colorNeutralForeground3" },
         "color": { "token": "colorNeutralForeground3" }
       },
       "stop": true

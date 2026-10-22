@@ -13,7 +13,7 @@
         ]
       },
       "scope": { "columns": ["wb_duedate"] },
-      "style": { "color": "#C50F1F", "fontWeight": "bold" }
+      "style": { "color": { "token": "colorPaletteRedForeground1" }, "fontWeight": "bold" }
     }
   ]
 }

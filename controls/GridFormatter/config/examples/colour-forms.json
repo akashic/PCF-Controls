@@ -1,0 +1,56 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "defaults": {
+    "tintAlpha": 0.18,
+    "fallbackColor": { "token": "colorNeutralForeground3" }
+  },
+  "rules": [
+    {
+      "id": "hex",
+      "description": "Reference for docs/configuration.md: each colour form, not meant to be deployed as it is. A plain hex background is tinted at defaults.tintAlpha",
+      "when": { "column": "wb_count", "op": "gt", "value": 100 },
+      "style": { "backgroundColor": "#C50F1F" }
+    },
+    {
+      "id": "hex-alpha",
+      "description": "An explicit alpha is used as given",
+      "when": { "column": "wb_score", "op": "lt", "value": 1 },
+      "style": { "backgroundColor": { "hex": "#C50F1F", "alpha": 0.3 } }
+    },
+    {
+      "id": "token",
+      "description": "A theme token adapts to dark mode; as a background it is tinted at defaults.tintAlpha",
+      "when": { "column": "wb_flagged", "op": "eq", "value": true },
+      "scope": "row",
+      "style": { "backgroundColor": { "token": "colorPaletteYellowBackground3" } }
+    },
+    {
+      "id": "text-colours",
+      "description": "Text colours are solid unless an alpha is given",
+      "when": { "column": "wb_actualcost", "op": "gt", "value": { "column": "wb_budget" } },
+      "scope": { "columns": ["wb_actualcost", "wb_budget"] },
+      "style": { "color": { "token": "colorPaletteRedForeground1" }, "fontWeight": "semibold" }
+    },
+    {
+      "id": "from-option-tint",
+      "description": "The option's own colour at defaults.tintAlpha; options without a colour use defaults.fallbackColor",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "scope": "row",
+      "style": { "backgroundColor": { "fromOption": "wb_ragstatus", "alpha": "tint" } }
+    },
+    {
+      "id": "from-option-alpha",
+      "description": "The option's own colour at 30%",
+      "when": { "column": "statuscode", "op": "isNotNull" },
+      "style": { "backgroundColor": { "fromOption": "statuscode", "alpha": 0.3 } }
+    },
+    {
+      "id": "from-option-pill",
+      "description": "A pill fill is always solid; the text is black or white, whichever contrasts more",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "display": "pill",
+      "style": { "backgroundColor": { "fromOption": "wb_ragstatus" } }
+    }
+  ]
+}

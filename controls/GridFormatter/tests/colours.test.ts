@@ -250,6 +250,13 @@ describe("lightAppearance", () => {
 	it("is null without a hex base", () => {
 		expect(lightAppearance({ css: "transparent", base: null, alpha: 1 })).toBeNull();
 	});
+
+	it("shows the inactive-grey recipe's background as a visible grey, unlike colorNeutralBackground3 (configuration.md)", () => {
+		const seen = (token: string) => lightAppearance(resolveStaticColour({ token }, "background", TINT)!);
+		expect(seen("colorNeutralForeground3")).toBe("#E3E3E3");
+		expect(seen("colorNeutralBackground3")).toBe("#FDFDFD");
+		expect(seen("colorNeutralBackground5")).toBe("#FBFBFB");
+	});
 });
 
 describe("backgroundLayer", () => {

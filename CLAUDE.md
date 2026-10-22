@@ -8,7 +8,7 @@ William Buck's long-term monorepo for PCF (Power Apps Component Framework) contr
 
 `README.md` is the team's standard for PCF development and deployment (conventions, commands, adding a control, release and deploy steps). Read it before structural work, and keep it current when conventions change. Decisions behind the layout are in `docs/adr/`. Product-owner briefs for each piece of work are in `docs/briefs/`.
 
-As of 22 Oct 2026 no controls exist yet. The first two (`GridFormatter`, `RagChoice`) are specified in `docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md` and broken down into GitHub issues. Work from the issues. The brief's §4.2 layout and single `WBGridFormatting` solution are **superseded** by the layout below.
+Two controls exist, both at 0.1.0: `GridFormatter` and `RagChoice`, specified in `docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md`. Work continues from the GitHub issues. The brief's §4.2 layout and single `WBGridFormatting` solution are **superseded** by the layout below.
 
 ## Commands
 
@@ -35,7 +35,7 @@ Jest settings are shared through the root `jest.config.base.js`. Each workspace'
 - **Shared code** lives in `packages/shared` (`@wb-pcf/shared`, TypeScript source, no build step) and is bundled into each control by `pcf-scripts` ([ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md)). Colour utilities take a branded `HexColor` that only `normalizeHex` produces, so untrusted colours are validated once and nothing downstream throws.
 - **Hoisted `node_modules` breaks two `pac pcf init` defaults.** Every control's `.pcfproj` needs `<PcfEnableAutoNpmInstall>false</PcfEnableAutoNpmInstall>`, and its `tsconfig.json` must extend `pcf-scripts/tsconfig_base.json` with `typeRoots: ["../../node_modules/@types"]`. `check:controls` enforces both. A broken tsconfig shows up as misleading ESLint errors (`strictNullChecks`, `error`-typed `ComponentFramework`).
 - **Controls are virtual (React) controls.** React and Fluent come from the platform as `<platform-library>` entries and must never be bundled. Shared packages take them as peer dependencies only.
-- **Configuration, not code:** controls are reused across projects, so they never hard-code table or column names, option values or colours. Values that vary per environment go in a `wb_<ControlName><Purpose>` environment variable inside the control's solution, validated by a JSON Schema in the control's `config/`.
+- **Configuration, not code:** controls are reused across projects, so they never hard-code table or column names, option values or colours. Values that vary per environment go in a `wb_<ControlName><Purpose>` environment variable inside the control's solution, validated by a JSON Schema in the control's `config/`. GridFormatter's rules are the exception: environment variables max out at 2,000 characters, so they live in a JSON web resource per table, `wb_/GridFormatter/<table>.json`, in the project's solution ([ADR-0004](docs/adr/0004-gridformatter-config-per-table-web-resource.md)).
 
 ## Repo-specific rules and gotchas
 

@@ -19,8 +19,9 @@ const layer = (css: string): string => `linear-gradient(${css}, ${css})`;
 const AMBER_TINT = layer("rgba(255, 185, 0, 0.18)");
 const GREEN_TINT = layer("rgba(16, 124, 16, 0.18)");
 const OVER_BUDGET_TINT = layer("rgba(197, 15, 31, 0.12)");
-const GREY_TINT = layer("color-mix(in srgb, var(--colorNeutralBackground3, #f5f5f5) 18%, transparent)");
+const GREY_TINT = layer("color-mix(in srgb, var(--colorNeutralForeground3, #616161) 18%, transparent)");
 const GREY_TEXT = "var(--colorNeutralForeground3, #616161)";
+const OVERDUE_TEXT = "var(--colorPaletteRedForeground1, #bc2f32)";
 
 const tinted = (backgroundImage: string, extra: Partial<ContainerStyle> = {}): ContainerStyle => ({ ...CLEAR_CONTAINER, backgroundImage, ...extra });
 const GRID = { kind: "grid" } as const;
@@ -84,7 +85,7 @@ describe("wb_gridspike.json on the captured wb_gridspike rows", () => {
 		const cells = formatRow(formatter, row01);
 		for (const column of allColumns) expect(cells[column].container).toEqual(tinted(AMBER_TINT));
 		expect(cells.wb_ragstatus.content).toEqual({ kind: "pill", pill: { backgroundColor: "#FFB900", color: BLACK } });
-		expect(cells.wb_duedate.content).toEqual({ kind: "text", color: "#C50F1F", fontWeight: 700 });
+		expect(cells.wb_duedate.content).toEqual({ kind: "text", color: OVERDUE_TEXT, fontWeight: 700 });
 		const drawn = allColumns.filter((c) => cells[c].content.kind !== "grid");
 		expect(drawn).toEqual(["wb_ragstatus", "wb_duedate"]);
 		expect(debug).toEqual(["row 4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5: matched rag-row, rag-pill, overdue"]);
@@ -127,7 +128,7 @@ describe("wb_gridspike.json on the captured wb_gridspike rows", () => {
 		for (const rag of [String(UNKNOWN), null]) {
 			const cells = formatRow(formatter, { ...row01, wb_ragstatus: rag });
 			for (const column of allColumns.filter((c) => c !== "wb_duedate")) expect(cells[column]).toEqual({ container: CLEAR_CONTAINER, content: GRID });
-			expect(cells.wb_duedate).toEqual({ container: CLEAR_CONTAINER, content: { kind: "text", color: "#C50F1F", fontWeight: 700 } });
+			expect(cells.wb_duedate).toEqual({ container: CLEAR_CONTAINER, content: { kind: "text", color: OVERDUE_TEXT, fontWeight: 700 } });
 		}
 	});
 
@@ -162,7 +163,7 @@ describe("other example configs on the captured rows", () => {
 		const { formatter, warnings } = await page("combined");
 		const one = formatRow(formatter, row01);
 		expect(one.wb_ragstatus).toEqual({ container: tinted(AMBER_TINT), content: GRID });
-		expect(one.wb_duedate.content).toEqual({ kind: "text", color: "#C50F1F", fontWeight: 700 });
+		expect(one.wb_duedate.content).toEqual({ kind: "text", color: OVERDUE_TEXT, fontWeight: 700 });
 		const two = formatRow(formatter, row02);
 		expect(two.wb_actualcost).toEqual({ container: tinted(GREEN_TINT), content: GRID });
 		// Its inactive rule sets a row-wide text colour, which four columns can't show (V7).

@@ -10,7 +10,7 @@ This README is the standard for building and shipping a WB control: conventions,
 
 | Control | Type | Solution | Logical name | Status | Docs |
 |---|---|---|---|---|---|
-| GridFormatter | Power Apps grid customizer (views and subgrids) | `WBGridFormatter` | `wb_Controls.GridFormatter` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
+| GridFormatter | Power Apps grid customizer (views and subgrids) | `WBGridFormatter` | `wb_Controls.GridFormatter` | In development | [README](controls/GridFormatter/README.md) |
 | RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_Controls.RagChoice` | In development | [README](controls/RagChoice/README.md) |
 
 Update this table when a control is added, released or retired.
@@ -56,7 +56,7 @@ Why this layout: [ADR-0001](docs/adr/0001-one-solution-per-control.md) (one solu
 | Folder | `controls/<ControlName>/` | `controls/RagChoice/` |
 | Solution unique name | `WB<ControlName>` | `WBRagChoice` |
 | npm workspace name | `@wb-pcf/<kebab-case-name>` | `@wb-pcf/rag-choice` |
-| Environment variables | `wb_<ControlName><Purpose>`, inside the control's solution | `wb_GridFormatConfig` |
+| Environment variables | `wb_<ControlName><Purpose>`, inside the control's solution | `wb_GridFormatterApiUrl` (hypothetical) |
 | Release tag | `<ControlName>-v<major.minor.patch>` | `GridFormatter-v1.0.0` |
 
 Controls are built to be reusable across projects: **no hard-coded table names, column names, option values or colours**. Anything that varies goes in manifest input properties (set per form or view) or in an environment variable (set per environment).
