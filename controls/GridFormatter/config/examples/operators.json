@@ -1,0 +1,170 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "eq-choice",
+      "description": "Reference for docs/configuration.md: one rule per operator, not meant to be deployed as it is. Choice, status and status reason compare by option value",
+      "when": { "column": "statecode", "op": "eq", "value": 1 },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "eq-yes-no",
+      "when": { "column": "wb_flagged", "op": "eq", "value": true },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "eq-text",
+      "description": "Case-insensitive: matches On Hold, ON HOLD and on hold",
+      "when": { "column": "wb_notes", "op": "eq", "value": "on hold" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "eq-lookup",
+      "description": "Lookups and Owner compare by GUID",
+      "when": { "column": "ownerid", "op": "eq", "value": "64a20861-7fdd-f011-8406-7ced8d70a9f0" },
+      "scope": { "columns": ["wb_name"] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "eq-date",
+      "description": "A date-and-time column against a date: any time on 22 Oct 2026 in the user's time zone",
+      "when": { "column": "wb_reviewedon", "op": "eq", "value": "2026-10-22" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "eq-column",
+      "description": "Column-to-column: both columns must be in the view",
+      "when": { "column": "wb_actualcost", "op": "eq", "value": { "column": "wb_budget" } },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "ne",
+      "description": "RAG is set and isn't Green (an empty RAG doesn't match)",
+      "when": { "column": "wb_ragstatus", "op": "ne", "value": 948790002 },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "in",
+      "when": { "column": "statuscode", "op": "in", "value": [1, 2] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "notIn",
+      "when": { "column": "wb_ragstatus", "op": "notIn", "value": [948790001, 948790002] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "gt",
+      "when": { "column": "wb_count", "op": "gt", "value": 10 },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "gte",
+      "when": { "column": "wb_duedate", "op": "gte", "value": "2026-12-31" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "lt",
+      "when": { "column": "wb_score", "op": "lt", "value": 2.5 },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "lte",
+      "when": { "column": "wb_actualcost", "op": "lte", "value": { "column": "wb_budget" } },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "between-numbers",
+      "description": "Inclusive: 1 and 3 both match",
+      "when": { "column": "wb_score", "op": "between", "value": [1, 3] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "between-dates",
+      "when": { "column": "wb_duedate", "op": "between", "value": ["2026-10-01", "2026-12-31"] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "isNull",
+      "when": { "column": "wb_parentid", "op": "isNull" },
+      "scope": { "columns": ["wb_name"] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "isNotNull",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "contains",
+      "when": { "column": "wb_notes", "op": "contains", "value": "urgent" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "startsWith",
+      "when": { "column": "wb_name", "op": "startsWith", "value": "Draft" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "endsWith",
+      "when": { "column": "wb_name", "op": "endsWith", "value": "(copy)" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "beforeToday",
+      "when": { "column": "wb_duedate", "op": "beforeToday" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "onOrAfterToday",
+      "when": { "column": "wb_duedate", "op": "onOrAfterToday" },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "olderThanDays",
+      "description": "Last reviewed more than 30 days ago",
+      "when": { "column": "wb_reviewedon", "op": "olderThanDays", "value": 30 },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "withinNextDays",
+      "description": "Due today or in the next 7 days",
+      "when": { "column": "wb_duedate", "op": "withinNextDays", "value": 7 },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "containsAny",
+      "when": { "column": "wb_tags", "op": "containsAny", "value": [948790000, 948790001] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "containsAll",
+      "when": { "column": "wb_tags", "op": "containsAll", "value": [948790000, 948790001] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "group-all-any-not",
+      "description": "Red or Amber, due in the next 7 days, and not flagged",
+      "when": {
+        "all": [
+          { "any": [
+            { "column": "wb_ragstatus", "op": "eq", "value": 948790000 },
+            { "column": "wb_ragstatus", "op": "eq", "value": 948790001 }
+          ] },
+          { "column": "wb_duedate", "op": "withinNextDays", "value": 7 },
+          { "not": { "column": "wb_flagged", "op": "eq", "value": true } }
+        ]
+      },
+      "scope": { "columns": ["wb_duedate"] },
+      "style": { "fontStyle": "italic" }
+    },
+    {
+      "id": "not-eq-includes-empty",
+      "description": "RAG isn't Green, including rows where RAG is empty",
+      "when": { "not": { "column": "wb_ragstatus", "op": "eq", "value": 948790002 } },
+      "scope": { "columns": ["wb_ragstatus"] },
+      "style": { "fontStyle": "italic" }
+    }
+  ]
+}

@@ -33,7 +33,7 @@ function prepare(rules: Rule[], options: Partial<PrepareOptions> & { defaults?: 
 const cellsOf = (styles: RowStyles) => Object.fromEntries(styles.cells);
 
 const RED_TINT = "rgba(209, 52, 56, 0.18)";
-const GREY_TINT = "color-mix(in srgb, var(--colorNeutralBackground3, #f5f5f5) 18%, transparent)";
+const GREY_TINT = "color-mix(in srgb, var(--colorNeutralForeground3, #616161) 18%, transparent)";
 const GREY_TEXT = "var(--colorNeutralForeground3, #616161)";
 
 describe("sortRules", () => {
@@ -318,7 +318,7 @@ describe("resolveStyles precedence (§5.2.5)", () => {
 	describe("fromOption with no colour", () => {
 		const rules: Rule[] = [
 			{ id: "rag", priority: 1, scope: "row", style: { backgroundColor: { fromOption: "wb_ragstatus", alpha: "tint" } } },
-			{ id: "grey", priority: 2, scope: "row", style: { backgroundColor: { token: "colorNeutralBackground3" } } },
+			{ id: "grey", priority: 2, scope: "row", style: { backgroundColor: { token: "colorNeutralForeground3" } } },
 		];
 		const visible = [column("wb_ragstatus")];
 
@@ -433,7 +433,12 @@ describe("resolveStyles with the example configs", () => {
 		it("tints an active row by RAG and makes an overdue date bold red", () => {
 			const { styles } = resolve("combined", { statecode: 0, wb_ragstatus: RED, wb_duedate: "2026-01-01" });
 			expect(styles.matchedRuleIds).toEqual(["rag-row", "overdue"]);
-			expect(styles.cells.get("wb_duedate")).toEqual({ backgroundColor: RED_TINT, color: "#C50F1F", fontWeight: 700, customRender: true });
+			expect(styles.cells.get("wb_duedate")).toEqual({
+				backgroundColor: RED_TINT,
+				color: "var(--colorPaletteRedForeground1, #bc2f32)",
+				fontWeight: 700,
+				customRender: true,
+			});
 			expect(styles.cells.get("wb_notes")).toEqual({ backgroundColor: RED_TINT, customRender: false });
 		});
 
