@@ -47,7 +47,12 @@ export class RagChoice implements ComponentFramework.ReactControl<IInputs, IOutp
       const fallback = parseFallbackColor(context.parameters.fallbackColor?.raw);
       if (fallback.invalid) this.warnInvalidFallback(context.parameters.fallbackColor?.raw);
 
-      this.items = buildChoiceItems(attributes?.Options, fallback.color, isRequired(attributes?.RequiredLevel));
+      this.items = buildChoiceItems(
+        attributes?.Options,
+        fallback.color,
+        isRequired(attributes?.RequiredLevel),
+        this.selection.selected,
+      );
       const state = resolveFieldState({ isControlDisabled: context.mode.isControlDisabled, security: value?.security });
       const display = displayValue(this.items, this.selection.selected, state.readable);
       fallbackText = display.text;
@@ -59,8 +64,8 @@ export class RagChoice implements ComponentFramework.ReactControl<IInputs, IOutp
           items: state.readable ? this.items : [],
           display,
           indicator: parseIndicatorStyle(context.parameters.indicator?.raw),
-          disabled: !state.editable,
-          ariaLabel: ariaLabelFor(attributes?.DisplayName),
+          readOnly: !state.editable,
+          ariaLabel: ariaLabelFor(context.mode.label, attributes?.DisplayName),
           theme: context.fluentDesignLanguage?.tokenTheme as Theme | undefined,
           onChange: this.onChange,
         }),

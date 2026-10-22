@@ -101,11 +101,11 @@ describe("isRequired", () => {
 describe("buildChoiceItems", () => {
   it("keeps metadata order, adds a blank option first, and resolves each colour", () => {
     expect(buildChoiceItems(RAG_OPTIONS, null, false)).toEqual([
-      { key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null },
-      { key: "948790000", value: 948790000, label: "Red", color: "#C50F1F" },
-      { key: "948790001", value: 948790001, label: "Amber", color: "#FFB900" },
-      { key: "948790002", value: 948790002, label: "Green", color: "#107C10" },
-      { key: "948790003", value: 948790003, label: "Not assessed", color: null },
+      { key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null, disabled: false },
+      { key: "948790000", value: 948790000, label: "Red", color: "#C50F1F", disabled: false },
+      { key: "948790001", value: 948790001, label: "Amber", color: "#FFB900", disabled: false },
+      { key: "948790002", value: 948790002, label: "Green", color: "#107C10", disabled: false },
+      { key: "948790003", value: 948790003, label: "Not assessed", color: null, disabled: false },
     ]);
   });
 
@@ -127,14 +127,39 @@ describe("buildChoiceItems", () => {
   it("skips malformed and duplicate entries without throwing", () => {
     const options = [null, "x", { Label: "No value" }, { Label: "A", Value: 1 }, { Label: "A again", Value: 1 }, { Value: 2 }];
     expect(buildChoiceItems(options, null, true)).toEqual([
-      { key: "1", value: 1, label: "A", color: null },
-      { key: "2", value: 2, label: "2", color: null },
+      { key: "1", value: 1, label: "A", color: null, disabled: false },
+      { key: "2", value: 2, label: "2", color: null, disabled: false },
     ]);
+  });
+
+  // The form host adds an undocumented IsHidden to each option (issue #7).
+  const WITH_HIDDEN = [
+    { Label: "Red", Value: 1, Color: "#D13438", IsHidden: false },
+    { Label: "Retired", Value: 2, Color: "#8764B8", IsHidden: true },
+    { Label: "Green", Value: 3, Color: "#107C10" },
+  ];
+
+  it("leaves out hidden options", () => {
+    expect(buildChoiceItems(WITH_HIDDEN, null, true).map((i) => i.label)).toEqual(["Red", "Green"]);
+    expect(buildChoiceItems(WITH_HIDDEN, null, true, 1).map((i) => i.label)).toEqual(["Red", "Green"]);
+  });
+
+  it("keeps a hidden option that is the current value, disabled", () => {
+    expect(buildChoiceItems(WITH_HIDDEN, null, false, 2)).toEqual([
+      { key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null, disabled: false },
+      { key: "1", value: 1, label: "Red", color: "#D13438", disabled: false },
+      { key: "2", value: 2, label: "Retired", color: "#8764B8", disabled: true },
+      { key: "3", value: 3, label: "Green", color: "#107C10", disabled: false },
+    ]);
+  });
+
+  it.each([["true"], [1], [null]])("treats IsHidden %p as not hidden", (IsHidden) => {
+    expect(buildChoiceItems([{ Label: "A", Value: 1, IsHidden }], null, true)).toHaveLength(1);
   });
 
   it.each([[undefined], [null], [{}]])("returns only the blank option when Options is %p", (options) => {
     expect(buildChoiceItems(options, null, false)).toEqual([
-      { key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null },
+      { key: BLANK_KEY, value: null, label: PLACEHOLDER, color: null, disabled: false },
     ]);
     expect(buildChoiceItems(options, null, true)).toEqual([]);
   });
@@ -203,12 +228,16 @@ describe("resolveFieldState", () => {
 });
 
 describe("ariaLabelFor", () => {
-  it("uses the column's display name", () => {
-    expect(ariaLabelFor("RAG status")).toBe("RAG status");
+  it("uses the form label first", () => {
+    expect(ariaLabelFor("Project RAG", "RAG status")).toBe("Project RAG");
   });
 
-  it.each([[""], ["  "], [undefined], [null], [3]])("gives no label for %p", (name) => {
-    expect(ariaLabelFor(name)).toBeUndefined();
+  it.each([[""], ["  "], [undefined], [null], [3]])("falls back to the display name when the form label is %p", (label) => {
+    expect(ariaLabelFor(label, "RAG status")).toBe("RAG status");
+  });
+
+  it.each([[""], ["  "], [undefined], [null], [3]])("gives no label when both are %p", (text) => {
+    expect(ariaLabelFor(text, text)).toBeUndefined();
   });
 });
 

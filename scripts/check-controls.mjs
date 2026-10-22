@@ -2,6 +2,7 @@
 // Checks every control under controls/ against the repo conventions (see README.md):
 //   - its manifest uses the PCF namespace "Controls" and its solution declares the canonical WB publisher exactly
 //   - manifest, package.json and Solution.xml versions agree
+//   - manifest *-key attributes have no apostrophes (Dataverse rejects them on import)
 // Usage: node scripts/check-controls.mjs [--tag <ControlName>-v<x.y.z>]
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,6 +45,10 @@ for (const name of controls) {
     versions.manifest = manifest.match(/<control\b[^>]*\bversion="([^"]+)"/)?.[1];
     const namespace = manifest.match(/<control\b[^>]*\bnamespace="([^"]+)"/)?.[1];
     if (namespace !== NAMESPACE) errors.push(`${name}: manifest namespace is "${namespace}", expected "${NAMESPACE}"`);
+    // Solution import validates display-name-key, description-key etc. against `noAposStringType`.
+    for (const [, attr, value] of manifest.matchAll(/\b([\w-]+-key)="([^"]*)"/g)) {
+      if (/'|&apos;/.test(value)) errors.push(`${name}: manifest ${attr}="${value}" contains an apostrophe, which fails solution import`);
+    }
   } else {
     errors.push(`${name}: missing ${name}/ControlManifest.Input.xml`);
   }

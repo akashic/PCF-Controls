@@ -173,7 +173,20 @@ Details found doing it:
 - After publishing, **hard-reload the form**. The first plain reload still showed the old form (the Owner field only).
 - **Limit:** the subgrid shows the form's own table, so it can't tell whether the control reads the **subgrid's** table name or the form's. Testing that needs a subgrid of a different table, for example an unrelated Users subgrid on this form with GridFormatter, while you watch which `wb_/GridFormatter/<table>.json` the network panel requests. That test hasn't been done (#15).
 
-### 4.8 Open it
+### 4.8 A RagChoice test form
+
+```sh
+node scripts/test-env/add-ragchoice-form.mjs        # after importing WBRagChoice; idempotent
+```
+
+The script creates a second main form **"RagChoice test"** on `wb_gridspike` and leaves "Information" alone. It also adds a test choice column **`wb_raghiddentest`** (Red, Amber, Green, and "Retired (hidden)" with **Hidden** set). The form shows `wb_ragstatus` with RagChoice (dot), RagChoice (left bar) and the platform's dropdown, and `wb_raghiddentest` with RagChoice and the platform's dropdown. Open a row with `&formid=<printed form id>` in the URL. Results are in [`controls/RagChoice/docs/decisions.md`](../../controls/RagChoice/docs/decisions.md).
+
+Details found doing it:
+- A field control is a `<controlDescription forControl="{uniqueid}">` pointing at the field `<control>`'s `uniqueid`: first `<customControl id="{platform classid}">` with `<datafieldname>`, then one `<customControl formFactor="0|1|2" name="wb_Controls.RagChoice">` per form factor, binding the column as `<value type="OptionSet">wb_ragstatus</value>`.
+- An option's **Hidden** flag is set with the `UpdateOptionValue` action (`IsHidden: true`). The `attributepicklistvalue` table can't be queried.
+- The PCF context the form passes to a control can be read in the browser from the React props of the `CustomControlHostRoot` component above the control's DOM (`dynamicData.parameters`, `descriptor`). That's how the undocumented `IsHidden` was found.
+
+### 4.9 Open it
 
 - All columns: https://lowcode.crm.dynamics.com/main.aspx?forceUCI=1&pagetype=entitylist&etn=wb_gridspike&viewid=c98e5bf5-c2cd-f111-a05b-70a8a59b69e5&viewType=1039
 - Subgrid: open **Spike row 01** (https://lowcode.crm.dynamics.com/main.aspx?forceUCI=1&pagetype=entityrecord&etn=wb_gridspike&id=4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5).
@@ -254,6 +267,7 @@ Remove things in this order (dependencies first):
 
 ## 9. Lessons that cost time
 
+- **Manifest `*-key` attributes can't contain an apostrophe.** The import's XSD (`noAposStringType`) rejects the whole solution. `npm run check:controls` catches it.
 - `pac solution init` writes a **random** option value prefix every run. Always set 94879 (`npm run check:controls` catches it in the repo, not in throwaway seed solutions).
 - A seed solution built with `dotnet build -c Release` is **managed** by default. Pass `-p:SolutionPackageType=Unmanaged` and check `<Managed>0</Managed>` before importing.
 - **JSON environment variables hold at most 2,000 characters** (both default and current value). That's why rules are web resources (ADR-0004).

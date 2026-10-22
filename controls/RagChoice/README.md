@@ -8,17 +8,21 @@ A form field control for a **single-select choice** column. It is a normal Fluen
 | Display name in the form designer | **RAG Choice (colour)** |
 | Solution | `WBRagChoice` (display name "WB RAG Choice") |
 | Binds to | Choice (`OptionSet`) columns only |
-| Version | 0.1.0 |
+| Version | 0.1.2 |
 | Spec | [brief §6](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#6-control-b--ragchoice-form-field) |
+| Dev test results | [docs/decisions.md](docs/decisions.md) (issue #7) |
 
 ## What it does
 
+- **Look:** a Fluent "filled-darker" dropdown, the same fill, border and height as the form's other fields.
 - **Closed:** the selected option's colour dot, then its label. With no value it shows `--Select--` and no dot.
 - **Open:** every option in metadata order, each with its own dot. A blank `--Select--` option at the top clears the value, unless the column is required (business or system required).
+- **Hidden options** (the option's **Hidden** property) are left out of the list, as in the platform's dropdown. If the current value is a hidden option, it still shows, and the list shows it greyed out and ticked so it can't be picked again.
 - **Colours** come only from each option's `Color` in the choice metadata. If an option has no colour or an invalid one, the control uses **Fallback colour**. If that is blank too, the option has no indicator. It never guesses a colour from the label text.
-- **Read-only** (read-only form, inactive record, business-rule lock, or field security without update): the same dot and label, not interactive.
+- **Read-only** (read-only form, inactive record, business-rule lock, or field security without update): a read-only text box with the same dot and label, like the platform's read-only choice. It stays focusable so screen readers can read it. It shows `---` when empty.
 - **Field security without read:** shows `***` and no dot.
 - **External changes** (business rules, JavaScript `setValue`, a refresh) update the dropdown on the next render. Only a user's own selection writes the value back.
+- **Accessible name:** the form label (`context.mode.label`), or the column's display name if there's no label. The form doesn't associate its label with a custom control by itself.
 - The dot and bar are decoration (`aria-hidden="true"`). The label text is always visible, so colour is never the only signal. Keyboard behaviour is the standard Fluent `Dropdown`.
 - It never throws into the form. An invalid **Fallback colour** logs one console warning and is ignored.
 
@@ -83,12 +87,24 @@ Per-option colours, read-only mode, field security (`***`), dark mode and screen
 ## Limitations
 
 - **Single-select choice only.** Multi-select choices, Yes/No and Status Reason aren't supported in v1 (brief §2).
-- **Hidden options (VERIFY, issue #7):** the control shows every option in `attributes.Options`. Whether the platform leaves out options marked **Hidden** isn't confirmed yet.
-- **Screen-reader naming (VERIFY, issue #7):** the dropdown gets the column's display name as `aria-label`. Whether the form label is also associated automatically, and what a screen reader announces, isn't confirmed yet.
+- **Hidden options rely on an undocumented property.** The form host sends `IsHidden` on each option, but it isn't in the PCF typings or on Microsoft Learn. If the platform stops sending it, hidden options show in the list again.
+- **Not yet checked by a human (issue #7):** what a screen reader announces, the phone app, field security for a user without read access, and a real business-rule lock. See [docs/decisions.md](docs/decisions.md#left-for-a-human).
 - A stored value that isn't in the option list shows as its number with no indicator.
-- Option colours don't adapt to dark mode. The dot's neutral border keeps pale colours visible on light backgrounds.
+- Option colours don't adapt to dark mode. The dot's neutral border keeps pale colours visible on light and dark backgrounds.
 
 ## Changelog
+
+### 0.1.2 (unreleased)
+
+- Read-only: a wider gap after the dot, and `---` is a placeholder rather than the value.
+
+### 0.1.1 (unreleased)
+
+- Fixed: the solution failed to import because the manifest's description contained an apostrophe.
+- Hidden options are left out of the list, as in the platform's dropdown.
+- The accessible name is the form label, falling back to the column display name.
+- Read-only shows a read-only text box like the platform's, not a disabled dropdown.
+- Matches the form's "filled-darker" field look.
 
 ### 0.1.0 (unreleased)
 

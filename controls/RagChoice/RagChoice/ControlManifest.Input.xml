@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Controls" constructor="RagChoice" version="0.1.0"
-           display-name-key="RAG Choice (colour)" description-key="Choice dropdown that shows each option's configured colour"
+  <control namespace="Controls" constructor="RagChoice" version="0.1.2"
+           display-name-key="RAG Choice (colour)" description-key="Choice dropdown that shows the configured colour of each option"
            control-type="virtual">
     <!-- No external services: declaring one would make the control premium-licensed. -->
     <external-service-usage enabled="false">

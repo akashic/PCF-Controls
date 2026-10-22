@@ -151,6 +151,7 @@ All commands below run from the repo root unless noted.
 - **Declared platform library versions:** declare `React 16.14.0` and `Fluent 9.46.2`, and pin `"@fluentui/react-components": "9.46.2"` (exact) in `devDependencies`. `pac` 2.14.1 generates `9.68.0`, so change it in the manifest and `package.json` after `pac pcf init`. Microsoft Learn's [supported platform libraries list](https://learn.microsoft.com/power-apps/developer/component-framework/react-controls-platform-libraries#supported-platform-libraries-list) allows `>=9.4.0 <=9.46.2` and loads `9.68.0` at runtime. `pcf-scripts` 1.49.3+ also builds `9.68.0`, but Learn doesn't document it. Revisit when Learn raises the range. Sources and reasoning: [docs/research/fluent-platform-library-version.md](docs/research/fluent-platform-library-version.md).
 - Use `pac` 2.14+ (virtual controls need at least 1.37).
 - Keep `<external-service-usage enabled="false">` unless the control genuinely calls an external service. Declaring one makes the control premium-licensed.
+- **No apostrophes in manifest `*-key` attributes** (`display-name-key`, `description-key`). Solution import rejects them. `npm run check:controls` catches it.
 
 ### Behaviour
 

@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Dropdown,
   FluentProvider,
+  Input,
   Option,
   makeStyles,
   mergeClasses,
@@ -12,13 +13,25 @@ import {
   type Theme,
 } from "@fluentui/react-components";
 import type { HexColor } from "@wb-pcf/shared";
-import { PLACEHOLDER, type ChoiceItem, type DisplayValue, type IndicatorStyle } from "./logic";
+import { PLACEHOLDER, READ_ONLY_EMPTY, type ChoiceItem, type DisplayValue, type IndicatorStyle } from "./logic";
+
+/**
+ * Fields on a modern model-driven form are "filled-darker" (a grey fill, no
+ * border until hover or focus). Matching it keeps the control in line with
+ * the fields around it (verified in dev, issue #7).
+ */
+const APPEARANCE = "filled-darker";
 
 export interface RagChoiceViewProps {
   items: readonly ChoiceItem[];
   display: DisplayValue;
   indicator: IndicatorStyle;
-  disabled: boolean;
+  /**
+   * Shown as a read-only text box rather than a disabled dropdown, like the
+   * platform's own read-only choice: still focusable and readable by screen
+   * readers, and in normal text colour.
+   */
+  readOnly: boolean;
   ariaLabel: string | undefined;
   /** The platform's token theme, if modern theming is on. */
   theme: Theme | undefined;
@@ -52,6 +65,8 @@ const useStyles = makeStyles({
     whiteSpace: "nowrap",
   },
   placeholder: { color: tokens.colorNeutralForeground4 },
+  // The read-only text box leaves almost no gap after its leading slot.
+  readOnlyDot: { display: "inline-flex", paddingRight: tokens.spacingHorizontalXS },
   // A small solid swatch with a neutral border, so pale colours stay visible on white.
   dot: {
     flexShrink: 0,
@@ -100,9 +115,10 @@ export class RagChoiceErrorBoundary extends React.Component<
 }
 
 export function RagChoiceView(props: RagChoiceViewProps): React.ReactElement {
-  const { items, display, indicator, disabled, ariaLabel, theme, onChange } = props;
+  const { items, display, indicator, readOnly, ariaLabel, theme, onChange } = props;
   const styles = useStyles();
   const showBar = indicator === "bar" && display.color !== null;
+  const dot = indicator === "dot" ? <Indicator color={display.color} shape="dot" /> : null;
 
   const onOptionSelect = React.useCallback(
     (_event: SelectionEvents, data: OptionOnSelectData) => onChange(data.optionValue),
@@ -111,7 +127,7 @@ export function RagChoiceView(props: RagChoiceViewProps): React.ReactElement {
 
   const buttonContent = display.text ? (
     <span className={styles.value}>
-      {indicator === "dot" && <Indicator color={display.color} shape="dot" />}
+      {dot}
       {display.text}
     </span>
   ) : (
@@ -122,25 +138,37 @@ export function RagChoiceView(props: RagChoiceViewProps): React.ReactElement {
     <FluentProvider theme={theme ?? webLightTheme} className={styles.provider}>
       <div className={styles.root}>
         {showBar && <span aria-hidden="true" className={styles.bar} style={{ backgroundColor: display.color ?? undefined }} />}
-        <Dropdown
-          className={styles.dropdown}
-          aria-label={ariaLabel}
-          disabled={disabled}
-          value={display.text}
-          placeholder={PLACEHOLDER}
-          selectedOptions={display.selectedKey === null ? [] : [display.selectedKey]}
-          onOptionSelect={onOptionSelect}
-          button={{ children: buttonContent }}
-        >
-          {items.map((item) => (
-            <Option key={item.key} value={item.key} text={item.label}>
-              <span className={styles.value}>
-                <Indicator color={item.color} shape={indicator === "bar" ? "optionBar" : "dot"} />
-                {item.label}
-              </span>
-            </Option>
-          ))}
-        </Dropdown>
+        {readOnly ? (
+          <Input
+            className={styles.dropdown}
+            appearance={APPEARANCE}
+            aria-label={ariaLabel}
+            readOnly
+            value={display.text}
+            placeholder={READ_ONLY_EMPTY}
+            contentBefore={dot && display.color ? { className: styles.readOnlyDot, children: dot } : undefined}
+          />
+        ) : (
+          <Dropdown
+            className={styles.dropdown}
+            appearance={APPEARANCE}
+            aria-label={ariaLabel}
+            value={display.text}
+            placeholder={PLACEHOLDER}
+            selectedOptions={display.selectedKey === null ? [] : [display.selectedKey]}
+            onOptionSelect={onOptionSelect}
+            button={{ children: buttonContent }}
+          >
+            {items.map((item) => (
+              <Option key={item.key} value={item.key} text={item.label} disabled={item.disabled}>
+                <span className={styles.value}>
+                  <Indicator color={item.color} shape={indicator === "bar" ? "optionBar" : "dot"} />
+                  {item.label}
+                </span>
+              </Option>
+            ))}
+          </Dropdown>
+        )}
       </div>
     </FluentProvider>
   );
