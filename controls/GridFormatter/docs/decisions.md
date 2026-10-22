@@ -138,6 +138,14 @@ At about 150–250 characters per rule, that's 8–12 rules per environment, far
 - Fluent 9 CSS variables are **not** defined on `:root`, but **are** inside grid cells: `getComputedStyle(cell).getPropertyValue("--colorNeutralBackground3")` returned `#f5f5f5`.
 - Decision: a `{ "token": "…" }` colour is emitted as `var(--<token>, <light-theme fallback hex>)`, so it adapts to dark mode where the variable is defined and falls back safely elsewhere.
 
+## End-to-end check: RAG colours (0.0.5)
+
+The spike's default mode reads `wb_ragstatus` option colours from `attributeDescriptor.OptionSet[].Color` in `init`, then calls `fireEvent` (the V5 pattern, with a 3 s timeout). It then:
+- tints each row with its option colour at 18% alpha, using the container `background-image` technique (V6);
+- draws the RAG cell as a pill, with black or white text picked by `bestTextColor` from `@wb-pcf/shared`.
+
+**Confirmed in `LowCode` on 22 Oct 2026:** Red, Amber and Green rows tint correctly across every column, with pills in the option colours. "Unknown" (no colour) and empty rows stay plain. This proves the path the real engine (#13) uses: metadata colour → `@wb-pcf/shared` → container tint and pill, including the shared package bundled into the control.
+
 ## Open items
 
 - [x] **Option colour field:** `attributeDescriptor.OptionSet[].Color` (see V3).
