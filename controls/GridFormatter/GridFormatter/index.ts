@@ -4,6 +4,7 @@ import { cellEditorOverrides } from "./customizers/CellEditorOverrides";
 import { PAOneGridCustomizer } from "./types";
 import { elapsed, errorText, record, setting } from "./spike/probe";
 import { probeHost, probeOptionColours, probeServices } from "./spike/contextProbes";
+import { loadRagColours } from "./spike/ragDemo";
 import * as React from "react";
 
 export class GridFormatter implements ComponentFramework.ReactControl<IInputs, IOutputs> {
@@ -33,8 +34,22 @@ export class GridFormatter implements ComponentFramework.ReactControl<IInputs, I
 			(context as any).factory.fireEvent(eventName, paOneGridCustomizer);
 		};
 		const delay = Number(setting("delayFire") ?? 0);
-		if (delay > 0) setTimeout(fire, delay);
-		else fire();
+		if (delay > 0) {
+			setTimeout(fire, delay);
+			return;
+		}
+		// V5 pattern: load option colours first, then fire; give up waiting after 3 s.
+		let fired = false;
+		const fireOnce = () => {
+			if (fired) return;
+			fired = true;
+			fire();
+		};
+		const timeout = setTimeout(fireOnce, 3000);
+		void loadRagColours(loose, table).finally(() => {
+			clearTimeout(timeout);
+			fireOnce();
+		});
 	}
 
 	/**

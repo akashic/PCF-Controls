@@ -6,7 +6,7 @@
 // to copy everything gathered so far.
 //
 // Runtime switches (sessionStorage; reload the page after changing):
-//   wb_spike_style      "container" (default) | "render" | "off"   (V6/V7 technique)
+//   wb_spike_style      "rag" (default: RAG colour demo) | "container" | "render" | "off"   (V6/V7 technique)
 //   wb_spike_bg         "tint" (default) | "token"                 (token = var(--colorNeutralBackground3))
 //   wb_spike_bgmode     "gradient" (default) | "important" | "plain" (how the background beats the grid theme)
 //   wb_spike_delayFire  milliseconds to delay fireEvent            (V5)

@@ -2,6 +2,7 @@
 import * as React from "react";
 import { CellRendererOverrides, CellRendererProps, ColumnDataType, GetRendererParams, RECID } from "../types";
 import { countRendererCall, describe, record, setting } from "../spike/probe";
+import { pillStyle, ragColour, ragColumn, tint } from "../spike/ragDemo";
 
 const ALL_TYPES: ColumnDataType[] = [
   "Text", "Email", "Phone", "Ticker", "URL", "TextArea", "Lookup", "Customer", "Owner",
@@ -126,9 +127,28 @@ function render(dataType: ColumnDataType, props: CellRendererProps, params: GetR
     observe(dataType, props, params);
     const rowData = params.rowData as unknown as Record<string, unknown> | undefined;
     const styled = rowData ? isStyledRow(String(rowData[RECID])) : false;
-    const mode = setting("style") ?? "container";
+    const mode = setting("style") ?? "rag";
     record("V6 technique in use", { mode, bg: setting("bg") ?? "tint" });
 
+    if (mode === "rag") {
+      // RAG demo: whole-row tint in the row's option colour, RAG cell drawn as a pill.
+      styleContainer(props, false);
+      const colour = ragColour(rowData);
+      const container = props.cellContainerElement;
+      if (container && colour) container.style.backgroundImage = `linear-gradient(${tint(colour)}, ${tint(colour)})`;
+      const column = params.colDefs[params.columnIndex];
+      if (colour && column?.name === ragColumn()) {
+        return (
+          <div
+            style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", padding: "0 8px", boxSizing: "border-box" }}
+            onClick={props.onCellClicked}
+          >
+            <span style={pillStyle(colour)}>{props.formattedValue}</span>
+          </div>
+        );
+      }
+      return null;
+    }
     if (mode === "container") {
       styleContainer(props, styled);
       return null;

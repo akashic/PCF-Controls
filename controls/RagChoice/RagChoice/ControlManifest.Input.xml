@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="WB" constructor="RagChoice" version="0.1.0"
+           display-name-key="RAG Choice (colour)" description-key="Choice dropdown that shows each option's configured colour"
+           control-type="virtual">
+    <!-- No external services: declaring one would make the control premium-licensed. -->
+    <external-service-usage enabled="false">
+    </external-service-usage>
+    <property name="value" display-name-key="Value" description-key="The RAG choice column"
+              of-type="OptionSet" usage="bound" required="true" />
+    <property name="indicator" display-name-key="Indicator style" description-key="How the colour is shown"
+              of-type="Enum" usage="input" default-value="dot">
+      <value name="dot" display-name-key="Dot">dot</value>
+      <value name="bar" display-name-key="Left bar">bar</value>
+    </property>
+    <property name="fallbackColor" display-name-key="Fallback colour"
+              description-key="Hex colour for options with no colour configured (blank = no indicator)"
+              of-type="SingleLine.Text" usage="input" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <platform-library name="React" version="16.14.0" />
+      <!-- Brief §3.1: Fluent 9 declared range is >=9.4.0 <=9.46.2. Issue #3 is confirming this. -->
+      <platform-library name="Fluent" version="9.46.2" />
+    </resources>
+  </control>
+</manifest>
