@@ -1,6 +1,6 @@
 # ADR-0003: A single canonical `WilliamBuck` publisher
 
-- **Status:** Accepted (option value prefix to be confirmed in dev before first import)
+- **Status:** Accepted, confirmed final 2026-10-22 (issue #2)
 - **Date:** 2026-10-22
 
 ## Context
@@ -24,5 +24,5 @@ Every solution in this repo uses exactly this publisher:
 ## Consequences
 
 - Control logical names are `wb_WB.<ControlName>`.
-- Before the first import, check whether a publisher with prefix `wb` already exists in dev, UAT or prod. If one does, adopt its unique name and option value prefix here instead.
-- `pac pcf push` creates a publisher if none with the prefix exists. Import a real solution (or create the publisher by hand with these values) in a new environment **before** the first `pac pcf push`, so the push doesn't create a mismatched publisher.
+- The publisher was created by hand in the William Buck **dev** environment with these values. WB **UAT** and **prod** have no `wb` publisher. The first managed import creates `WilliamBuck` there from the solution's values, so don't create it by hand.
+- `pac pcf push` creates a publisher if none with the prefix exists. In any new environment, import a real solution (or create the publisher by hand with these values) **before** the first `pac pcf push`, so the push doesn't create a mismatched publisher.
