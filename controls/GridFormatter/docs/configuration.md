@@ -14,7 +14,7 @@ Each table has **one** JSON file of rules, deployed as a web resource named:
 wb_/GridFormatter/<table logical name>.json
 ```
 
-For example `wb_/GridFormatter/account.json` or `wb_/GridFormatter/wb_engagement.json`. The file name is what ties the rules to the table. They apply to every grid of that table that uses the control: every view of the main grid, and subgrids (see [Limitations](#limitations)).
+For example `wb_/GridFormatter/account.json` or `wb_/GridFormatter/wb_engagement.json`. The file name is what ties the rules to the table. They apply to every grid of that table that uses the control: every view of the main grid, and every subgrid showing that table on any form. Each subgrid has to be set up to use the control separately; the main grid's setting doesn't reach it ([README](../README.md#subgrids-on-forms)).
 
 A file looks like this:
 
@@ -621,6 +621,7 @@ In the messages below, `<file>` is the web resource name, for example `wb_/GridF
 | Symptom | Usual cause |
 |---|---|
 | No formatting, and no `[GridFormatter]` messages at all | The grid doesn't use the control. Check the grid's **Customizer control** is `wb_Controls.GridFormatter` ([README](../README.md#set-up-a-table)). |
+| The main grid is formatted but a subgrid isn't | The subgrid hasn't been given its own Power Apps grid control with the customizer: the main grid's setting doesn't reach subgrids ([README](../README.md#subgrids-on-forms)). Then hard-reload the form. |
 | No formatting, and the `no config web resource` info line | Wrong file name (table logical name, `wb_` prefix, `.json`), or not published. |
 | The old rules still show | Not published, or the page wasn't reloaded. |
 | A rule works on one view but not another | A column it reads isn't in that view ([The view rule](#the-view-rule)). Use the debug log to see which rules matched. |
@@ -637,7 +638,7 @@ In the messages below, `<file>` is the web resource name, for example `wb_/GridF
 - **Text colour and weight** only work on the column types in [the table](#what-works-on-which-column): never the primary name, lookups, Owner or multi-select.
 - **Token backgrounds and their alpha need a current browser** (they use the CSS `color-mix()` function: Edge and Chrome 111+, Safari 16.2+, Firefox 113+). In an older browser, token backgrounds don't show.
 - **A token's strength can't be set per rule.** Token backgrounds always use the file's `tintAlpha`.
-- **Not yet verified in a real environment** (issue #15): subgrids on forms (the control may see the form's table rather than the subgrid's), the backup way of reading option colours, the full dark-mode pass, mobile and large views. Columns from related tables (`alias.column`) are allowed but untested.
+- **Not yet verified in a real environment** (issue #15): a subgrid showing a **different** table from its form's (the control may see the form's table and load the wrong rules; a subgrid of the form's own table works), and mobile. Columns from related tables (`alias.column`) are allowed but untested.
 - **No dark-theme contrast check.** The check only uses the light theme.
 - **Editing.** Only the display is styled. A cell being edited uses the grid's normal editor.
 - **After an inline edit, use Refresh to update row-wide formatting.** In an editable grid, changing a value that a row-scope rule depends on (for example RAG from Unknown to Red) restyles the edited cell straight away, but the other cells in the row keep their old styling until you select **Refresh** on the grid or reload the page. The grid only redraws the cell you edited, and there's no supported way for the control to repaint the rest of the row.
