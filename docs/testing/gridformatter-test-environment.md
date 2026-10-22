@@ -159,9 +159,24 @@ This creates or updates `wb_/GridFormatter/wb_gridspike.json` and publishes it.
 
 GridFormatter caches config per page, so hard-reload the grid afterwards.
 
-### 4.7 Open it
+### 4.7 A subgrid on the form
+
+```sh
+node scripts/test-env/add-gridspike-subgrid.mjs        # after 4.5; idempotent
+```
+
+The script adds a **Child rows** subgrid to the table's main form ("Information"). The subgrid lists the rows whose Parent is the open row, using the self-relationship `wb_GridSpike_Parent` and the "Grid spike - all columns" view. It also makes rows 02–04 children of **Spike row 01**. Rows 5, 10, 15… already are, but they're all Red, so with 02–04 the subgrid shows Green, Unknown and empty RAG too. Open Spike row 01 to see nine children: Red, Green, Unknown, empty, and two inactive rows.
+
+Details found doing it:
+- **The table-level grid setting (4.5) doesn't reach form subgrids.** A new subgrid renders as the plain read-only grid with no formatting. It needs its own Power Apps grid control, matching the maker steps in the [GridFormatter README](../../controls/GridFormatter/README.md#subgrids-on-forms).
+- In the form XML, that's a `<controlDescription forControl="{uniqueid}">` inside `<form><controlDescriptions>`, pointing at the subgrid `<control>`'s `uniqueid` attribute. The subgrid needs one, which the script adds. The script copies the table's `customcontroldefaultconfig` description, so the customizer and grid properties match the main grid. It then swaps each `<data-set name="Items">` for one holding the subgrid's `ViewId`, `TargetEntityType`, `RelationshipName` and `FilteredViewIds`. The `mailbox` main form is a working example in every environment.
+- After publishing, **hard-reload the form**. The first plain reload still showed the old form (the Owner field only).
+- **Limit:** the subgrid shows the form's own table, so it can't tell whether the control reads the **subgrid's** table name or the form's. Testing that needs a subgrid of a different table, for example an unrelated Users subgrid on this form with GridFormatter, while you watch which `wb_/GridFormatter/<table>.json` the network panel requests. That test hasn't been done (#15).
+
+### 4.8 Open it
 
 - All columns: https://lowcode.crm.dynamics.com/main.aspx?forceUCI=1&pagetype=entitylist&etn=wb_gridspike&viewid=c98e5bf5-c2cd-f111-a05b-70a8a59b69e5&viewType=1039
+- Subgrid: open **Spike row 01** (https://lowcode.crm.dynamics.com/main.aspx?forceUCI=1&pagetype=entityrecord&etn=wb_gridspike&id=4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5).
 - Dark mode: add `&flags=themeOption%3Ddarkmode` to the URL.
 - Debug log of matched rules per row: `sessionStorage.setItem("wb_GridFormatDebug","1")`, then reload. Remove it afterwards.
 
@@ -224,12 +239,13 @@ See #15's comments and [`decisions.md`](../../controls/GridFormatter/docs/decisi
 - **Performance:** no measurable scroll cost on 260 rows (identical frame timings with and without rules).
 - **Editable grid:** after an inline edit, only the cells the grid redraws pick up new row-wide styling, until a refresh.
 - **Dark mode:** fixed hex text colours lose contrast; theme tokens hold up.
+- **Form subgrid (same table):** formats correctly once it has its own Power Apps grid control: `__wbCheck()` found 135 cells and no mismatches. A subgrid of a different table is still untested (4.7).
 
 ## 8. Cleaning up
 
 Remove things in this order (dependencies first):
 
-1. **Grid configuration:** nothing to do if you delete the table (step 3). To keep the table but drop the customizer, clear **Customizer control** in the classic Controls tab.
+1. **Grid configuration:** nothing to do if you delete the table (step 3). To keep the table but drop the customizer, clear **Customizer control** in the classic Controls tab, and on the Child rows subgrid in the main form.
 2. **Rules web resource:** `DELETE webresourceset(<id>)`.
 3. **Table** (deletes its rows, columns, views and the self-relationship): `DELETE EntityDefinitions(LogicalName='wb_gridspike')`. Check dependencies first with `RetrieveDependenciesForDelete`.
 4. **Control:** `DELETE customcontrols(<id>)` for `wb_Controls.GridFormatter`, after checking `RetrieveDependenciesForDelete(ObjectId=<id>,ComponentType=66)` and that no `customcontroldefaultconfig` mentions it. This is how the old `wb_WB.GridFormatter` 0.0.5 was removed.

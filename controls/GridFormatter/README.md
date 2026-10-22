@@ -54,7 +54,19 @@ Pointing a grid at the control is a customisation of that **table**, so do it in
 
 ### Subgrids on forms
 
-Repeat on each subgrid that should be formatted: open the form, select the subgrid, add the **Power Apps grid control** as its component, and set **Customizer control** = `wb_Controls.GridFormatter` and **Enable OptionSet colors** = No. Save and publish the form. Subgrids use the rules of the **subgrid's** table (but see [Limitations](#limitations)).
+**The main grid setting doesn't reach subgrids.** A subgrid on a form stays the plain read-only grid, with no formatting, until it has its own Power Apps grid control. Set up each subgrid that should be formatted, in the project solution that owns the form:
+
+1. Open the form in the form designer (make.powerapps.com → the solution → the table → **Forms** → the form).
+2. Select the subgrid on the form canvas. In the right-hand pane, expand **Components** and select **+ Component → Power Apps grid control**. (If the subgrid doesn't exist yet, add it first: **Components → Subgrid**, pick the table and its **Default view**, and tick **Show related records** to list only rows related to the open record.)
+3. In the control's properties, set:
+   - **Customizer control:** `wb_Controls.GridFormatter`
+   - **Enable OptionSet colors:** **No**
+   - **Enable editing** and the other grid properties as the subgrid needs. They're separate from the main grid's settings.
+4. Select **Done**, then **Save and publish** the form.
+
+The classic designer works too: open the form, select the subgrid, **Change Properties → Controls → Add Control… → Power Apps grid control**, and set the same properties.
+
+A subgrid uses the rules file of the table it **shows** (`wb_/GridFormatter/<that table>.json`). It needs no other files, but the [view rule](docs/configuration.md#the-view-rule) applies: a rule only formats the subgrid if the subgrid's view includes every column the rule reads. Hard-reload the form (Cmd+Shift+R or Ctrl+Shift+R) after publishing, because the app caches grid settings.
 
 Only one customizer can run on a grid, so a grid using GridFormatter can't use another customizer too.
 
@@ -106,7 +118,7 @@ The local test harness can't host a grid customizer, so check visual changes in 
 - **No per-view rules.** Rules apply to every grid of the table. A rule only applies on views that include every column it reads, which is how to opt views in or out.
 - **Text colour and bold** only show on plain value columns (text, numbers, currency, dates, choices, Yes/No), never on the primary name, lookups, Owner or multi-select. Owner ignores italic and underline too.
 - **Token backgrounds** use CSS `color-mix()`, which needs a current browser.
-- **Not yet verified** (issue #15): subgrids on forms (the control may get the form's table name rather than the subgrid's), the Web API fallback for reading option colours, the full dark-mode pass, mobile and 250+ row views.
+- **Not yet verified** (issue #15): a subgrid showing a **different** table from its form's (the control may read the form's table name and load the wrong rules; a subgrid of the form's own table works), and mobile.
 - **Editable grids: after an inline edit, use Refresh to update row-wide formatting.** Editing a value a row-scope rule depends on (for example RAG from Unknown to Red) restyles the edited cell at once, but the rest of the row keeps its old styling until the grid is refreshed or the page reloaded. The grid only redraws the edited cell, and there's no supported way to repaint the row.
 - **Contrast** of text colours is checked in the light theme only, and only within one rule.
 - Rules are the same in every environment: they ship with the project solution. An environment that needs different rules needs its own copy of the web resource.
