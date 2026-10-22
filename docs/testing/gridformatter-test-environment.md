@@ -171,7 +171,13 @@ Details found doing it:
 - **The table-level grid setting (4.5) doesn't reach form subgrids.** A new subgrid renders as the plain read-only grid with no formatting. It needs its own Power Apps grid control, matching the maker steps in the [GridFormatter README](../../controls/GridFormatter/README.md#subgrids-on-forms).
 - In the form XML, that's a `<controlDescription forControl="{uniqueid}">` inside `<form><controlDescriptions>`, pointing at the subgrid `<control>`'s `uniqueid` attribute. The subgrid needs one, which the script adds. The script copies the table's `customcontroldefaultconfig` description, so the customizer and grid properties match the main grid. It then swaps each `<data-set name="Items">` for one holding the subgrid's `ViewId`, `TargetEntityType`, `RelationshipName` and `FilteredViewIds`. The `mailbox` main form is a working example in every environment.
 - After publishing, **hard-reload the form**. The first plain reload still showed the old form (the Owner field only).
-- **Limit:** the subgrid shows the form's own table, so it can't tell whether the control reads the **subgrid's** table name or the form's. Testing that needs a subgrid of a different table, for example an unrelated Users subgrid on this form with GridFormatter, while you watch which `wb_/GridFormatter/<table>.json` the network panel requests. That test hasn't been done (#15).
+- **Limit:** the subgrid shows the form's own table, so it can't tell whether the control uses the **subgrid's** table or the form's. That needs a subgrid of another table (#30, [decisions.md V9](../../controls/GridFormatter/docs/decisions.md#v9-a-form-subgrids-table-30)). The method that worked:
+  1. Temporarily add an unrelated **Users** subgrid (`TargetEntityType` `systemuser`, view "Enabled Users", no `RelationshipName`) to the "Information" form. Give it the same `controlDescription` as the Child rows subgrid, with its own `data-set`.
+  2. Upload a probe `wb_/GridFormatter/systemuser.json` with one row rule (`fullname isNotNull` → a distinct background).
+  3. Hard-reload and check the Users cells' `style.backgroundImage`. To see whether the form's rules are used instead, put the same probe rule in `wb_gridspike.json`.
+  4. Remove the subgrid and delete the probe web resource afterwards.
+
+  Neither the network panel nor the console tool showed the config request or `console.info`, so a visible probe rule was the reliable signal. Filter the form by name (`name eq 'Information'`): `wb_gridspike` now has more than one main form ("RagChoice test", #7).
 
 ### 4.8 Open it
 
@@ -239,7 +245,7 @@ See #15's comments and [`decisions.md`](../../controls/GridFormatter/docs/decisi
 - **Performance:** no measurable scroll cost on 260 rows (identical frame timings with and without rules).
 - **Editable grid:** after an inline edit, only the cells the grid redraws pick up new row-wide styling, until a refresh.
 - **Dark mode:** fixed hex text colours lose contrast; theme tokens hold up.
-- **Form subgrid (same table):** formats correctly once it has its own Power Apps grid control: `__wbCheck()` found 135 cells and no mismatches. A subgrid of a different table is still untested (4.7).
+- **Form subgrids:** format correctly once each has its own Power Apps grid control. On the same table, `__wbCheck()` found 135 cells and no mismatches. On another table, before 0.2.0 the form table's rules were used (#30); from 0.2.0 the subgrid uses its own table's rules (decisions.md V9).
 
 ## 8. Cleaning up
 

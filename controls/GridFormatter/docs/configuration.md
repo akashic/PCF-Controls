@@ -613,6 +613,7 @@ In the messages below, `<file>` is the web resource name, for example `wb_/GridF
 | `rule "…": color, fontWeight can't be shown on column "…" (…); ignored there.` (also `display: pill`) | The rule sets something that column type can't show ([table](#what-works-on-which-column)). Everything else in the rule still applies. | Expected for row-scope text colours. To silence it, list only supported columns in `scope`. |
 | `option colours for <table>.<column> couldn't be read; fromOption colours on it use defaults.fallbackColor.` | The control couldn't read that choice column's option colours. | Check `fromOption` names a choice, status or status reason column of this table. |
 | `config took longer than 3 s to load; the grid is shown without formatting.` | Loading the rules and option colours took over 3 seconds, so the grid was shown plain rather than late. | Reload. If it keeps happening, the environment is slow; report it. |
+| `couldn't read this subgrid's table, so it uses the rules for the form's table ….` | A platform update may have changed how a subgrid tells the control its table. A subgrid of another table may get the wrong rules. | Report it. |
 | `no config loaded: the grid's table name … isn't a table logical name.` | The control couldn't tell which table the grid shows. | Report it, with where the grid is (main grid or subgrid). |
 | `a cell couldn't be formatted, so it's drawn as normal (…)` or `a cell renderer failed …` | An unexpected error. The cell is drawn as normal. | Report it with the message and your file. |
 
@@ -638,7 +639,7 @@ In the messages below, `<file>` is the web resource name, for example `wb_/GridF
 - **Text colour and weight** only work on the column types in [the table](#what-works-on-which-column): never the primary name, lookups, Owner or multi-select.
 - **Token backgrounds and their alpha need a current browser** (they use the CSS `color-mix()` function: Edge and Chrome 111+, Safari 16.2+, Firefox 113+). In an older browser, token backgrounds don't show.
 - **A token's strength can't be set per rule.** Token backgrounds always use the file's `tintAlpha`.
-- **Not yet verified in a real environment** (issue #15): a subgrid showing a **different** table from its form's (the control may see the form's table and load the wrong rules; a subgrid of the form's own table works), and mobile. Columns from related tables (`alias.column`) are allowed but untested.
+- **Not yet verified in a real environment** (issue #15): mobile. Columns from related tables (`alias.column`) are allowed but untested.
 - **No dark-theme contrast check.** The check only uses the light theme.
 - **Editing.** Only the display is styled. A cell being edited uses the grid's normal editor.
 - **After an inline edit, use Refresh to update row-wide formatting.** In an editable grid, changing a value that a row-scope rule depends on (for example RAG from Unknown to Red) restyles the edited cell straight away, but the other cells in the row keep their old styling until you select **Refresh** on the grid or reload the page. The grid only redraws the cell you edited, and there's no supported way for the control to repaint the rest of the row.

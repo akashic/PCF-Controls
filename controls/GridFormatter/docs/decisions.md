@@ -1,4 +1,4 @@
-# GridFormatter: spike decisions (VERIFY V1–V8)
+# GridFormatter: spike decisions (VERIFY V1–V9)
 
 Results of the VERIFY spikes in the brief (`docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md` §3.2), issue #9.
 
@@ -15,11 +15,12 @@ Results of the VERIFY spikes in the brief (`docs/briefs/2026-10-21-grid-formatti
 | V1 `rowData` shape | Keyed by column logical name; types listed below | `getValue` normalises using these shapes; fixtures in `tests/fixtures/rowdata.wb_gridspike.json` |
 | V2 Columns not in the view | **Not present** in `rowData` | A rule only fires on views that include its condition columns. This is documented for config authors |
 | V3 `webAPI` and `getEntityMetadata` | Both available and working in the customizer's `init`; option colours only in the undocumented `attributeDescriptor.OptionSet[].Color` | Read `attributeDescriptor.OptionSet` defensively, falling back to the Web API metadata endpoint |
-| V4 Table and view | Table: `context.page.entityTypeName` ✅. View id: only in the URL or internal fields ❌ | Rules are keyed by table (ADR-0004). Filtering by view is **not supported** |
+| V4 Table and view | Table: `context.page.entityTypeName` ✅ on main grids (but see V9). View id: only in the URL or internal fields ❌ | Rules are keyed by table (ADR-0004). Filtering by view is **not supported** |
 | V5 Async load vs `fireEvent` | Delaying `fireEvent` by 2 s still applies the customizer | Load config and metadata in `init`, then `fireEvent`, with a ~3 s timeout that fires anyway with no styling |
 | V6 Row styling technique | Container `background-image` layer fills the whole cell for every type, and hover and selection stay visible | Backgrounds: container + translucent `background-image` |
 | V7 Font properties | Italic and underline inherit; colour and bold do not | Colour and bold only by drawing simple types ourselves (see V7) |
 | V8 Environment variable size | **Max 2,000 characters** | The environment variable is dropped; one JSON web resource per table (ADR-0004) |
+| V9 A form subgrid's table (#30) | `context.page.entityTypeName` is the **form's** table; the subgrid's own table is only in the undocumented `factory._customControlProperties.descriptor.Parameters.TargetEntityType` | Read `TargetEntityType` first, fall back to the page's table, and warn on a form if it's missing (0.2.0) |
 | Theme tokens | `var(--colorNeutralBackground3)` resolves inside grid cells (`#f5f5f5`), not on `:root` | Theme tokens in config are emitted as CSS `var(--token, fallback)` on the cell |
 | Fluent 9 declaration | 0.0.4 declares Fluent 9.46.2 in place of the template's Fluent 8; the customizer loads and styles as before | Declare Fluent 9.46.2 (as PR #18 recommends) |
 
@@ -73,7 +74,7 @@ On the system "Active Grid spikes" view (Name and Created On only), `rowData` he
 | Page URL (`etn`, `viewid`) | ✅ | ✅, but only on main grid pages, and reading the URL isn't a supported API |
 | `context.mode._customControlProperties.personalizationConfiguration.viewId` | — | ✅ but internal, so not used |
 
-Decision: use `context.page.entityTypeName`. Don't filter by view.
+Decision: use `context.page.entityTypeName`. Don't filter by view. (Superseded for form subgrids by V9.)
 
 ## V5: Timing
 
@@ -131,6 +132,28 @@ Tested with the Web API on a throwaway JSON environment variable in `WBGridSpike
 | `environmentvariablevalue.value` (memo, `MaxLength` 2000) | 1,999 characters | 2,001 (database constraint) |
 
 At about 150–250 characters per rule, that's 8–12 rules per environment, far short of the brief's ~50. **Decision (product owner, 22 Oct 2026):** one JSON web resource per table, `wb_/GridFormatter/<table>.json`, shipped in the project solution that owns the table. See ADR-0004.
+
+## V9: A form subgrid's table (#30)
+
+Found in #15: on `wb_gridspike`'s form, a **Users** subgrid using GridFormatter loaded `wb_/GridFormatter/wb_gridspike.json`, not `systemuser.json`. A probe rule (`fullname isNotNull`) tinted the Users row only when it was in the gridspike file. V4 was only checked on main grids, where the page and the grid are the same table.
+
+A spike build (0.1.1–0.1.2, never committed) kept each instance's `context` on `window` and searched it. One customizer instance runs per grid, each with its own `context`:
+
+| Source | Main grid | Child rows subgrid (`wb_gridspike` on its own form) | Users subgrid (`systemuser` on the `wb_gridspike` form) |
+|---|---|---|---|
+| `context.page.entityTypeName` | `wb_gridspike` | `wb_gridspike` | `wb_gridspike` ❌ |
+| `context.mode.contextInfo.entityTypeName` | `wb_gridspike` | `wb_gridspike` | `wb_gridspike` ❌ |
+| `context.mode.contextInfo.entityId` | not set | the form's record id | the form's record id |
+| `context.factory._customControlProperties.descriptor.Parameters.TargetEntityType` | not set | `wb_gridspike` | `systemuser` ✅ |
+| Renderer `params` (`colDefs`, `rowData`) | no table name | no table name | no table name |
+
+The other places naming the subgrid (the control id `wb_usersgrid` in `contextToken.controlName`, `descriptor.Id` and `learningPath`) are internal too, and only give the control name.
+
+No documented API gives a subgrid's table. Decision (0.2.0, `engine/gridTable.ts`):
+- Use `TargetEntityType` when it's a non-empty string, otherwise `context.page.entityTypeName`.
+- If a grid is on a form (`contextInfo.entityId` set) but has no `TargetEntityType`, warn once. That would mean the platform changed, and a subgrid of another table would get the form's rules again.
+
+This is the same trade-off as V3's option colours: an undocumented property, read defensively, with a documented fallback. Verified in `LowCode` on 0.2.0: the Users subgrid used `systemuser.json`; the Child rows subgrid (135 cells) and the main grid (405 cells) had no mismatches.
 
 ## Theme
 

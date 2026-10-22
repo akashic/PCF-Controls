@@ -30,7 +30,7 @@ for (const name of ["Spike row 02", "Spike row 03", "Spike row 04"]) {
 }
 console.log("rows 02-04 have Spike row 01 as their Parent (Amber, Green, Unknown children)");
 
-const forms = await get(`systemforms?$select=formid,name,formxml&$filter=objecttypecode eq '${TABLE}' and type eq 2`);
+const forms = await get(`systemforms?$select=formid,name,formxml&$filter=objecttypecode eq '${TABLE}' and type eq 2 and name eq 'Information'`);
 const form = forms?.value?.[0];
 if (!form) throw new Error(`no main form for ${TABLE}`);
 const views = await get(`savedqueries?$select=savedqueryid&$filter=name eq '${VIEW}' and returnedtypecode eq '${TABLE}'`);
