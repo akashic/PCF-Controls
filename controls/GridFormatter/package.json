@@ -1,6 +1,6 @@
 {
   "name": "@wb-pcf/grid-formatter",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "WB GridFormatter: rule-driven conditional formatting for the Power Apps grid (customizer control)",
   "scripts": {
     "build": "pcf-scripts build",
@@ -15,7 +15,8 @@
   "dependencies": {
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
-    "@fluentui/react-components": "9.46.2"
+    "@fluentui/react-components": "9.46.2",
+    "@wb-pcf/shared": "*"
   },
   "devDependencies": {
     "@microsoft/eslint-plugin-power-apps": "^0.2.51",
