@@ -106,7 +106,8 @@ The local test harness can't host a grid customizer, so check visual changes in 
 - **No per-view rules.** Rules apply to every grid of the table. A rule only applies on views that include every column it reads, which is how to opt views in or out.
 - **Text colour and bold** only show on plain value columns (text, numbers, currency, dates, choices, Yes/No), never on the primary name, lookups, Owner or multi-select. Owner ignores italic and underline too.
 - **Token backgrounds** use CSS `color-mix()`, which needs a current browser.
-- **Not yet verified** (issue #15): subgrids on forms (the control may get the form's table name rather than the subgrid's), the Web API fallback for reading option colours, the full dark-mode pass, mobile, editable grids and 250+ row views.
+- **Not yet verified** (issue #15): subgrids on forms (the control may get the form's table name rather than the subgrid's), the Web API fallback for reading option colours, the full dark-mode pass, mobile and 250+ row views.
+- **Editable grids: after an inline edit, use Refresh to update row-wide formatting.** Editing a value a row-scope rule depends on (for example RAG from Unknown to Red) restyles the edited cell at once, but the rest of the row keeps its old styling until the grid is refreshed or the page reloaded. The grid only redraws the edited cell, and there's no supported way to repaint the row.
 - **Contrast** of text colours is checked in the light theme only, and only within one rule.
 - Rules are the same in every environment: they ship with the project solution. An environment that needs different rules needs its own copy of the web resource.
 - Rules are cached for the browser tab's lifetime. After publishing new rules, reload the page.
