@@ -1,0 +1,371 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GridFormatter: how a grid gets its formatting",
+    "output": "controls/GridFormatter/docs/architecture.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/akashic/PCF-Controls.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "d17310ce25e2cccaa7294aeb9598f893972ed914"
+    }
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "User",
+      "sublabel": "opens a view or record",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "grid",
+      "type": "cloud",
+      "label": "Power Apps grid",
+      "sublabel": "main grid or form subgrid",
+      "pos": [
+        320,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/README.md",
+          "line": 42,
+          "end_line": 72,
+          "label": "set up a table and subgrids"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/types.ts",
+          "line": 4,
+          "end_line": 6,
+          "label": "customizer contract"
+        }
+      ]
+    },
+    {
+      "id": "control",
+      "type": "backend",
+      "label": "GridFormatter init",
+      "sublabel": "picks the grid's table",
+      "tag": "≤3 s",
+      "pos": [
+        660,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/index.ts",
+          "line": 43,
+          "end_line": 78,
+          "label": "init and fireEvent"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/stores/startup.ts",
+          "line": 32,
+          "end_line": 78,
+          "label": "load order and timeout"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/gridTable.ts",
+          "line": 36,
+          "end_line": 50,
+          "label": "which table (#30)"
+        }
+      ]
+    },
+    {
+      "id": "configStore",
+      "type": "backend",
+      "label": "Config store",
+      "sublabel": "once per table per page",
+      "pos": [
+        940,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/stores/configStore.ts",
+          "line": 46,
+          "end_line": 94,
+          "label": "load and cache"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/validate.ts",
+          "line": 328,
+          "end_line": 337,
+          "label": "parse and validate"
+        }
+      ]
+    },
+    {
+      "id": "webres",
+      "type": "database",
+      "label": "Rules web resource",
+      "sublabel": "wb_/GridFormatter/<table>.json",
+      "pos": [
+        940,
+        194
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/webResource.ts",
+          "line": 15,
+          "end_line": 30,
+          "label": "name and query"
+        },
+        {
+          "path": "docs/adr/0004-gridformatter-config-per-table-web-resource.md",
+          "line": 1,
+          "end_line": 33
+        }
+      ]
+    },
+    {
+      "id": "maker",
+      "type": "external",
+      "label": "Config author",
+      "sublabel": "writes the JSON rules",
+      "pos": [
+        940,
+        348
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/docs/configuration.md",
+          "line": 40,
+          "end_line": 50,
+          "label": "deploy it"
+        }
+      ]
+    },
+    {
+      "id": "metadataStore",
+      "type": "backend",
+      "label": "Metadata store",
+      "sublabel": "colours for fromOption columns",
+      "pos": [
+        660,
+        194
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/stores/metadataStore.ts",
+          "line": 39,
+          "end_line": 82
+        }
+      ]
+    },
+    {
+      "id": "metadata",
+      "type": "database",
+      "label": "Choice metadata",
+      "sublabel": "option Color per value",
+      "pos": [
+        660,
+        348
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/stores/metadataStore.ts",
+          "line": 42,
+          "end_line": 56,
+          "label": "getEntityMetadata, Web API"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/optionMetadata.ts",
+          "line": 117,
+          "end_line": 126,
+          "label": "fallback URLs"
+        }
+      ]
+    },
+    {
+      "id": "renderers",
+      "type": "frontend",
+      "label": "Cell renderers",
+      "sublabel": "every column type",
+      "pos": [
+        320,
+        194
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/customizers/CellRendererOverrides.tsx",
+          "line": 21,
+          "end_line": 60
+        }
+      ]
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "Rules engine",
+      "sublabel": "conditions, precedence, colours",
+      "pos": [
+        320,
+        348
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/cellFormatter.ts",
+          "line": 213,
+          "end_line": 290,
+          "label": "per-cell decision"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/resolveStyle.ts",
+          "line": 259,
+          "end_line": 284,
+          "label": "first rule wins"
+        },
+        {
+          "path": "controls/GridFormatter/GridFormatter/engine/conditions.ts",
+          "line": 86,
+          "label": "evaluate"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "opens",
+      "from": "user",
+      "to": "grid",
+      "label": "opens a grid",
+      "variant": "emphasis"
+    },
+    {
+      "id": "init",
+      "from": "grid",
+      "to": "control",
+      "label": "init(EventName)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "fire",
+      "from": "control",
+      "to": "grid",
+      "label": "fireEvent(renderers)"
+    },
+    {
+      "id": "load-rules",
+      "from": "control",
+      "to": "configStore",
+      "label": "load rules"
+    },
+    {
+      "id": "read-rules",
+      "from": "configStore",
+      "to": "webres",
+      "label": "Web API read"
+    },
+    {
+      "id": "publish",
+      "from": "maker",
+      "to": "webres",
+      "label": "upload, publish",
+      "variant": "dashed"
+    },
+    {
+      "id": "load-colours",
+      "from": "control",
+      "to": "metadataStore",
+      "label": "choice columns"
+    },
+    {
+      "id": "read-colours",
+      "from": "metadataStore",
+      "to": "metadata",
+      "label": "option colours"
+    },
+    {
+      "id": "each-cell",
+      "from": "grid",
+      "to": "renderers",
+      "label": "each cell",
+      "variant": "emphasis"
+    },
+    {
+      "id": "format",
+      "from": "renderers",
+      "to": "engine",
+      "label": "format(cell)"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Which table's rules",
+      "items": [
+        "Main grid: the page's table",
+        "Form subgrid: its TargetEntityType, so a subgrid of another table uses that table's file (0.2.0, #30)",
+        "Each form subgrid needs its own Power Apps grid with the customizer set"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Per cell",
+      "items": [
+        "Rules sorted by priority; the first rule to set a property for a cell wins",
+        "Row results cached per record and cleared at the user's local midnight",
+        "Background goes on the cell container as a layer; colour, bold and pills are drawn only on plain value cells"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Fail-soft",
+      "items": [
+        "No rules file: the plain grid, with one console info line",
+        "Invalid rules are skipped one by one with a warning",
+        "Loading over 3 s: the plain grid, and a late result is ignored",
+        "A renderer error draws that cell as normal"
+      ]
+    }
+  ]
+}
