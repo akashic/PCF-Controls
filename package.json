@@ -20,5 +20,10 @@
     "jest": "^30.5.2",
     "ts-jest": "^29.4.15",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@types/react": "^16.14.62",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0"
   }
 }

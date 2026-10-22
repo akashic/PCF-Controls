@@ -125,6 +125,7 @@ All commands below run from the repo root unless noted.
    - `package.json`: set `"name": "@wb-pcf/<kebab-name>"`, `"private": true`, and `"version"` to match the manifest (start at `0.1.0`). Add `"@wb-pcf/shared": "*"` to `dependencies` if the control uses shared code, and add a `"test": "jest"` script with a `jest.config.js` that spreads `../../jest.config.base`.
    - `tsconfig.json`: `"extends": "pcf-scripts/tsconfig_base.json"` and `"typeRoots": ["../../node_modules/@types"]`.
    - `<ControlName>.pcfproj`: add `<PcfEnableAutoNpmInstall>false</PcfEnableAutoNpmInstall>` to the first `<PropertyGroup>` that sets `OutputPath`.
+   - `package.json`: set `"lint": "pcf-scripts refreshTypes && pcf-scripts lint"`. The generated manifest types aren't committed, so lint fails on a fresh checkout without `refreshTypes`.
    - Delete the generated `.gitignore` (the root one covers it). Never commit a `package-lock.json` inside a control folder.
 3. **Create the solution** and point it at the control:
    ```sh

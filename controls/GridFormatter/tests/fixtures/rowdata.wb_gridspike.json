@@ -1,0 +1,73 @@
+{
+  "_source": "Captured from the Power Apps grid in the LowCode test environment, 22 Oct 2026 (issue #9, spike V1). 'params' (functions) removed. Columns not in the view are absent from rowData (V2).",
+  "colDefs": [
+    { "name": "wb_name", "dataType": "Text", "isPrimary": true },
+    { "name": "statecode", "dataType": "OptionSet", "isPrimary": false },
+    { "name": "statuscode", "dataType": "OptionSet", "isPrimary": false },
+    { "name": "wb_ragstatus", "dataType": "OptionSet", "isPrimary": false },
+    { "name": "wb_tags", "dataType": "MultiSelectPicklist", "isPrimary": false },
+    { "name": "wb_flagged", "dataType": "TwoOptions", "isPrimary": false },
+    { "name": "wb_parentid", "dataType": "Lookup", "isPrimary": false },
+    { "name": "ownerid", "dataType": "Persona", "isPrimary": false },
+    { "name": "wb_count", "dataType": "Integer", "isPrimary": false },
+    { "name": "wb_score", "dataType": "Decimal", "isPrimary": false },
+    { "name": "wb_budget", "dataType": "Currency", "isPrimary": false },
+    { "name": "wb_actualcost", "dataType": "Currency", "isPrimary": false },
+    { "name": "wb_duedate", "dataType": "DateOnly", "isPrimary": false },
+    { "name": "wb_reviewedon", "dataType": "DateAndTime", "isPrimary": false },
+    { "name": "wb_notes", "dataType": "Text", "isPrimary": false },
+    { "name": "createdon", "dataType": "DateAndTime", "isPrimary": false }
+  ],
+  "rows": [
+    {
+      "__rec_id": "4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5",
+      "wb_name": "Spike row 01",
+      "statecode": "0",
+      "statuscode": "1",
+      "wb_ragstatus": "948790001",
+      "wb_tags": [948790000, 948790001],
+      "wb_flagged": false,
+      "wb_parentid": null,
+      "ownerid": { "id": { "guid": "64a20861-7fdd-f011-8406-7ced8d70a9f0" }, "etn": "systemuser", "name": "Giles Gregg" },
+      "wb_count": 10,
+      "wb_score": 3.14,
+      "wb_budget": 1000,
+      "wb_actualcost": 750,
+      "wb_duedate": "2026-10-18T00:00:00.000Z",
+      "wb_reviewedon": "2026-10-21T19:48:00.000Z",
+      "wb_notes": "Note 1",
+      "createdon": "2026-10-22T02:48:00.000Z"
+    },
+    {
+      "__rec_id": "4d2ddcfb-c2cd-f111-a05b-70a8a59b69e5",
+      "wb_name": "Spike row 02",
+      "statecode": "0",
+      "statuscode": "1",
+      "wb_ragstatus": "948790002",
+      "wb_tags": [948790002],
+      "wb_flagged": false,
+      "wb_parentid": null,
+      "ownerid": { "id": { "guid": "64a20861-7fdd-f011-8406-7ced8d70a9f0" }, "etn": "systemuser", "name": "Giles Gregg" },
+      "wb_count": 20,
+      "wb_score": 6.28,
+      "wb_budget": 2000,
+      "wb_actualcost": 2250,
+      "wb_duedate": "2026-10-19T00:00:00.000Z",
+      "wb_reviewedon": "2026-10-21T12:48:00.000Z",
+      "wb_notes": "Note 2",
+      "createdon": "2026-10-22T02:48:00.000Z"
+    }
+  ],
+  "nonEmptyExamples": {
+    "Lookup": { "id": { "guid": "4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5" }, "etn": "wb_gridspike", "name": "Spike row 01" }
+  },
+  "formattedValues": {
+    "statecode": "Active",
+    "wb_tags": "Alpha; Beta",
+    "wb_flagged": "No",
+    "wb_budget": "$1,000.00",
+    "wb_duedate": "18/10/2026",
+    "wb_reviewedon": "22/10/2026 6:48 AM"
+  },
+  "user": { "timeZoneOffsetMinutes": 600, "locale": "en-AU" }
+}
