@@ -1,0 +1,28 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "condition-too-deep",
+      "when": {
+        "all": [
+          {
+            "all": [
+              {
+                "all": [
+                  {
+                    "all": [
+                      { "all": [{ "column": "wb_count", "op": "gt", "value": 0 }] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "scope": "row",
+      "style": { "fontWeight": "bold" }
+    }
+  ]
+}

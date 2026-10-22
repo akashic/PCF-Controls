@@ -1,0 +1,17 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "defaults": { "tintAlpha": 0.18, "fallbackColor": null },
+  "rules": [
+    {
+      "id": "rag-row",
+      "description": "Tint the row by RAG status",
+      "priority": 20,
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "scope": "row",
+      "style": {
+        "backgroundColor": { "fromOption": "wb_ragstatus", "alpha": "tint" }
+      }
+    }
+  ]
+}

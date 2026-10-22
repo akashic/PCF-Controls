@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "pill-with-row-scope",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "scope": "row",
+      "display": "pill",
+      "style": { "backgroundColor": { "fromOption": "wb_ragstatus" } }
+    }
+  ]
+}

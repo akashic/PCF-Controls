@@ -64,6 +64,9 @@ jobs:
       - name: Test
         if: needs.detect.outputs.has-workspaces == 'true'
         run: npm test
+      - name: Validate control config files against their JSON Schemas
+        if: needs.detect.outputs.has-workspaces == 'true'
+        run: npm run validate:config
 
   build:
     name: Build ${{ matrix.control }}

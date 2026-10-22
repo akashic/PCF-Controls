@@ -1,0 +1,42 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "defaults": { "tintAlpha": 0.18, "fallbackColor": null },
+  "rules": [
+    {
+      "id": "inactive-grey",
+      "description": "Inactive records are greyed out",
+      "priority": 10,
+      "when": { "column": "statecode", "op": "eq", "value": 1 },
+      "scope": "row",
+      "style": {
+        "backgroundColor": { "token": "colorNeutralBackground3" },
+        "color": { "token": "colorNeutralForeground3" }
+      },
+      "stop": true
+    },
+    {
+      "id": "rag-row",
+      "description": "Tint the row by RAG status",
+      "priority": 20,
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "scope": "row",
+      "style": {
+        "backgroundColor": { "fromOption": "wb_ragstatus", "alpha": "tint" }
+      }
+    },
+    {
+      "id": "overdue",
+      "description": "Overdue due date in bold red, unless RAG is Green",
+      "priority": 30,
+      "when": {
+        "all": [
+          { "column": "wb_duedate", "op": "beforeToday" },
+          { "not": { "column": "wb_ragstatus", "op": "eq", "value": 948790002 } }
+        ]
+      },
+      "scope": { "columns": ["wb_duedate"] },
+      "style": { "color": "#C50F1F", "fontWeight": "bold" }
+    }
+  ]
+}

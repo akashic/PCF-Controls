@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "unknown-operator",
+      "when": { "column": "wb_ragstatus", "op": "equals", "value": 948790000 },
+      "style": { "fontWeight": "bold" }
+    }
+  ]
+}

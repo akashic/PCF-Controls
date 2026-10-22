@@ -106,6 +106,7 @@ All commands below run from the repo root unless noted.
 | A single test file | `npm test -w @wb-pcf/<name> -- tests/<file>.test.ts` |
 | Test harness (field and dataset controls) | `npm run start:watch -w @wb-pcf/<name>` |
 | Conventions check | `npm run check:controls` |
+| Validate config files against their JSON Schemas | `npm run validate:config` |
 | Fast deploy to **dev only** | `cd controls/<ControlName> && pac pcf push --publisher-prefix wb` |
 | Build solution zips | `dotnet build controls/<ControlName>/solution -c Release` |
 
@@ -206,7 +207,7 @@ To release:
 `.github/workflows/ci.yml` runs on every PR and every push to `main`:
 
 1. Checks the conventions (`scripts/check-controls.mjs`: publisher, version alignment).
-2. Runs `npm ci`, lint and test across all workspaces.
+2. Runs `npm ci`, lint and test across all workspaces, then `npm run validate:config` (each control's config files against its JSON Schema).
 3. Builds the solution for each **changed** control, and uploads the zips as workflow artifacts. Changes to `packages/`, root tooling or workflows rebuild every control.
 
 ## Moving to William-Buck-Australia

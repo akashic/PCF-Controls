@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "bad-hex",
+      "when": { "column": "wb_duedate", "op": "beforeToday" },
+      "style": { "color": "#C50F1" }
+    }
+  ]
+}

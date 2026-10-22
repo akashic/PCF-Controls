@@ -13,7 +13,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "check:controls": "node scripts/check-controls.mjs"
+    "check:controls": "node scripts/check-controls.mjs",
+    "validate:config": "npm run validate:config --workspaces --if-present"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
