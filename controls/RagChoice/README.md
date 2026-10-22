@@ -1,0 +1,95 @@
+# RagChoice
+
+A form field control for a **single-select choice** column. It is a normal Fluent 9 dropdown that also shows each option's configured colour as a small dot before the label (or as a bar on the dropdown's left edge). It was built for RAG (Red / Amber / Green) status columns, but works with any choice column whose options have colours.
+
+| | |
+|---|---|
+| Logical name | `wb_WB.RagChoice` |
+| Display name in the form designer | **RAG Choice (colour)** |
+| Solution | `WBRagChoice` (display name "WB RAG Choice") |
+| Binds to | Choice (`OptionSet`) columns only |
+| Version | 0.1.0 |
+| Spec | [brief §6](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#6-control-b--ragchoice-form-field) |
+
+## What it does
+
+- **Closed:** the selected option's colour dot, then its label. With no value it shows `--Select--` and no dot.
+- **Open:** every option in metadata order, each with its own dot. A blank `--Select--` option at the top clears the value, unless the column is required (business or system required).
+- **Colours** come only from each option's `Color` in the choice metadata. If an option has no colour or an invalid one, the control uses **Fallback colour**. If that is blank too, the option has no indicator. It never guesses a colour from the label text.
+- **Read-only** (read-only form, inactive record, business-rule lock, or field security without update): the same dot and label, not interactive.
+- **Field security without read:** shows `***` and no dot.
+- **External changes** (business rules, JavaScript `setValue`, a refresh) update the dropdown on the next render. Only a user's own selection writes the value back.
+- The dot and bar are decoration (`aria-hidden="true"`). The label text is always visible, so colour is never the only signal. Keyboard behaviour is the standard Fluent `Dropdown`.
+- It never throws into the form. An invalid **Fallback colour** logs one console warning and is ignored.
+
+The control makes no network calls and declares no external services, so it isn't premium-licensed.
+
+## Manifest properties
+
+| Property | Type | Usage | Default | Description |
+|---|---|---|---|---|
+| `value` | `OptionSet` | bound, required | — | The choice column. |
+| `indicator` | Enum: `dot` \| `bar` | input | `dot` | **Dot**: a 10px circle with a 1px neutral border before the label. **Left bar**: a 4px bar on the dropdown's left edge (and a small bar beside each option in the list). |
+| `fallbackColor` | `SingleLine.Text` | input | blank | Hex colour (`#RGB`, `#RRGGBB` or `RRGGBB`) for options with no colour. Blank means no indicator for those options. |
+
+React 16.14.0 and Fluent 9 are platform libraries, so they aren't in the bundle. The manifest declares Fluent **9.46.2**, the top of the declared range recorded in the brief. Issue #3 is confirming the correct declared version and may change it.
+
+There are no environment variables.
+
+## Add it to a form field
+
+Adding the control to a form is a customisation of that table's form, so it belongs to the **project** solution that owns the table, not to `WBRagChoice`. Import `WBRagChoice` into the environment first.
+
+1. Make sure each option of the choice column has a colour (in the column's choice settings in the maker portal).
+2. Open the form in the **modern form designer**, inside the project solution.
+3. Select the choice field → **Components** → **+ Component** → **RAG Choice (colour)**.
+4. Optionally set **Indicator style** and **Fallback colour**.
+5. Choose where it shows: **Web** (and optionally **Phone** and **Tablet**).
+6. **Save and publish** the form.
+
+## Develop and test
+
+From the repo root:
+
+```sh
+npm run lint -w @wb-pcf/rag-choice
+npm test -w @wb-pcf/rag-choice           # Jest: the pure logic in RagChoice/logic.ts, 100% coverage required
+npm run build -w @wb-pcf/rag-choice
+npm run start:watch -w @wb-pcf/rag-choice # PCF test harness at http://localhost:8181
+dotnet build controls/RagChoice/solution -c Release   # WBRagChoice.zip + WBRagChoice_managed.zip
+```
+
+All the decisions (colour resolution, option list, blank option, read and edit state, display text, re-syncing from the bound value, outputs) are pure functions in `RagChoice/logic.ts`, tested in `tests/logic.test.ts`. `index.ts` wires the PCF context to them and `RagChoiceView.tsx` renders the result.
+
+### Harness checks (brief §8.2)
+
+The harness (`pcf-start` 1.x) mocks every choice column as **Option A / B / C** (values 0, 1, 2) **with no colours**, not required, and it loads its own Fluent 9.4.0 build rather than the declared version. So:
+
+| Fixture case | How to check it in the harness | Expected |
+|---|---|---|
+| Null value | Start the harness. Clear the **value** input if it has one. | `--Select--`, no dot. The list shows the blank option first, then A, B, C. |
+| Options without a colour | Open the list. | Every option has no dot (the mock has no colours). |
+| Fallback colour | Set **fallbackColor** to `#107C10`. | Every option and the selected value show a green dot. |
+| Invalid fallback colour | Set **fallbackColor** to `red`. | No dots, and one `RagChoice: fallbackColor "red" isn't a hex colour` warning in the console. |
+| Selecting a value | Pick **Option B**. | The closed dropdown shows the dot (if a fallback is set) and "Option B". The **value** output in the harness panel shows `1`. |
+| Clearing | Pick the blank option. | `--Select--`, and the output is cleared. |
+| External change | Type `2` into the **value** input. | The dropdown shows "Option C" without the harness logging an output change. |
+| Left bar | Set **indicator** to `bar` with a fallback colour and a value. | A 4px bar on the dropdown's left edge, and no dot before the label. |
+| Disabled mode | The harness has no disabled toggle we could find. | Covered by Jest (`resolveFieldState`). Check it in dev with a business-rule lock or an inactive record. |
+| Three coloured options plus one without | Not possible with the harness mock. | Covered by the Jest fixture (`RAG_OPTIONS` in `tests/logic.test.ts`). Check it in dev on a real RAG column (brief §8.3). |
+
+Per-option colours, read-only mode, field security (`***`), dark mode and screen-reader naming can only be seen properly in the dev environment (brief §8.3).
+
+## Limitations
+
+- **Single-select choice only.** Multi-select choices, Yes/No and Status Reason aren't supported in v1 (brief §2).
+- **Hidden options (VERIFY, issue #7):** the control shows every option in `attributes.Options`. Whether the platform leaves out options marked **Hidden** isn't confirmed yet.
+- **Screen-reader naming (VERIFY, issue #7):** the dropdown gets the column's display name as `aria-label`. Whether the form label is also associated automatically, and what a screen reader announces, isn't confirmed yet.
+- A stored value that isn't in the option list shows as its number with no indicator.
+- Option colours don't adapt to dark mode. The dot's neutral border keeps pale colours visible on light backgrounds.
+
+## Changelog
+
+### 0.1.0 (unreleased)
+
+- First version: Fluent 9 dropdown with a colour dot or left bar per option, `--Select--` placeholder, blank option unless required, read-only and field-security states, fallback colour, and re-sync from the bound value.
