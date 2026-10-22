@@ -11,7 +11,7 @@ This README is the standard for building and shipping a WB control: conventions,
 | Control | Type | Solution | Logical name | Status | Docs |
 |---|---|---|---|---|---|
 | GridFormatter | Power Apps grid customizer (views and subgrids) | `WBGridFormatter` | `wb_WB.GridFormatter` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
-| RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_WB.RagChoice` | Planned | [brief](docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md) |
+| RagChoice | Field control (single-select choice) | `WBRagChoice` | `wb_WB.RagChoice` | In development | [README](controls/RagChoice/README.md) |
 
 Update this table when a control is added, released or retired.
 
