@@ -22,7 +22,7 @@ provenance:
   projects: [pcf-controls]
   date: 2026-10-22
   source: direct-experience
-  evidence: PR #31 (commit cce8edf, scripts/test-env/add-gridspike-subgrid.mjs), PR #32 (scripts/test-env/add-ragchoice-form.mjs)
+  evidence: "PR #31 (commit cce8edf, scripts/test-env/add-gridspike-subgrid.mjs), PR #32 (scripts/test-env/add-ragchoice-form.mjs)"
   author:
 related: []
 proposed_tags: []

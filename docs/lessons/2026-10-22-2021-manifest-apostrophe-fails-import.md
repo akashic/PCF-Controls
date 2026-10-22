@@ -21,7 +21,7 @@ provenance:
   projects: [pcf-controls]
   date: 2026-10-22
   source: direct-experience
-  evidence: PR #32 (commit 045dcff), controls/RagChoice/docs/decisions.md "Solution import", scripts/check-controls.mjs
+  evidence: "PR #32 (commit 045dcff), controls/RagChoice/docs/decisions.md \"Solution import\", scripts/check-controls.mjs; issue #7; docs/testing/gridformatter-test-environment.md §9"
   author:
 related: []
 proposed_tags: []

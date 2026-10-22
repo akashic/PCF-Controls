@@ -12,6 +12,7 @@ A form field control for a **single-select choice** column. It is a normal Fluen
 | Version | 0.1.2 |
 | Spec | [brief §6](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#6-control-b--ragchoice-form-field) |
 | Dev test results | [docs/decisions.md](docs/decisions.md) (issue #7) |
+| Architecture | [Diagram](docs/architecture.html) (open in a browser; source `docs/architecture.archify.json`) |
 
 ## What it does
 

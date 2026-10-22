@@ -22,7 +22,7 @@ provenance:
   projects: [pcf-controls]
   date: 2026-10-22
   source: direct-experience
-  evidence: PR #29 (commit 23d5cf5), docs/testing/gridformatter-test-environment.md §4.7
+  evidence: "PR #29 (commit 23d5cf5), docs/testing/gridformatter-test-environment.md §4.7"
   author:
 related: []
 proposed_tags: []

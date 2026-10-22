@@ -1,0 +1,310 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "RagChoice: a colour-coded choice field on a form",
+    "output": "controls/RagChoice/docs/architecture.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/akashic/PCF-Controls.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "d17310ce25e2cccaa7294aeb9598f893972ed914"
+    }
+  },
+  "components": [
+    {
+      "id": "maker",
+      "type": "external",
+      "label": "Maker",
+      "sublabel": "colours options, adds control",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/RagChoice/docs/configuration.md",
+          "line": 13,
+          "end_line": 39,
+          "label": "colour the options"
+        },
+        {
+          "path": "controls/RagChoice/docs/configuration.md",
+          "line": 41,
+          "end_line": 64,
+          "label": "add it to a form"
+        }
+      ]
+    },
+    {
+      "id": "choice",
+      "type": "database",
+      "label": "Choice column",
+      "sublabel": "options with Color, Hidden",
+      "pos": [
+        335,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/RagChoice/docs/decisions.md",
+          "line": 31,
+          "end_line": 40,
+          "label": "IsHidden on each option"
+        },
+        {
+          "path": "controls/RagChoice/RagChoice/ControlManifest.Input.xml",
+          "line": 9,
+          "end_line": 10,
+          "label": "bound OptionSet"
+        }
+      ]
+    },
+    {
+      "id": "form",
+      "type": "cloud",
+      "label": "Model-driven form",
+      "sublabel": "hosts the field",
+      "pos": [
+        630,
+        40
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/RagChoice/docs/configuration.md",
+          "line": 91,
+          "end_line": 100,
+          "label": "rules, scripts, security"
+        }
+      ]
+    },
+    {
+      "id": "user",
+      "type": "external",
+      "label": "User",
+      "sublabel": "on the record",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "view",
+      "type": "frontend",
+      "label": "RagChoiceView",
+      "sublabel": "Fluent Dropdown or read-only",
+      "pos": [
+        335,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/RagChoice/RagChoice/RagChoiceView.tsx",
+          "line": 117,
+          "end_line": 175
+        }
+      ]
+    },
+    {
+      "id": "control",
+      "type": "backend",
+      "label": "RagChoice",
+      "sublabel": "updateView, onChange",
+      "pos": [
+        630,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/RagChoice/RagChoice/index.ts",
+          "line": 38,
+          "end_line": 77,
+          "label": "updateView"
+        },
+        {
+          "path": "controls/RagChoice/RagChoice/index.ts",
+          "line": 79,
+          "end_line": 93,
+          "label": "getOutputs, onChange"
+        }
+      ]
+    },
+    {
+      "id": "logic",
+      "type": "backend",
+      "label": "logic.ts",
+      "sublabel": "items, state, label, sync",
+      "pos": [
+        925,
+        200
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "controls/RagChoice/RagChoice/logic.ts",
+          "line": 112,
+          "end_line": 141,
+          "label": "buildChoiceItems"
+        },
+        {
+          "path": "controls/RagChoice/RagChoice/logic.ts",
+          "line": 166,
+          "end_line": 183,
+          "label": "field state, aria-label"
+        },
+        {
+          "path": "controls/RagChoice/RagChoice/logic.ts",
+          "line": 200,
+          "end_line": 208,
+          "label": "sync and outputs"
+        }
+      ]
+    },
+    {
+      "id": "shared",
+      "type": "backend",
+      "label": "@wb-pcf/shared",
+      "sublabel": "normalizeHex",
+      "pos": [
+        925,
+        360
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "packages/shared/src/color.ts",
+          "line": 23,
+          "end_line": 35
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "configure",
+      "from": "maker",
+      "to": "choice",
+      "label": "colours, Hidden",
+      "variant": "dashed"
+    },
+    {
+      "id": "options",
+      "from": "choice",
+      "to": "form",
+      "label": "options, value"
+    },
+    {
+      "id": "save",
+      "from": "form",
+      "to": "choice",
+      "label": "saves the value"
+    },
+    {
+      "id": "update",
+      "from": "form",
+      "to": "control",
+      "label": "updateView(context)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "notify",
+      "from": "control",
+      "to": "form",
+      "label": "notifyOutputChanged"
+    },
+    {
+      "id": "decide",
+      "from": "control",
+      "to": "logic",
+      "label": "decide"
+    },
+    {
+      "id": "hex",
+      "from": "logic",
+      "to": "shared",
+      "label": "validate colour"
+    },
+    {
+      "id": "render",
+      "from": "control",
+      "to": "view",
+      "label": "render"
+    },
+    {
+      "id": "pick",
+      "from": "user",
+      "to": "view",
+      "label": "picks an option",
+      "variant": "emphasis"
+    },
+    {
+      "id": "onchange",
+      "from": "view",
+      "to": "control",
+      "label": "onChange(key)"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Colours",
+      "items": [
+        "Each option's Color from the choice",
+        "Else the Fallback colour property; else no indicator",
+        "Never guessed from the label",
+        "Dot or 4px left bar, hidden from screen readers"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Field states",
+      "items": [
+        "Editable: dropdown with a blank option unless required",
+        "Read-only: read-only box with the dot, --- when empty",
+        "No read access: ***",
+        "Hidden options left out unless one is the current value"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Sync with the form",
+      "items": [
+        "updateView re-reads the bound value every time",
+        "Only a user's selection calls notifyOutputChanged",
+        "Accessible name is the form label"
+      ]
+    }
+  ]
+}

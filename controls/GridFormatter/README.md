@@ -12,6 +12,7 @@ A **Power Apps grid customizer** that formats rows and cells of a table's views 
 | Configuration | One web resource per table: `wb_/GridFormatter/<table>.json` ([configuration guide](docs/configuration.md)) |
 | Version | 0.2.0 |
 | Decisions | [ADR-0004](../../docs/adr/0004-gridformatter-config-per-table-web-resource.md) (config per table), [spike results](docs/decisions.md) |
+| Architecture | [Diagram](docs/architecture.html) (open in a browser; source `docs/architecture.archify.json`) |
 | Spec | [brief §5](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#5-control-a--gridformatter-views-and-subgrids), superseded where ADR-0004 and the spike results differ |
 
 ## What it does

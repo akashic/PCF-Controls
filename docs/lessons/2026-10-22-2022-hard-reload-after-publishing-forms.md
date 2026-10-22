@@ -22,7 +22,7 @@ provenance:
   projects: [pcf-controls]
   date: 2026-10-22
   source: direct-experience
-  evidence: PR #29 (commit 23d5cf5), docs/testing/gridformatter-test-environment.md §4.7
+  evidence: "PR #29 (commit 23d5cf5), docs/testing/gridformatter-test-environment.md §4.7; PR #26 (rules cached per tab); docs/testing/gridformatter-test-environment.md §4.5, §4.6"
   author:
 related: [2026-10-22-2021-form-subgrid-needs-own-grid-control]
 proposed_tags: []

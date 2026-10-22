@@ -23,7 +23,7 @@ provenance:
   projects: [pcf-controls]
   date: 2026-10-22
   source: direct-experience
-  evidence: issue #7, PR #32 (commit 045dcff), controls/RagChoice/docs/decisions.md "Accessible name"
+  evidence: "issue #7, PR #32 (commit 045dcff), controls/RagChoice/docs/decisions.md \"Accessible name\"; controls/RagChoice/docs/decisions.md Accessible name"
   author:
 related: []
 proposed_tags: []

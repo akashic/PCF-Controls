@@ -23,7 +23,7 @@ provenance:
   projects: [pcf-controls]
   date: 2026-10-22
   source: direct-experience
-  evidence: issue #30, PR #31 (commit cce8edf), controls/GridFormatter/docs/decisions.md V9
+  evidence: "issue #30, PR #31 (commit cce8edf), controls/GridFormatter/docs/decisions.md V9; issue #30 (probe tint check)"
   author:
 related: [2026-10-22-2021-form-subgrid-needs-own-grid-control]
 proposed_tags: []
