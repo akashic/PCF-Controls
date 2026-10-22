@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Writes the Fluent 9 colour token allow-list into config/grid-format.schema.json
 // ($defs.fluentColorToken.enum). Run it after the declared Fluent version changes,
-// and commit the result.
+// and commit the result. Then run generate-token-fallbacks.mjs, which copies the
+// list (with light-theme fallbacks) into the control's runtime validator.
 //
 // Usage:
 //   node scripts/generate-token-list.mjs

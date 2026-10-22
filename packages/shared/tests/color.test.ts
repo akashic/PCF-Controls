@@ -2,6 +2,7 @@ import {
   BLACK,
   WHITE,
   bestTextColor,
+  blend,
   contrastRatio,
   normalizeHex,
   relativeLuminance,
@@ -126,5 +127,26 @@ describe("bestTextColor", () => {
     // #767676 has luminance 0.1812, the nearest 8-bit grey above the tie point.
     expect(bestTextColor(hex("#767676"))).toBe(BLACK);
     expect(bestTextColor(hex("#757575"))).toBe(WHITE);
+  });
+});
+
+describe("blend", () => {
+  it("returns the foreground at alpha 1 and the background at alpha 0", () => {
+    expect(blend(hex("#C50F1F"), 1, WHITE)).toBe("#C50F1F");
+    expect(blend(hex("#C50F1F"), 0, WHITE)).toBe("#FFFFFF");
+  });
+
+  it("composites each channel and rounds", () => {
+    // 0.18 * (197, 15, 31) + 0.82 * 255 = (244.56, 211.8, 214.68)
+    expect(blend(hex("#C50F1F"), 0.18, WHITE)).toBe("#F5D4D7");
+    expect(blend(WHITE, 0.5, BLACK)).toBe("#808080");
+  });
+
+  it.each([
+    [-1, "#000000"],
+    [2, "#FFFFFF"],
+    [Number.NaN, "#FFFFFF"],
+  ])("clamps alpha %p", (alpha, expected) => {
+    expect(blend(WHITE, alpha, BLACK)).toBe(expected);
   });
 });

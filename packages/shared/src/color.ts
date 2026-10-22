@@ -49,6 +49,20 @@ export function withAlpha(hex: HexColor, alpha: number): string {
 }
 
 /**
+ * The opaque colour seen when `foreground` at `alpha` is painted over
+ * `background` (simple sRGB "over" compositing, as browsers do). `alpha` is
+ * clamped like {@link withAlpha}. Use it to check the contrast of tinted
+ * backgrounds and translucent text.
+ */
+export function blend(foreground: HexColor, alpha: number, background: HexColor): HexColor {
+  const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1;
+  const [fr, fg, fb] = channels(foreground);
+  const [br, bg, bb] = channels(background);
+  const mix = (f: number, b: number) => Math.round(f * a + b * (1 - a)).toString(16).padStart(2, "0");
+  return `#${mix(fr, br)}${mix(fg, bg)}${mix(fb, bb)}`.toUpperCase() as HexColor;
+}
+
+/**
  * WCAG 2.x relative luminance, from 0 (black) to 1 (white). Uses the sRGB
  * linearisation threshold 0.04045; WCAG's older 0.03928 differs only for
  * channel values that can't occur in 8-bit colour.
