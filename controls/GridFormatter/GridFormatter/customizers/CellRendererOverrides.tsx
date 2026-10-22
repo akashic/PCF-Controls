@@ -13,6 +13,7 @@ const ALL_TYPES: ColumnDataType[] = [
 // Types technique 3 ("render") draws itself; everything else keeps the built-in renderer.
 const SIMPLE_TYPES = new Set<string>(["Text", "Integer", "Decimal", "FloatingPoint", "Currency", "DateOnly", "DateAndTime", "OptionSet", "TwoOptions"]);
 const MANAGED = ["backgroundColor", "color", "fontWeight", "fontStyle", "textDecoration"] as const;
+const TINT = "rgba(197, 15, 31, 0.15)";
 
 let onColumns: ((choiceColumns: string[]) => void) | null = null;
 /** Lets init() request option metadata once the visible columns are known. */
@@ -31,7 +32,7 @@ function isStyledRow(recId: string): boolean {
 
 function testStyle(): Record<(typeof MANAGED)[number], string> {
   return {
-    backgroundColor: setting("bg") === "token" ? "var(--colorNeutralBackground3, #F5F5F5)" : "rgba(197, 15, 31, 0.15)",
+    backgroundColor: setting("bg") === "token" ? "var(--colorNeutralBackground3, #F5F5F5)" : TINT,
     color: "#C50F1F",
     fontWeight: "700",
     fontStyle: "italic",
@@ -56,22 +57,29 @@ function observe(dataType: ColumnDataType, props: CellRendererProps, params: Get
     columnEditable: props.columnEditable,
     rowHeight: props.rowHeight,
   });
-  if (column) record(`V1 rowData value for ${dataType} column ${column.name}`, rowData?.[column.name]);
+  if (column) {
+    record(`V1 rowData value for ${dataType} column ${column.name}`, rowData?.[column.name]);
+    const value = rowData?.[column.name];
+    if (value !== null && value !== undefined && value !== "") record(`V1 non-empty rowData value for ${dataType} column ${column.name}`, value);
+  }
 
-  if (rowData && !rowsLogged.has(recId) && rowsLogged.size < 3) {
-    rowsLogged.add(recId);
+  // Sample rows once per view (column set), so switching views captures each layout.
+  const colNames = params.colDefs.map((c) => c.name);
+  const view = colNames.join(",");
+  const viewKey = `${view}|${recId}`;
+  if (rowData && !rowsLogged.has(viewKey) && [...rowsLogged].filter((k) => k.startsWith(`${view}|`)).length < 2) {
+    rowsLogged.add(viewKey);
     const rowKeys = Object.keys(rowData);
-    const colNames = params.colDefs.map((c) => c.name);
-    record(`V1 rowData sample ${rowsLogged.size}`, rowData);
-    record(`V2 rowData keys vs visible columns (row ${rowsLogged.size})`, {
+    record(`V1 rowData sample (${colNames.length} columns, ${recId})`, rowData);
+    record(`V2 rowData keys vs visible columns (${colNames.length} columns)`, {
       rowKeys,
       visibleColumns: colNames,
       inRowDataButNotVisible: rowKeys.filter((k) => !colNames.includes(k)),
       visibleButNotInRowData: colNames.filter((c) => !rowKeys.includes(c)),
     });
-    const choiceColumns = params.colDefs.filter((c) => c.dataType === "OptionSet" || c.dataType === "MultiSelectPicklist").map((c) => c.name);
-    onColumns?.(choiceColumns);
   }
+  const choiceColumns = params.colDefs.filter((c) => c.dataType === "OptionSet" || c.dataType === "MultiSelectPicklist").map((c) => c.name);
+  onColumns?.(choiceColumns);
 
   const container = props.cellContainerElement;
   if (container) {
@@ -85,15 +93,31 @@ function observe(dataType: ColumnDataType, props: CellRendererProps, params: Get
   }
 }
 
-/** Technique 1 (V6): style the cell container, return null so the built-in renderer draws the content. */
+/**
+ * Technique 1 (V6): style the cell container, return null so the built-in renderer draws the content.
+ * The grid theme sets .ag-cell background-color with !important, so a plain inline background loses.
+ * wb_spike_bgmode picks how to get past it:
+ *   "gradient" (default) paints the tint as a background-image layer, which the theme rules don't touch,
+ *              so hover/selection colours still show through a translucent tint;
+ *   "important" sets background-color inline with !important (beats the theme, but hides hover/selection);
+ *   "plain"     the original inline background-color (shown to lose).
+ */
 function styleContainer(props: CellRendererProps, styled: boolean): void {
   const container = props.cellContainerElement;
   if (!container) return;
   const style = testStyle();
+  const bgMode = setting("bgmode") ?? "gradient";
+  record("V6 background mode", bgMode);
+  // Always set or reset every managed property: the grid virtualises and reuses containers.
   for (const property of MANAGED) {
-    // Always set or reset: the grid virtualises and reuses containers.
-    container.style[property] = styled ? style[property] : "";
+    if (property !== "backgroundColor") container.style[property] = styled ? style[property] : "";
   }
+  container.style.removeProperty("background-color");
+  container.style.backgroundImage = "";
+  if (!styled) return;
+  if (bgMode === "gradient") container.style.backgroundImage = `linear-gradient(${style.backgroundColor}, ${style.backgroundColor})`;
+  else if (bgMode === "important") container.style.setProperty("background-color", style.backgroundColor, "important");
+  else container.style.backgroundColor = style.backgroundColor;
 }
 
 function render(dataType: ColumnDataType, props: CellRendererProps, params: GetRendererParams): React.ReactElement | null {

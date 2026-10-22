@@ -1,6 +1,6 @@
 {
   "name": "@wb-pcf/grid-formatter",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "WB GridFormatter: rule-driven conditional formatting for the Power Apps grid (customizer control)",
   "scripts": {
     "build": "pcf-scripts build",
