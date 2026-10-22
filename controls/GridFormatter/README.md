@@ -66,7 +66,7 @@ Pointing a grid at the control is a customisation of that **table**, so do it in
 
 The classic designer works too: open the form, select the subgrid, **Change Properties → Controls → Add Control… → Power Apps grid control**, and set the same properties.
 
-A subgrid uses the rules file of the table it **shows** (`wb_/GridFormatter/<that table>.json`). It needs no other files, but the [view rule](docs/configuration.md#the-view-rule) applies: a rule only formats the subgrid if the subgrid's view includes every column the rule reads. Hard-reload the form (Cmd+Shift+R or Ctrl+Shift+R) after publishing, because the app caches grid settings.
+A subgrid uses the rules file of the table it **shows** (`wb_/GridFormatter/<that table>.json`), even on another table's form (from 0.2.0). It needs no other files, but the [view rule](docs/configuration.md#the-view-rule) applies: a rule only formats the subgrid if the subgrid's view includes every column the rule reads. Hard-reload the form (Cmd+Shift+R or Ctrl+Shift+R) after publishing, because the app caches grid settings.
 
 Only one customizer can run on a grid, so a grid using GridFormatter can't use another customizer too.
 
@@ -118,13 +118,18 @@ The local test harness can't host a grid customizer, so check visual changes in 
 - **No per-view rules.** Rules apply to every grid of the table. A rule only applies on views that include every column it reads, which is how to opt views in or out.
 - **Text colour and bold** only show on plain value columns (text, numbers, currency, dates, choices, Yes/No), never on the primary name, lookups, Owner or multi-select. Owner ignores italic and underline too.
 - **Token backgrounds** use CSS `color-mix()`, which needs a current browser.
-- **Not yet verified** (issue #15): a subgrid showing a **different** table from its form's (the control may read the form's table name and load the wrong rules; a subgrid of the form's own table works), and mobile.
+- **Not yet verified** (issue #15): mobile.
+- **Subgrids rely on an undocumented grid property** for their table ([decisions.md V9](docs/decisions.md#v9-a-form-subgrids-table-30)). If a platform update removes it, a subgrid falls back to the form's table's rules, and the console warns `couldn't read this subgrid's table…`.
 - **Editable grids: after an inline edit, use Refresh to update row-wide formatting.** Editing a value a row-scope rule depends on (for example RAG from Unknown to Red) restyles the edited cell at once, but the rest of the row keeps its old styling until the grid is refreshed or the page reloaded. The grid only redraws the edited cell, and there's no supported way to repaint the row.
 - **Contrast** of text colours is checked in the light theme only, and only within one rule.
 - Rules are the same in every environment: they ship with the project solution. An environment that needs different rules needs its own copy of the web resource.
 - Rules are cached for the browser tab's lifetime. After publishing new rules, reload the page.
 
 ## Changelog
+
+### 0.2.0 (unreleased)
+
+- A subgrid showing a different table from its form's now uses its own table's rules, not the form's (#30; [decisions.md V9](docs/decisions.md#v9-a-form-subgrids-table-30)).
 
 ### 0.1.0 (unreleased)
 

@@ -2,6 +2,7 @@ import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { createCellRendererOverrides } from "./customizers/CellRendererOverrides";
 import { PAOneGridCustomizer } from "./types";
 import { createCellFormatter } from "./engine/cellFormatter";
+import { gridTableOf } from "./engine/gridTable";
 import { WARNING_PREFIX, createWarnOnce } from "./engine/warnings";
 import { createConfigStore } from "./stores/configStore";
 import { createMetadataStore, type FetchJson } from "./stores/metadataStore";
@@ -34,12 +35,6 @@ function readDebugFlag(): boolean {
 	}
 }
 
-/** The grid's table (spike V4): `context.page.entityTypeName`, which isn't in the typings. */
-function tableOf(context: ComponentFramework.Context<IInputs>): string | null {
-	const page = (context as unknown as { page?: { entityTypeName?: unknown } }).page;
-	return typeof page?.entityTypeName === "string" ? page.entityTypeName : null;
-}
-
 export class GridFormatter implements ComponentFramework.ReactControl<IInputs, IOutputs> {
 	/**
 	 * Loads the table's config and option colours, then hands the customizer to the
@@ -65,7 +60,7 @@ export class GridFormatter implements ComponentFramework.ReactControl<IInputs, I
 
 		let loading: Promise<Formatting>;
 		try {
-			loading = loadFormatting(tableOf(context), { configStore, metadataStore, webAPI: context.webAPI, utils: context.utils });
+			loading = loadFormatting(gridTableOf(context, warn), { configStore, metadataStore, webAPI: context.webAPI, utils: context.utils });
 		} catch (error) {
 			warn(`config couldn't be loaded (${String(error)}); the grid is shown without formatting.`);
 			loading = Promise.resolve({ config: null, optionColours: new Map() });
