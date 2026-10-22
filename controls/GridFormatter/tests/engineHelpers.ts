@@ -102,3 +102,31 @@ export const rowMatcher =
 	(getValue: ValueGetter): RuleMatcher =>
 	(rule: Rule) =>
 		evaluate(rule.when as Condition, getValue);
+
+/** `getEntityMetadata` as captured in the spike (V3): a collection with `get`, colours in attributeDescriptor. */
+export function spikeMetadata(columns: Record<string, unknown[]>): unknown {
+	const attributes = new Map(Object.entries(columns).map(([name, options]) => [name, { OptionSet: {}, attributeDescriptor: { OptionSet: options } }]));
+	return { Attributes: { get: (name: string) => attributes.get(name) } };
+}
+
+export const RAG_OPTIONS = [
+	{ Value: RED, Label: "Red", Color: "#D13438", IsHidden: false },
+	{ Value: AMBER, Label: "Amber", Color: "#FFB900", IsHidden: false },
+	{ Value: GREEN, Label: "Green", Color: "#107C10", IsHidden: false },
+	{ Value: UNKNOWN, Label: "Unknown", IsHidden: false },
+];
+
+/** `tests/fixtures/rowdata.wb_gridspike.json`: rowData and colDefs captured in the spike (V1). */
+export interface RowDataFixture {
+	readonly colDefs: { readonly name: string; readonly dataType: string; readonly isPrimary: boolean }[];
+	readonly rows: Record<string, unknown>[];
+	readonly formattedValues: Record<string, string>;
+	readonly user: { readonly timeZoneOffsetMinutes: number };
+}
+
+export const rowDataFixture = (): RowDataFixture =>
+	JSON.parse(readFileSync(join(controlDir, "tests", "fixtures", "rowdata.wb_gridspike.json"), "utf8")) as RowDataFixture;
+
+/** A config example's file bytes as Base64, as Dataverse returns them in `webresource.content`. */
+export const exampleBase64 = (name: string): string =>
+	readFileSync(join(controlDir, "config", "examples", `${name}.json`)).toString("base64");

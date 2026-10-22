@@ -1,77 +1,97 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import { cellRendererOverrides, onVisibleChoiceColumns } from "./customizers/CellRendererOverrides";
-import { cellEditorOverrides } from "./customizers/CellEditorOverrides";
+import { createCellRendererOverrides } from "./customizers/CellRendererOverrides";
 import { PAOneGridCustomizer } from "./types";
-import { elapsed, errorText, record, setting } from "./spike/probe";
-import { probeHost, probeOptionColours, probeServices } from "./spike/contextProbes";
-import { loadRagColours } from "./spike/ragDemo";
+import { createCellFormatter } from "./engine/cellFormatter";
+import { WARNING_PREFIX, createWarnOnce } from "./engine/warnings";
+import { createConfigStore } from "./stores/configStore";
+import { createMetadataStore, type FetchJson } from "./stores/metadataStore";
+import { loadFormatting, startWhenLoaded, type Formatting } from "./stores/startup";
 import * as React from "react";
+
+/** Set to "1" in sessionStorage to log which rules matched each row. */
+const DEBUG_KEY = "wb_GridFormatDebug";
+
+/** GETs the Web API metadata fallback (same origin, the user's session). */
+const fetchJson: FetchJson = async (url) => {
+	const response = await fetch(url, {
+		credentials: "same-origin",
+		headers: { Accept: "application/json", "OData-MaxVersion": "4.0", "OData-Version": "4.0" },
+	});
+	if (!response.ok) throw new Error(`HTTP ${response.status}`);
+	return (await response.json()) as unknown;
+};
+
+// Module scope: one per page, shared by every grid that uses this control.
+const warn = createWarnOnce();
+const configStore = createConfigStore({ warn });
+const metadataStore = createMetadataStore({ warn, fetchJson });
+
+function readDebugFlag(): boolean {
+	try {
+		return sessionStorage.getItem(DEBUG_KEY) === "1";
+	} catch {
+		return false;
+	}
+}
+
+/** The grid's table (spike V4): `context.page.entityTypeName`, which isn't in the typings. */
+function tableOf(context: ComponentFramework.Context<IInputs>): string | null {
+	const page = (context as unknown as { page?: { entityTypeName?: unknown } }).page;
+	return typeof page?.entityTypeName === "string" ? page.entityTypeName : null;
+}
 
 export class GridFormatter implements ComponentFramework.ReactControl<IInputs, IOutputs> {
 	/**
-	 * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
-	 * Data-set values are not initialized here, use updateView.
-	 * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to property names defined in the manifest, as well as utility functions.
+	 * Loads the table's config and option colours, then hands the customizer to the
+	 * grid with `fireEvent` (V5). The grid waits for it, up to the 3 s timeout.
 	 */
 	public init(context: ComponentFramework.Context<IInputs>): void {
-		const loose = context as unknown as ComponentFramework.Context<unknown>;
-		let table: string | null = null;
-		try {
-			record("V5 init", { atMs: elapsed() });
-			table = probeHost(loose);
-			probeServices(loose);
-			onVisibleChoiceColumns((choiceColumns) => probeOptionColours(loose, table, choiceColumns));
-		} catch (e) {
-			record("Spike probe error in init", errorText(e));
-		}
-
 		const eventName = context.parameters.EventName.raw;
 		if (!eventName) return;
-		const paOneGridCustomizer: PAOneGridCustomizer = { cellRendererOverrides, cellEditorOverrides };
-		const fire = () => {
-			record("V5 fireEvent", { atMs: elapsed() });
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-			(context as any).factory.fireEvent(eventName, paOneGridCustomizer);
+
+		const offset = (instant: Date): number => context.userSettings.getTimeZoneOffsetMinutes(instant);
+		const debug = readDebugFlag() ? (message: string) => console.info(`${WARNING_PREFIX} [debug] ${message}`) : undefined;
+		const fire = (formatting: Formatting | null): void => {
+			const formatter = createCellFormatter({
+				config: formatting?.config ?? null,
+				optionColours: formatting?.optionColours,
+				offset,
+				warn,
+				debug,
+			});
+			const customizer: PAOneGridCustomizer = { cellRendererOverrides: createCellRendererOverrides(formatter, warn) };
+			(context.factory as unknown as { fireEvent(name: string, payload: unknown): void }).fireEvent(eventName, customizer);
 		};
-		const delay = Number(setting("delayFire") ?? 0);
-		if (delay > 0) {
-			setTimeout(fire, delay);
-			return;
+
+		let loading: Promise<Formatting>;
+		try {
+			loading = loadFormatting(tableOf(context), { configStore, metadataStore, webAPI: context.webAPI, utils: context.utils });
+		} catch (error) {
+			warn(`config couldn't be loaded (${String(error)}); the grid is shown without formatting.`);
+			loading = Promise.resolve({ config: null, optionColours: new Map() });
 		}
-		// V5 pattern: load option colours first, then fire; give up waiting after 3 s.
-		let fired = false;
-		const fireOnce = () => {
-			if (fired) return;
-			fired = true;
-			fire();
-		};
-		const timeout = setTimeout(fireOnce, 3000);
-		void loadRagColours(loose, table).finally(() => {
-			clearTimeout(timeout);
-			fireOnce();
+		startWhenLoaded(loading, {
+			warn,
+			onReady: (formatting) => {
+				try {
+					fire(formatting);
+				} catch (error) {
+					warn(`the customizer couldn't start (${String(error)}).`);
+				}
+			},
 		});
 	}
 
-	/**
-	 * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
-	 * @returns ReactElement root react element for the control
-	 */
+	/** The customizer draws nothing of its own outside the grid's cells. */
 	public updateView(): React.ReactElement {
 		return React.createElement(React.Fragment);
 	}
 
-	/**
-	 * It is called by the framework prior to a control receiving new data.
-	 * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
-	 */
 	public getOutputs(): IOutputs {
 		return {};
 	}
 
-	/**
-	 * Called when the control is to be removed from the DOM tree. Controls should use this call for cleanup.
-	 */
 	public destroy(): void {
-		// Nothing to clean up yet.
+		// Nothing to clean up: caches are per page and shared with other grids.
 	}
 }

@@ -17,7 +17,7 @@ const withRule = (rule: unknown) => ({
 });
 
 describe("validateConfig: valid configs", () => {
-	it.each(["combined", "inactive-grey", "over-budget", "overdue-bold-red", "rag-cell", "rag-row"])("accepts examples/%s.json unchanged, with no warnings", (name) => {
+	it.each(["combined", "inactive-grey", "over-budget", "overdue-bold-red", "rag-cell", "rag-row", "wb_gridspike"])("accepts examples/%s.json unchanged, with no warnings", (name) => {
 		const input = example(name);
 		const { config, warnings } = validate(input);
 		expect(warnings).toEqual([]);

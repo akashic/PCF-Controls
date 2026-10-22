@@ -4,7 +4,7 @@ Results of the VERIFY spikes in the brief (`docs/briefs/2026-10-21-grid-formatti
 
 - **Environment:** `LowCode` (https://lowcode.crm.dynamics.com/), a personal test tenant, **not** the William Buck tenant.
 - **Test data:** table `wb_gridspike` (unmanaged solution `WBGridSpikeTest`; delete after testing) with every column type, a RAG choice coloured Red `#D13438`, Amber `#FFB900` and Green `#107C10`, an "Unknown" option with no colour, and 30 rows (6 inactive).
-- **Spike build:** `wb_WB.GridFormatter` 0.0.1–0.0.4, with instrumentation in `GridFormatter/spike/`, which #13 replaces.
+- **Spike build:** `wb_WB.GridFormatter` 0.0.1–0.0.5, with instrumentation in `GridFormatter/spike/`, which #13 replaced. From 0.1.0 the PCF namespace is `Controls`, so the control is `wb_Controls.GridFormatter`.
 - **Customizer setup:** the grid's `Customizer control` was set by writing `GridCustomizerControlFullName` into the table's `customcontroldefaultconfig`. That's the same change the classic Controls tab makes.
 - **Dates:** checked 22 Oct 2026, in light mode, desktop Chrome, locale en-AU (UTC+10).
 
