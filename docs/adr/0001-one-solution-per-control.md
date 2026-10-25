@@ -1,6 +1,6 @@
 # ADR-0001: One Dataverse solution per control
 
-- **Status:** Accepted
+- **Status:** Accepted, example amended by ADR-0004 (see below)
 - **Date:** 2026-10-22
 
 ## Context
@@ -17,3 +17,7 @@ Each control lives in `controls/<ControlName>/` and owns exactly one solution, `
 - More solutions to import. If a project needs several controls together, a Power Platform **package** or deployment pipeline can group them later without changing this repo's layout.
 - A control must not depend on components in another control's solution. Shared *code* goes in `packages/shared` and is bundled into each control (ADR-0002). Shared *Dataverse components* would need a new decision.
 - Table and form settings that *use* a control (for example, the grid's `Customizer control` property) belong to the project solution that owns that table, not to the control's solution.
+
+## Amendment (25 Oct 2026): `wb_GridFormatConfig` dropped
+
+[ADR-0004](0004-gridformatter-config-per-table-web-resource.md) dropped the `wb_GridFormatConfig` environment variable given as the example above: GridFormatter's rules live in a web resource per table in the project's solution. The decision itself stands.

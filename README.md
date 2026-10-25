@@ -92,8 +92,10 @@ On Windows, use the same `dotnet tool install` command (the global tools folder 
 
 ```sh
 npm ci                     # one install at the root covers every control and package
-pac auth create --name wb-dev --environment https://<dev-org>.crm6.dynamics.com
+pac auth create --name wb-dev --environment https://<dev-org>.crm<N>.dynamics.com
 ```
+
+The `crm<N>` region number depends on where the environment lives (for example, `crm6` is Australia). Copy the URL from the Power Platform admin center.
 
 ## Development
 
@@ -161,7 +163,7 @@ All commands below run from the repo root unless noted.
 - **Field controls:** sync from `context.parameters.<prop>.raw` in every `updateView` (values change through business rules, JavaScript and refreshes). Call `notifyOutputChanged()` only for user-driven changes.
 - **Grid customizers:** there's one customizer per grid, so one control has to cover every formatting need through configuration. Renderers must be pure, lightweight and idempotent, and must never mutate grid data or metadata. Don't override cell editors unless that's the point of the control.
 - **Mobile:** desktop is the main target, but the mobile app must never crash. Degrading to no customisation is acceptable.
-- **Configuration** that varies per environment goes in a Dataverse environment variable in the control's solution, with a safe default value. Validate it with a JSON Schema in the repo (CI checks the example and per-environment files) and re-validate at runtime. Skip invalid parts with a warning rather than failing the whole control.
+- **Configuration** that varies per environment goes in a Dataverse environment variable in the control's solution, with a safe default value. Validate it with a JSON Schema in the repo (CI checks the examples) and re-validate at runtime. The per-environment values belong to the deploying project, not this repo (see [Deployment](#deployment)). Skip invalid parts with a warning rather than failing the whole control.
 
 ### Theming and accessibility
 
@@ -197,9 +199,9 @@ To release:
 | Environment | What gets imported | How |
 |---|---|---|
 | Dev | Unmanaged solution (or `pac pcf push` while iterating) | `pac solution import --path WB<Name>.zip` |
-| UAT, prod | **Managed** solution from a GitHub Release, never an unmanaged one | `pac solution import --path WB<Name>_managed.zip --settings-file <env>.json` |
+| UAT, prod | **Managed** solution from a GitHub Release, never an unmanaged one | `pac solution import --path WB<Name>_managed.zip` |
 
-- **Environment variables:** generate a deployment settings template once with `pac solution create-settings --solution-zip WB<Name>_managed.zip --settings-file settings.json`, then keep one settings file per environment (for example `controls/<Name>/config/environments/uat.json`). Never edit configuration directly in UAT or prod.
+- **Environment variables:** `WBGridFormatter` and `WBRagChoice` have none, so their imports need no settings file. If a control adds one, its values differ per client and environment, so they belong in the deploying project's pipeline or repo, not here ([ADR-0005](docs/adr/0005-prefix-agnostic-controls.md)). That project generates a settings file with `pac solution create-settings` and passes it to `pac solution import --settings-file`. Never edit configuration directly in UAT or prod.
 - **Using a control:** adding a control to a form field, view or subgrid is a customisation of that *table*, so it belongs to the project solution that owns the table, not to the control's solution. Document the exact steps in the control's README.
 - **Order:** import the control's solution before any project solution that references it.
 - **Deployment is manual for now.** CI builds and tests; it doesn't deploy. Pipeline automation can be added later (see [CI](#ci)).
