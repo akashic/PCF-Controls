@@ -40,10 +40,12 @@ export function isConfigName(name: unknown, table: string): name is string {
  * The `retrieveMultipleRecords("webresource", …)` options that find a table's
  * config files under any prefix. `endswith` treats `_` as a one-character
  * wildcard, so each `_` is written as `[_]`, which matches only `_` (ADR-0005).
+ * `$top=50` leaves room for names the query finds but {@link isConfigName}
+ * rejects (such as `abc_old_GridFormatter.t.json`), so they can't crowd out a real file.
  */
 export function configQuery(table: string): string {
 	const suffix = `${CONFIG_NAME_MARKER}${table}.json`.replace(/_/g, "[_]");
-	return `?$select=name,content&$filter=endswith(name,'${suffix}')&$orderby=name&$top=10`;
+	return `?$select=name,content&$filter=endswith(name,'${suffix}')&$orderby=name&$top=50`;
 }
 
 /** What the `webresource` query found. `others` are further matching files, which aren't used. */

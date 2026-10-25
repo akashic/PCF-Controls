@@ -73,6 +73,30 @@ describe("startWhenLoaded (V5)", () => {
 		expect(ready).toHaveBeenCalledWith(null);
 	});
 
+	it("can be cancelled (destroy): no late onReady, no warning, and the timer is cleared", async () => {
+		const ready = jest.fn();
+		const warn = jest.fn();
+		let resolve: (value: string) => void = () => undefined;
+		const cancel = startWhenLoaded(new Promise<string>((r) => (resolve = r)), { onReady: ready, warn });
+		cancel();
+		expect(jest.getTimerCount()).toBe(0);
+		resolve("late");
+		await jest.advanceTimersByTimeAsync(LOAD_TIMEOUT_MS * 2);
+		expect(ready).not.toHaveBeenCalled();
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	it("does nothing when cancelled after it has started", async () => {
+		const ready = jest.fn();
+		const clearTimer = jest.fn();
+		const cancel = startWhenLoaded(Promise.resolve(1), { onReady: ready, warn: jest.fn(), clearTimer });
+		await jest.advanceTimersByTimeAsync(0);
+		expect(clearTimer).toHaveBeenCalledTimes(1);
+		cancel();
+		expect(clearTimer).toHaveBeenCalledTimes(1);
+		expect(ready).toHaveBeenCalledTimes(1);
+	});
+
 	it("doesn't warn if the timer still fires after loading finished", async () => {
 		let timerCallback: () => void = () => undefined;
 		const ready = jest.fn();

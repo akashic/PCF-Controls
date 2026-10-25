@@ -59,7 +59,7 @@ describe("isConfigName", () => {
 describe("configQuery", () => {
 	it("finds the table's files under any prefix, with each _ escaped as [_]", () => {
 		expect(configQuery("wb_gridspike")).toBe(
-			"?$select=name,content&$filter=endswith(name,'[_]GridFormatter.wb[_]gridspike.json')&$orderby=name&$top=10",
+			"?$select=name,content&$filter=endswith(name,'[_]GridFormatter.wb[_]gridspike.json')&$orderby=name&$top=50",
 		);
 	});
 });

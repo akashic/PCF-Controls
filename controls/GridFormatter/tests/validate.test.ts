@@ -34,6 +34,9 @@ describe("validateConfig: valid configs", () => {
 			{ column: "a", op: "gt", value: 5 },
 			{ column: "a", op: "gte", value: "2026-12-31" },
 			{ column: "a", op: "lt", value: "2026-12-31T17:00:00Z" },
+			{ column: "a", op: "lt", value: "2024-02-29T23:59:59.999+14:00" },
+			{ column: "a", op: "eq", value: "2026-02-28" },
+			{ column: "a", op: "in", value: ["2026-12-31T23:59", "not a date"] },
 			{ column: "a", op: "lte", value: { column: "rel.b" } },
 			{ column: "a", op: "between", value: [1, 10] },
 			{ column: "a", op: "between", value: ["2026-01-01", "2026-12-31"] },
@@ -81,11 +84,12 @@ describe("validateConfig: valid configs", () => {
 				rule,
 				{ id: "tint", scope: "row", style: { backgroundColor: { fromOption: "a", alpha: "tint" }, color: { token: "colorNeutralForeground1" } } },
 				{ id: "pill", when: { column: "a", op: "isNotNull" }, display: "pill", style: { backgroundColor: { fromOption: "a" } } },
+				{ id: "hex-pill", when: { column: "a", op: "isNotNull" }, display: "pill", style: { backgroundColor: { hex: "#107C10", alpha: 0.5 } } },
 				{ id: "stop-only", when: { column: "a", op: "isNull" }, stop: true },
 			],
 		});
 		expect(warnings).toEqual([]);
-		expect(config?.rules.map((r) => r.id)).toEqual(["Everything_1.a-b", "tint", "pill", "stop-only"]);
+		expect(config?.rules.map((r) => r.id)).toEqual(["Everything_1.a-b", "tint", "pill", "hex-pill", "stop-only"]);
 	});
 });
 
@@ -200,6 +204,11 @@ describe("validateConfig: invalid rules are skipped one at a time", () => {
 			'rule "condition-too-deep" skipped: /rules/0/when/all/0/all/0/all/0/all/0: conditions nest at most 5 levels deep.',
 		],
 		["pill-with-row-scope", 'rule "pill-with-row-scope" skipped: /rules/0/scope: a pill needs cell scope, not "row".'],
+		[
+			"pill-with-token-fill",
+			"rule \"pill-with-token-fill\" skipped: /rules/0/style/backgroundColor: a pill's fill can't be a theme token, because its text colour can't follow dark mode; use a hex colour or fromOption.",
+		],
+		["impossible-date", 'rule "impossible-date" skipped: /rules/0/when/value "2026-02-30" isn\'t a real date or time.'],
 	])("tests/fixtures/invalid-config/%s.json", (name, warning) => {
 		const { config, warnings } = validate(invalidFixture(name));
 		expect(warnings).toEqual([warning]);
@@ -229,6 +238,11 @@ describe("validateConfig: invalid rules are skipped one at a time", () => {
 		["no scope without a leaf when", { id: "r", when: { not: leaf }, style: { fontStyle: "italic" } }, "/rules/0: scope is required unless when is a single leaf condition."],
 		["no scope and no when", { id: "r", style: { fontStyle: "italic" } }, "/rules/0: scope is required unless when is a single leaf condition."],
 		["a pill without a backgroundColor", { id: "r", when: leaf, display: "pill", style: { fontWeight: "bold" } }, "/rules/0/style: a pill needs a backgroundColor."],
+		[
+			"a pill with a token fill",
+			{ id: "r", when: leaf, display: "pill", style: { backgroundColor: { token: "colorNeutralForeground3" } } },
+			"/rules/0/style/backgroundColor: a pill's fill can't be a theme token",
+		],
 		["a stop-only pill", { id: "r", when: leaf, display: "pill", stop: true }, "/rules/0/style: a pill needs a backgroundColor."],
 		// Scope
 		["a scope string other than row", { id: "r", scope: "cell", style: { fontStyle: "italic" } }, '/rules/0/scope must be "row" or { "columns": [...] }.'],
@@ -279,6 +293,21 @@ describe("validateConfig: invalid rules are skipped one at a time", () => {
 			`${op} with ${JSON.stringify(value)}`,
 			{ id: "r", when: { column: "a", op, value }, style: { fontStyle: "italic" } },
 			`isn't a valid operand for "${op}".`,
+		]),
+		// Dates that don't exist
+		...(
+			[
+				["gt", "2026-02-30", "2026-02-30"],
+				["gte", "2026-10-22T25:00", "2026-10-22T25:00"],
+				["lt", "2026-10-22T17:00+24:00", "2026-10-22T17:00+24:00"],
+				["eq", "2026-13-01", "2026-13-01"],
+				["in", ["on hold", "2026-04-31"], "2026-04-31"],
+				["between", ["2026-02-01", "2026-02-29"], "2026-02-29"],
+			] as [string, unknown, string][]
+		).map(([op, value, bad]): [string, unknown, string] => [
+			`${op} with the impossible date ${JSON.stringify(value)}`,
+			{ id: "r", when: { column: "a", op, value }, style: { fontStyle: "italic" } },
+			`/rules/0/when/value "${bad}" isn't a real date or time.`,
 		]),
 		// Styles and colours
 		["a non-object style", { id: "r", when: leaf, style: "bold" }, "/rules/0/style must be an object with at least one property."],

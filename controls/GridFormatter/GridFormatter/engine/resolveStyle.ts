@@ -80,7 +80,7 @@ export interface PrepareOptions {
 	readonly columns: readonly GridColumn[];
 	/** Option colours for `fromOption`. Missing columns resolve to `defaults.fallbackColor`. */
 	readonly optionColours?: OptionColours;
-	/** Where V7 warnings go. Pass a `createWarnOnce()` sink so they're logged once per page. */
+	/** Where V7 warnings go. Pass a `createWarnOnce()` sink so they're logged once until the browser tab reloads. */
 	readonly warn?: Warn;
 }
 
@@ -302,7 +302,12 @@ export function resolveStyles(prepared: PreparedRules, getValue: ValueGetter, ma
  * rules, as long as "today" hasn't changed (date operators).
  */
 export function rowStyleKey(prepared: PreparedRules, recordId: string, getValue: ValueGetter): string {
-	return `${recordId}\u0000${JSON.stringify(prepared.referencedColumns.map((column) => getValue(column) ?? null))}`;
+	return `${recordId}\u0000${JSON.stringify(prepared.referencedColumns.map((column) => keyValue(getValue(column))))}`;
+}
+
+/** A value for the memo key. JSON would write a symbol (an unreadable cell) as `null`, the same as an empty one. */
+function keyValue(value: unknown): unknown {
+	return typeof value === "symbol" ? { symbol: value.description } : (value ?? null);
 }
 
 export interface RowStyleCache {

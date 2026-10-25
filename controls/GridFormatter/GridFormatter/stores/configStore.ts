@@ -1,16 +1,17 @@
 /**
  * Loads each table's config web resource, `<prefix>_GridFormatter.<table>.json`
- * under any publisher prefix (ADR-0004, ADR-0005), once per page.
+ * under any publisher prefix (ADR-0004, ADR-0005), once until the browser tab
+ * reloads. Moving between views, records and app pages doesn't reload it.
  *
  * - The cache is per store; `index.ts` keeps one store at module scope, so every
- *   grid of the same table on the page shares one request (even while it's in flight).
+ *   grid of the same table shares one request (even while it's in flight).
  * - No such web resource: the plain grid, with one console info line.
  * - More than one (different prefixes): one warning, and the first name in
  *   alphabetical order is used.
  * - Not Base64/UTF-8, not JSON, not an object or the wrong version: one warning,
  *   the plain grid. Invalid rules are skipped one by one (`validate.ts`).
- * - A failed request: one warning, the plain grid, and the table isn't cached,
- *   so the next grid tries again.
+ * - A failed request, or one that takes longer than 3 s (`timeout.ts`): one
+ *   warning, the plain grid, and the table isn't cached, so the next grid tries again.
  *
  * Not cached in `sessionStorage`: rules would then outlive a page reload, so a
  * newly deployed config wouldn't show until the browser tab was closed.
@@ -19,6 +20,7 @@ import type { TableConfig } from "../engine/configSchema";
 import { parseConfig } from "../engine/validate";
 import { configNamePattern, configQuery, configTable, decodeBase64Utf8, readConfigRecord } from "../engine/webResource";
 import { WARNING_PREFIX, type Warn } from "../engine/warnings";
+import { withTimeout } from "./timeout";
 
 /** The part of `context.webAPI` the store uses. */
 export interface WebApiLike {
@@ -51,7 +53,7 @@ export function createConfigStore({ warn, info = consoleInfo }: StoreLog): Confi
 	async function fetchConfig(table: string, webAPI: WebApiLike): Promise<TableConfig | null> {
 		let response: unknown;
 		try {
-			response = await webAPI.retrieveMultipleRecords("webresource", configQuery(table));
+			response = await withTimeout(webAPI.retrieveMultipleRecords("webresource", configQuery(table)));
 		} catch (error) {
 			warn(`config ${configNamePattern(table)} couldn't be loaded (${errorText(error)}); the grid is shown without formatting.`);
 			throw new RequestFailed();

@@ -52,9 +52,21 @@ describe("cell renderers", () => {
 		expect(onCellClicked).toHaveBeenCalled();
 	});
 
-	it("never throw: a failure returns null with a warning", () => {
-		const { element, warnings } = render(new Error("boom"));
+	it("never throw: a failure returns null with a warning, and clears the reused container", () => {
+		const { element, warnings, container } = render(new Error("boom"));
 		expect(element).toBeNull();
 		expect(warnings).toEqual(["a cell renderer failed, so the cell is drawn as normal (Error: boom)."]);
+		expect(container.style).toEqual({ backgroundImage: "", fontStyle: "", textDecoration: "" });
+	});
+
+	it("still returns null when the container can't be cleared either", () => {
+		const style = {
+			set backgroundImage(_value: string) {
+				throw new Error("read-only");
+			},
+		};
+		const { element, warnings } = render(new Error("boom"), { cellContainerElement: { style } as unknown as HTMLElement });
+		expect(element).toBeNull();
+		expect(warnings).toHaveLength(1);
 	});
 });

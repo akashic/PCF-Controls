@@ -21,8 +21,8 @@
     },
     {
       "id": "eq-lookup",
-      "description": "Lookups and Owner compare by GUID",
-      "when": { "column": "ownerid", "op": "eq", "value": "64a20861-7fdd-f011-8406-7ced8d70a9f0" },
+      "description": "Lookups and Owner compare by GUID. This one is a placeholder: use a real record's id (the id= in its URL)",
+      "when": { "column": "ownerid", "op": "eq", "value": "00000000-0000-0000-0000-000000000001" },
       "scope": { "columns": ["wb_name"] },
       "style": { "fontStyle": "italic" }
     },

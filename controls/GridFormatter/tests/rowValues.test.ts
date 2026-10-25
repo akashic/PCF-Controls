@@ -2,7 +2,9 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
 	NOT_VISIBLE,
+	UNREADABLE,
 	columnReader,
+	columnTypes,
 	getValue,
 	isInView,
 	normalizeGuid,
@@ -57,7 +59,7 @@ describe("getValue against the captured rowData (V1)", () => {
 
 	it("reads Owner (dataType Persona) as its lower-case GUID", () => {
 		expect(typeOf("ownerid")).toBe("Persona");
-		expect(read(row1, "ownerid")).toBe("64a20861-7fdd-f011-8406-7ced8d70a9f0");
+		expect(read(row1, "ownerid")).toBe("00000000-0000-0000-0000-000000000001");
 	});
 
 	it("reads a Lookup as its GUID, and an empty one as null", () => {
@@ -96,9 +98,18 @@ describe("getValue: text types", () => {
 		},
 	);
 
-	it.each([[""], [null], [42], [true], [{}], [["a"]]])("Text %p → null", (raw) => {
-		expect(getValue({ c: raw }, "c", "Text")).toBeNull();
+	it.each([[42], [true], [{}], [["a"]]])("Text %p → UNREADABLE", (raw) => {
+		expect(getValue({ c: raw }, "c", "Text")).toBe(UNREADABLE);
 	});
+});
+
+describe("getValue: empty cells", () => {
+	it.each(["Text", "OptionSet", "MultiSelectPicklist", "TwoOptions", "Integer", "Lookup", "DateOnly", "DateAndTime", "Image", "File", "Unknown"])(
+		"%s: null, undefined, \"\" and [] are empty (null), never UNREADABLE",
+		(dataType) => {
+			for (const raw of [null, undefined, "", []]) expect(getValue({ c: raw }, "c", dataType)).toBeNull();
+		},
+	);
 });
 
 describe("getValue: numbers", () => {
@@ -121,8 +132,8 @@ describe("getValue: numbers", () => {
 		expect(getValue({ c: raw }, "c", "Decimal")).toBe(expected);
 	});
 
-	it.each([[null], [NaN], [Infinity], [""], ["12abc"], ["$1,000"], [true], [[1]], [{}]])("%p → null", (raw) => {
-		expect(getValue({ c: raw }, "c", "Currency")).toBeNull();
+	it.each([[NaN], [Infinity], ["12abc"], ["$1,000"], [true], [[1]], [{}]])("%p → UNREADABLE", (raw) => {
+		expect(getValue({ c: raw }, "c", "Currency")).toBe(UNREADABLE);
 	});
 });
 
@@ -136,8 +147,8 @@ describe("getValue: choices (OptionSet)", () => {
 		expect(getValue({ c: raw }, "c", "OptionSet")).toBe(expected);
 	});
 
-	it.each([[null], [""], ["Red"], ["1.5"], [1.5], [NaN], [true], [[1]]])("%p → null", (raw) => {
-		expect(getValue({ c: raw }, "c", "OptionSet")).toBeNull();
+	it.each([["Red"], ["1.5"], [1.5], [NaN], [true], [[1]]])("%p → UNREADABLE", (raw) => {
+		expect(getValue({ c: raw }, "c", "OptionSet")).toBe(UNREADABLE);
 	});
 });
 
@@ -146,8 +157,8 @@ describe("getValue: multi-select", () => {
 		expect(getValue({ c: [1, "2"] }, "c", "MultiSelectPicklist")).toEqual([1, 2]);
 	});
 
-	it.each([[null], [[]], [[1, "x"]], [[1.5]], ["1,2"], [1]])("%p → null", (raw) => {
-		expect(getValue({ c: raw }, "c", "MultiSelectPicklist")).toBeNull();
+	it.each([[[1, "x"]], [[1.5]], ["1,2"], [1]])("%p → UNREADABLE", (raw) => {
+		expect(getValue({ c: raw }, "c", "MultiSelectPicklist")).toBe(UNREADABLE);
 	});
 });
 
@@ -165,8 +176,8 @@ describe("getValue: Yes/No (TwoOptions)", () => {
 		expect(getValue({ c: raw }, "c", "TwoOptions")).toBe(expected);
 	});
 
-	it.each([[null], [""], ["yes"], [2], [{}]])("%p → null", (raw) => {
-		expect(getValue({ c: raw }, "c", "TwoOptions")).toBeNull();
+	it.each([["yes"], [2], [{}]])("%p → UNREADABLE", (raw) => {
+		expect(getValue({ c: raw }, "c", "TwoOptions")).toBe(UNREADABLE);
 	});
 });
 
@@ -190,10 +201,10 @@ describe("getValue: lookups", () => {
 		expect(getValue({ c: ` ${guid} ` }, "c", "UniqueIdentifier")).toBe(lower);
 	});
 
-	it.each([[null], [{}], [{ id: null }], [{ id: { guid: "nope" } }], [{ id: { guid: 7 } }], ["Giles Gregg"], [[guid]]])(
-		"%p → null",
+	it.each([[{}], [{ id: null }], [{ id: { guid: "nope" } }], [{ id: { guid: 7 } }], ["Test User"], [[guid]]])(
+		"%p → UNREADABLE",
 		(raw) => {
-			expect(getValue({ c: raw }, "c", "Lookup")).toBeNull();
+			expect(getValue({ c: raw }, "c", "Lookup")).toBe(UNREADABLE);
 		},
 	);
 });
@@ -211,10 +222,10 @@ describe("getValue: dates", () => {
 		expect(getValue({ c: new Date("2026-10-18T00:00:00Z") }, "c", "DateOnly")).toBe("2026-10-18");
 	});
 
-	it.each([[null], [""], ["18/10/2026"], ["2026-02-30T00:00:00Z"], [new Date(NaN)], [20261018]])(
-		"DateOnly %p → null",
+	it.each([["18/10/2026"], ["2026-02-30T00:00:00Z"], [new Date(NaN)], [20261018]])(
+		"DateOnly %p → UNREADABLE",
 		(raw) => {
-			expect(getValue({ c: raw }, "c", "DateOnly")).toBeNull();
+			expect(getValue({ c: raw }, "c", "DateOnly")).toBe(UNREADABLE);
 		},
 	);
 
@@ -234,17 +245,17 @@ describe("getValue: dates", () => {
 		expect(value).not.toBe(original);
 	});
 
-	it.each([[null], [""], ["2026-10-21"], ["yesterday"], ["2026-13-01T00:00:00Z"], [new Date(NaN)], [0]])(
-		"DateAndTime %p → null",
+	it.each([["2026-10-21"], ["yesterday"], ["2026-13-01T00:00:00Z"], [new Date(NaN)], [0]])(
+		"DateAndTime %p → UNREADABLE",
 		(raw) => {
-			expect(getValue({ c: raw }, "c", "DateAndTime")).toBeNull();
+			expect(getValue({ c: raw }, "c", "DateAndTime")).toBe(UNREADABLE);
 		},
 	);
 });
 
 describe("getValue: unsupported input", () => {
-	it.each(["Image", "File", "Unknown", "", "toString", "__proto__"])("data type %p → null", (dataType) => {
-		expect(getValue({ c: "x" }, "c", dataType)).toBeNull();
+	it.each(["Image", "File", "Unknown", "", "toString", "__proto__"])("a value of data type %p → UNREADABLE", (dataType) => {
+		expect(getValue({ c: "x" }, "c", dataType)).toBe(UNREADABLE);
 	});
 
 	it.each([[null], [undefined], ["row"], [[]], [42]])("rowData %p → null", (rowData) => {
@@ -306,17 +317,37 @@ describe("columnReader", () => {
 		expect(columnReader(row1, colDefs as unknown as ColumnTypeInfo[])("wb_count")).toBe(10);
 		expect(columnReader(row1, null as unknown as ColumnTypeInfo[])("wb_count")).toBe(NOT_VISIBLE);
 	});
+
+	it("reads a value it can't normalise as UNREADABLE, not empty", () => {
+		const get = columnReader({ wb_count: "lots", wb_photo: "base64…", wb_blank: null }, [
+			{ name: "wb_count", dataType: "Integer" },
+			{ name: "wb_photo", dataType: "Image" },
+			{ name: "wb_blank", dataType: "Image" },
+		]);
+		expect(get("wb_count")).toBe(UNREADABLE);
+		expect(get("wb_photo")).toBe(UNREADABLE);
+		expect(get("wb_blank")).toBeNull();
+	});
+});
+
+describe("columnTypes", () => {
+	it("gives each colDefs column's dataType, and undefined for any other column", () => {
+		const typeOf = columnTypes(fixture.colDefs);
+		expect(typeOf("wb_duedate")).toBe("DateOnly");
+		expect(typeOf("ownerid")).toBe("Persona");
+		expect(typeOf("wb_missing")).toBeUndefined();
+	});
 });
 
 describe("normalizeGuid", () => {
 	it.each([
-		["64A20861-7FDD-F011-8406-7CED8D70A9F0", "64a20861-7fdd-f011-8406-7ced8d70a9f0"],
-		["{64a20861-7fdd-f011-8406-7ced8d70a9f0}", "64a20861-7fdd-f011-8406-7ced8d70a9f0"],
+		["ABCDEF01-2345-6789-ABCD-EF0123456789", "abcdef01-2345-6789-abcd-ef0123456789"],
+		["{abcdef01-2345-6789-abcd-ef0123456789}", "abcdef01-2345-6789-abcd-ef0123456789"],
 	])("%p → %p", (raw, expected) => {
 		expect(normalizeGuid(raw)).toBe(expected);
 	});
 
-	it.each([["64a20861"], ["64a20861-7fdd-f011-8406-7ced8d70a9fg"], [null], [1]])("%p → null", (raw) => {
+	it.each([["abcdef01"], ["abcdef01-2345-6789-abcd-ef012345678g"], [null], [1]])("%p → null", (raw) => {
 		expect(normalizeGuid(raw)).toBeNull();
 	});
 });

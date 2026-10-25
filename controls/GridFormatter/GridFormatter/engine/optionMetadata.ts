@@ -8,13 +8,16 @@
  * step is checked, so a change of shape gives "missing", never an exception.
  *
  * Fallback for columns that aren't found that way: the documented Web API
- * metadata endpoint, one request per choice attribute type.
+ * metadata endpoint, one request per choice attribute type. It's best-effort:
+ * it uses `fetch` against the org's own `/api/data`, so it only works in the
+ * web client of Dataverse online, not in the mobile apps or offline.
  *
  * Colours are kept as written. `colours.ts` validates them when it uses them.
  */
 import type { ColumnName, TableConfig } from "./configSchema";
 import { isFromOptionColor } from "./configSchema";
 import type { OptionColours } from "./colours";
+import { isRecord } from "./guards";
 
 type MutableOptionColours = Map<ColumnName, Map<number, string>>;
 
@@ -25,8 +28,6 @@ export interface OptionColourRead {
 	/** Requested columns that source didn't describe. */
 	readonly missing: readonly ColumnName[];
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 /**
  * The choice columns whose option colours the config needs: every

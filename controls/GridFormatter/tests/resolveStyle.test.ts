@@ -13,6 +13,7 @@ import {
 	type PrepareOptions,
 	type RowStyles,
 } from "../GridFormatter/engine/resolveStyle";
+import { UNREADABLE } from "../GridFormatter/engine/rowValues";
 import { AMBER, GREEN, RED, UNKNOWN, column, columns, example, getter, matchIds, ragColours, rowMatcher } from "./engineHelpers";
 
 const config = (rules: Rule[], defaults?: TableConfig["defaults"]): TableConfig => ({ version: 1, defaults, rules });
@@ -490,6 +491,12 @@ describe("row memoisation (§5.9)", () => {
 		const row = { statecode: 0, wb_ragstatus: RED, wb_duedate: "2026-01-01", wb_notes: "ignored" };
 		expect(rowStyleKey(prepared, "rec-1", getter(row))).toBe('rec-1\u0000[0,948790000,"2026-01-01"]');
 		expect(rowStyleKey(prepared, "rec-1", getter({}))).toBe("rec-1\u0000[null,null,null]");
+	});
+
+	it("keys a value that can't be read apart from an empty one", () => {
+		const unreadable = rowStyleKey(prepared, "rec-1", getter({ statecode: UNREADABLE }));
+		expect(unreadable).toBe('rec-1\u0000[{"symbol":"GridFormatter.unreadable"},null,null]');
+		expect(unreadable).not.toBe(rowStyleKey(prepared, "rec-1", getter({ statecode: null })));
 	});
 
 	it("resolves a row once while its referenced values are unchanged", () => {

@@ -140,7 +140,7 @@ Groups nest up to **5 levels**: `when` is level 1, and each group adds a level, 
 
 ### Operators
 
-Every example below is a rule in [`config/examples/operators.json`](../config/examples/operators.json). "Dates" means both date-only and date-and-time columns.
+Every example below is a rule in [`config/examples/operators.json`](../config/examples/operators.json). "Dates" means both date-only and date-and-time columns, and only those: a text column holding `2026-10-18` isn't a date column (see [Dates and "today"](#dates-and-today)).
 
 | Operator | Column types | Value | Example |
 |---|---|---|---|
@@ -165,7 +165,7 @@ Every example below is a rule in [`config/examples/operators.json`](../config/ex
 | `containsAny` | Choices (multi-select) | A list of option values | `{ "column": "wb_tags", "op": "containsAny", "value": [948790000, 948790001] }` |
 | `containsAll` | Choices (multi-select) | A list of option values | `{ "column": "wb_tags", "op": "containsAll", "value": [948790000, 948790001] }` |
 
-A comparison that doesn't make sense, such as `gt` on a text column or `contains` on a number, is simply false. `eq`, `ne`, `in` and `notIn` don't work on multi-select columns: use `containsAny` or `containsAll`.
+A comparison that doesn't make sense, such as `gt` on a text column, `contains` on a number or a date, or `beforeToday` on a text column, is simply false. `eq`, `ne`, `in` and `notIn` don't work on multi-select columns: use `containsAny` or `containsAll`.
 
 ### Values
 
@@ -174,10 +174,10 @@ A comparison that doesn't make sense, such as `gt` on a text column or `contains
 | Choice, status (`statecode`), status reason (`statuscode`) | The option's **number**, never its label. Labels can be translated and renamed. Find the number on the column's choice in the maker portal. | `1`, `948790002` |
 | Choices (multi-select) | A list of option numbers, with `containsAny` / `containsAll` | `[948790000, 948790001]` |
 | Yes/No | `true` or `false` | `true` |
-| Whole number, decimal, float, currency | A number. Currency is compared as a plain amount, with no currency conversion. | `2.5` |
-| Text | Text. **Case doesn't matter**: `"on hold"` matches `On Hold`. | `"on hold"` |
-| Lookup, Customer, Owner | The related record's **GUID** (from the `id=` in its URL). Case and `{ }` braces don't matter. Names aren't supported, since they change. | `"64a20861-7fdd-f011-8406-7ced8d70a9f0"` |
-| Dates | An ISO date, or a date and time | `"2026-12-31"`, `"2026-12-31T17:00:00Z"` |
+| Whole number, decimal, float, currency | A number. Currency compares the amount stored on the record, in the record's own currency, with no conversion. In an org with several currencies, compare the base-currency column instead (`<column>_base`, for example `wb_budget_base`) so amounts in different currencies compare fairly. | `2.5` |
+| Text | Text. **Case doesn't matter**: `"on hold"` matches `On Hold`. It's simple case-insensitive matching, nothing cleverer: accents and other spellings must match (`"cafe"` doesn't match `Café`), and spaces count. | `"on hold"` |
+| Lookup, Customer, Owner | The related record's **GUID** (from the `id=` in its URL). Case and `{ }` braces don't matter. Names aren't supported, since they change. | `"00000000-0000-0000-0000-000000000001"` (use a real record's id) |
+| Dates | An ISO date, or a date and time. It must be a real one: a rule with `"2026-02-30"` or `"2026-12-31T25:00"` is skipped with a warning. | `"2026-12-31"`, `"2026-12-31T17:00:00Z"` |
 | Another column of the same row | `{ "column": "<logical name>" }`, with `eq`, `ne`, `gt`, `gte`, `lt`, `lte`. Both columns must be in the view. | `{ "column": "wb_budget" }` |
 
 ### Empty cells
@@ -194,14 +194,23 @@ That means "RAG isn't Green, including rows with no RAG". Empty text counts as e
 
 A comparison with another column is false when that other column is empty.
 
-File and image columns always read as empty, so don't use them in conditions.
+### Values the control can't read
+
+Now and then a cell has a value the control can't make sense of: a choice value that isn't a number, a lookup without a GUID, a date that doesn't parse, or any value in a column type the control doesn't read (file, image). That value **matches nothing**: every operator is false for it, including `isNull` (it isn't empty) and `isNotNull`, and a `not` around it doesn't make it true. In a group, the other conditions can still decide: `any` is true if another condition in it is true, and `all` is false if another is false. The console warns once per column:
+
+```text
+[GridFormatter] column "wb_ragstatus" (OptionSet) has a value the control can't read; conditions on it don't match, not even isNull or inside "not".
+```
+
+An empty file or image column is still empty, so `isNull` matches it, but don't use those columns in conditions otherwise.
 
 ### Dates and "today"
 
 - **"Today" is the user's date**, in the time zone set in their Dataverse personal settings. A user in Sydney and a user in London can see different rows as overdue at the same moment.
+- **Only date-only and date-and-time columns are dates.** On any other column, the day operators (`beforeToday` and the rest) and `gt`, `lt` or `between` with a date are false, even if the text looks like a date. `eq` with `"2026-10-18"` on a text column compares the text. Comparing a date column with `{ "column": ... }` of a non-date column is false.
 - **Date-only columns are just dates.** `2026-10-18` is 18 October for everyone; no time-zone shift.
 - **Date-and-time columns** are compared with a date (a date-only value, a date-only column, or "today") by first turning them into the user's local date. So `{ "column": "wb_reviewedon", "op": "eq", "value": "2026-10-22" }` matches any time on 22 October in the user's time zone.
-- A value **with a time** (`"2026-12-31T17:00:00Z"`) compared with a date-and-time column compares the exact moment. A time without `Z` or an offset (`"2026-12-31T17:00"`) is the user's local time.
+- A value **with a time** (`"2026-12-31T17:00:00Z"`) compared with a date-and-time column compares the exact moment. A time without `Z` or an offset (`"2026-12-31T17:00"`) is the user's local time, with the daylight-saving offset in force at that time. A time that a change skips or repeats (such as 02:30 on the night clocks go forward) is read one way or the other, so avoid those.
 - `beforeToday`: the date is before today. `onOrAfterToday`: today or later.
 - `olderThanDays n`: more than `n` days before today. On 22 October, `olderThanDays 30` matches 21 September and earlier, not 22 September. `olderThanDays 0` is the same as `beforeToday`.
 - `withinNextDays n`: from today to `n` days ahead, both included. On 22 October, `withinNextDays 7` matches 22 to 29 October. Past dates never match. `withinNextDays 0` means today only.
@@ -213,7 +222,7 @@ File and image columns always read as empty, so don't use them in conditions.
 
 | Property | Values | Notes |
 |---|---|---|
-| `backgroundColor` | A [colour](#colours) | Always see-through, so hover and selection still show. For a pill, it's the pill's fill. |
+| `backgroundColor` | A [colour](#colours) | Always see-through, so hover and selection still show. For a pill, it's the pill's fill, and can't be a theme token. |
 | `color` | A [colour](#colours) | Text colour. Only on [some columns](#what-works-on-which-column). Ignored on pills. |
 | `fontWeight` | `"normal"`, `"semibold"`, `"bold"` | 400, 600, 700. Only on [some columns](#what-works-on-which-column). |
 | `fontStyle` | `"normal"`, `"italic"` | |
@@ -253,7 +262,7 @@ A colour can be written four ways:
 |---|---|---|
 | Hex | `"#C50F1F"` (or `"#C00"`) | A fixed colour. Doesn't change in dark mode. |
 | Hex with alpha | `{ "hex": "#C50F1F", "alpha": 0.3 }` | A fixed colour at an opacity from 0 (invisible) to 1 (solid) |
-| Theme token | `{ "token": "colorPaletteRedForeground1" }` | A [Fluent 9](https://react.fluentui.dev/?path=/docs/theme-colors--docs) theme colour. **Adapts to dark mode.** Only token names in the schema are allowed; VS Code lists them. |
+| Theme token | `{ "token": "colorPaletteRedForeground1" }` | A [Fluent 9](https://react.fluentui.dev/?path=/docs/theme-colors--docs) theme colour. **Adapts to dark mode.** Only token names in the schema are allowed; VS Code lists them. Not allowed as a [pill](#pills)'s fill. |
 | From the option | `{ "fromOption": "wb_ragstatus", "alpha": "tint" }` | The colour set on the row's selected option of that choice column in Dataverse. `alpha` is optional: `"tint"` (use `tintAlpha`) or a number from 0 to 1. |
 
 Each form is a rule in [`config/examples/colour-forms.json`](../config/examples/colour-forms.json).
@@ -281,7 +290,7 @@ A solid background would hide the grid's hover and selection colours, so backgro
 |---|---|---|---|
 | `"#C50F1F"` | At `tintAlpha` (18% by default) | Solid | Solid |
 | `{ "hex": ..., "alpha": 0.3 }` | At 30%, as written | At 30% | Solid |
-| `{ "token": ... }` | At `tintAlpha` | Solid | Solid |
+| `{ "token": ... }` | At `tintAlpha` | Solid | Not allowed ([why](#pills)) |
 | `{ "fromOption": ... }` | At `tintAlpha` | Solid | Solid |
 | `{ "fromOption": ..., "alpha": "tint" }` | At `tintAlpha` | At `tintAlpha` | Solid |
 | `{ "fromOption": ..., "alpha": 0.3 }` | At 30% | At 30% | Solid |
@@ -330,9 +339,9 @@ Option colours don't change in dark mode (see [Use theme tokens](#use-theme-toke
 ```
 
 - A pill needs **cell scope** (not `"row"`) and a `backgroundColor`.
+- **The fill can't be a theme token.** The pill's black or white text is picked for the fill's light-theme colour, and a token fill changes in dark mode while the text doesn't, so it could become unreadable. A pill rule with a `{ "token" }` fill is skipped with a warning. Use a hex colour, `{ "hex", "alpha" }` (drawn solid) or `fromOption`. If `defaults.fallbackColor` is a token, a `fromOption` pill whose option has no colour falls back to it and has the same problem, so use a hex fallback in a file with pills.
 - Pills only work on the columns with ✅ in the pill column [above](#what-works-on-which-column): never on the primary name, lookups, Owner or multi-select. Elsewhere the pill is dropped with a console warning.
 - An empty cell has no pill.
-- For a token fill, black or white is chosen for the token's light-theme colour.
 - A pill's fill isn't the cell's background, so a row tint still shows around the pill. You can have both (see [Precedence](#precedence)).
 
 ## Precedence
@@ -599,7 +608,7 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 |---|---|---|
 | `no config web resource <prefix>_GridFormatter.<table>.json; the grid is shown without formatting.` (info) | No published web resource has a name of that form. | Check the name exactly (`_GridFormatter.`, the table's logical name, `.json`, and no `/`), and publish it. |
 | `2 configs found for table <table>: <file>, <file>. Using <file>; keep one per table.` | More than one solution has a rules file for this table. The first name in alphabetical order is used. | Delete or rename the extra file, so there's one per table. |
-| `config <file> couldn't be loaded (…); the grid is shown without formatting.` | The request for the web resource failed, for example a network or permissions problem. | Reload. If it persists, check the user can read web resources. |
+| `config <file> couldn't be loaded (…); the grid is shown without formatting.` | The request for the web resource failed, for example a network or permissions problem, or took longer than 3 s (`timed out after 3 s`). The next grid of that table asks again. | Reload. If it persists, check the user can read web resources. |
 | `config <file> ignored: the web resource is empty.` | The web resource has no content. | Upload the file and publish. |
 | `config <file> ignored: its content isn't UTF-8 text.` | The file was saved in another encoding. | Save it as UTF-8 and upload it again. |
 | `<file>: config ignored: it isn't valid JSON (…)` | A JSON syntax error: often a missing comma, quote or bracket, or a trailing comma. | Open it in VS Code, which underlines the error. |
@@ -609,15 +618,19 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 | `<file>: config has an unknown property "…"; ignored.` | A top-level property that isn't `$schema`, `version`, `defaults` or `rules`, often a typo. | Fix or remove it. The rest works. |
 | `<file>: rule "…" skipped: … .` | That rule is invalid. The message says where (for example `/rules/2/when/op "equals" isn't a known operator`). | Fix that rule. The others still work. |
 | `<file>: rule "…" skipped: /rules/3/id is a duplicate.` | Two rules have the same `id`. The second is skipped. | Give each rule its own id. |
+| `<file>: rule "…" skipped: /rules/0/when/value "2026-02-30" isn't a real date or time.` | A date or time in the condition doesn't exist (30 February, `T25:00`, an offset over `23:59`). | Fix the date. |
+| `<file>: rule "…" skipped: /rules/0/style/backgroundColor: a pill's fill can't be a theme token, because its text colour can't follow dark mode; use a hex colour or fromOption.` | A pill rule's fill is a `{ "token" }` ([why](#pills)). | Use a hex colour or `fromOption`. |
 | `<file>: config: /defaults/tintAlpha must be a number above 0 and up to 1; using the default.` | `tintAlpha` is 0, negative, above 1 or not a number. | Use a number such as `0.18`. |
 | `<file>: config: … ; no fallback colour is used.` | `fallbackColor` isn't a valid colour (note `fromOption` isn't allowed there). | Fix it, or use `null`. |
 | `<file>: config: /defaults has an unknown property "…"; ignored.` or `/defaults must be an object; ignored.` | A typo in `defaults`. | Fix it. |
 | `<file>: rule "…": text colour contrast is …:1 against its background in the light theme, below 4.5:1.` | The rule's text colour is hard to read on its background. The rule still applies. | Use a darker text colour or a paler background ([Accessibility](#accessibility)). |
 | `rule "…": color, fontWeight can't be shown on column "…" (…); ignored there.` (also `display: pill`) | The rule sets something that column type can't show ([table](#what-works-on-which-column)). Everything else in the rule still applies. | Expected for row-scope text colours. To silence it, list only supported columns in `scope`. |
-| `option colours for <table>.<column> couldn't be read; fromOption colours on it use defaults.fallbackColor.` | The control couldn't read that choice column's option colours. | Check `fromOption` names a choice, status or status reason column of this table. |
+| `option colours for <table>.<column> couldn't be read; fromOption colours on it use defaults.fallbackColor.` | The control couldn't read that choice column's option colours. If a metadata request failed or took longer than 3 s, the next grid of that table asks again. | Check `fromOption` names a choice, status or status reason column of this table. If it does, reload. |
+| `column "…" (…) has a value the control can't read; conditions on it don't match, not even isNull or inside "not".` | A cell in that column has a value of a shape the control doesn't know, or the column's type (such as file or image) isn't one it reads. Conditions on that cell [match nothing](#values-the-control-cant-read). | Don't use that column in conditions. If it's a choice, number, lookup or date column, report it with the column type. |
 | `config took longer than 3 s to load; the grid is shown without formatting.` | Loading the rules and option colours took over 3 seconds, so the grid was shown plain rather than late. | Reload. If it keeps happening, the environment is slow; report it. |
 | `couldn't read this subgrid's table, so it uses the rules for the form's table ….` | A platform update may have changed how a subgrid tells the control its table. A subgrid of another table may get the wrong rules. | Report it. |
 | `no config loaded: the grid's table name … isn't a table logical name.` | The control couldn't tell which table the grid shows. | Report it, with where the grid is (main grid or subgrid). |
+| `the control didn't get an EventName from the grid, so it can't format it. Use it only as a Power Apps grid control's Customizer control.` | The control was added somewhere other than a grid's **Customizer control** property, so nothing is formatted. | Remove it from there, and set it as the grid's customizer ([README](../README.md#set-up-a-table)). |
 | `a cell couldn't be formatted, so it's drawn as normal (…)` or `a cell renderer failed …` | An unexpected error. The cell is drawn as normal. | Report it with the message and your file. |
 
 ### Common causes
@@ -634,6 +647,8 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 | Text colour or bold doesn't show | The column type can't show it ([table](#what-works-on-which-column)); there's a console warning. |
 | Nothing at all after an edit | Invalid JSON: look for `isn't valid JSON` in the console. |
 | An empty cell isn't matched by `ne` or `notIn` | Empty cells only match `isNull` ([Empty cells](#empty-cells)). |
+| A date rule never matches | The column isn't a date-only or date-and-time column (for example, a text column holding dates), so date comparisons are false ([Dates](#dates-and-today)). |
+| A rule never matches, with a `can't read` warning | The column has values the control can't read ([Values the control can't read](#values-the-control-cant-read)). |
 | The background barely shows | The colour is too light for an 18% tint ([Colours](#backgrounds-are-see-through)). |
 
 ## Limitations
@@ -644,6 +659,9 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 - **A token's strength can't be set per rule.** Token backgrounds always use the file's `tintAlpha`.
 - **Not yet verified in a real environment** (issue #15): mobile. Columns from related tables (`alias.column`) are allowed but untested.
 - **No dark-theme contrast check.** The check only uses the light theme.
+- **Option colours rely on undocumented metadata, with a best-effort fallback.** The control reads them from `getEntityMetadata`'s undocumented option list ([decisions.md V3](decisions.md#v3-web-api-and-metadata)). If that ever stops working, it asks the documented Web API metadata endpoint instead, with the browser's own `fetch` to the org's `/api/data`. That fallback only works in the web client of Dataverse online, not in the mobile apps or offline; there, `fromOption` colours use `defaults.fallbackColor`.
+- **Text matching is simple.** `eq`, `contains`, `startsWith` and `endsWith` ignore upper and lower case, and nothing else: no accent folding, trimming or locale rules.
+- **Currency compares the stored amount**, in each record's own currency. In an org with several currencies, use the base-currency column (`<column>_base`).
 - **Editing.** Only the display is styled. A cell being edited uses the grid's normal editor.
 - **After an inline edit, use Refresh to update row-wide formatting.** In an editable grid, changing a value that a row-scope rule depends on (for example RAG from Unknown to Red) restyles the edited cell straight away, but the other cells in the row keep their old styling until you select **Refresh** on the grid or reload the page. The grid only redraws the cell you edited, and there's no supported way for the control to repaint the rest of the row.
 - **Why a web resource, not an environment variable:** a Dataverse environment variable holds at most 2,000 characters, about 8 to 12 rules, so each table's rules are a web resource instead ([ADR-0004](../../../docs/adr/0004-gridformatter-config-per-table-web-resource.md)). The same rules apply in every environment.

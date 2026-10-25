@@ -13,6 +13,7 @@ import {
 import * as conditions from "../GridFormatter/engine/conditions";
 import type { Rule, TableConfig } from "../GridFormatter/engine/configSchema";
 import type { CellStyle } from "../GridFormatter/engine/resolveStyle";
+import { createWarnOnce } from "../GridFormatter/engine/warnings";
 import { AMBER, ragColours } from "./engineHelpers";
 
 const AEST = 600; // UTC+10, as in the spike
@@ -32,7 +33,7 @@ const row = (values: Record<string, unknown> = {}): Record<string, unknown> => (
 	wb_name: "Row 1",
 	wb_ragstatus: String(AMBER),
 	wb_duedate: "2026-10-18T00:00:00.000Z",
-	ownerid: { id: { guid: "64a20861-7fdd-f011-8406-7ced8d70a9f0" }, etn: "systemuser", name: "Someone" },
+	ownerid: { id: { guid: "00000000-0000-0000-0000-000000000001" }, etn: "systemuser", name: "Someone" },
 	...values,
 });
 
@@ -209,14 +210,30 @@ describe("createDayTracker", () => {
 		expect(unreadable.today()).toBe("2026-10-22");
 		expect(results).toEqual([]);
 
-		// An estimate before now (a huge offset at midnight): still checks a minute later, not on every call.
+		// An estimate before now (a huge offset at midnight, read twice): still checks a minute later, not on every call.
 		now = NOON_22_OCT;
-		const offsets = [AEST, 2000];
+		const offsets = [AEST, 2000, 2000];
 		const offset = jest.fn(() => offsets.shift() ?? AEST);
 		const past = createDayTracker(offset, () => now);
 		past.today();
 		past.today();
-		expect(offset).toHaveBeenCalledTimes(2);
+		expect(offset).toHaveBeenCalledTimes(3);
+	});
+
+	it("finds midnight exactly on the night daylight saving starts", () => {
+		// Sydney: AEST (UTC+10) until 02:00 on 4 Oct 2026 (16:00 UTC on 3 Oct), then AEDT (UTC+11).
+		const change = Date.parse("2026-10-03T16:00:00Z");
+		const offset = jest.fn((instant: Date) => (instant.getTime() < change ? 600 : 660));
+		let now = Date.parse("2026-10-03T13:30:00Z"); // 23:30 AEST on 3 Oct
+		const tracker = createDayTracker(offset, () => now);
+		expect(tracker.today()).toBe("2026-10-03");
+		const calls = offset.mock.calls.length;
+		// Midnight is still AEST, so 14:00 UTC. A one-pass estimate (the offset at 00:00 UTC on 4 Oct, AEDT) said 13:00.
+		now = Date.parse("2026-10-03T13:59:59.999Z");
+		expect(tracker.today()).toBe("2026-10-03");
+		expect(offset.mock.calls.length).toBe(calls);
+		now = Date.parse("2026-10-03T14:00:00Z");
+		expect(tracker.today()).toBe("2026-10-04");
 	});
 
 	it.each([
@@ -328,6 +345,26 @@ describe("createCellFormatter", () => {
 		const { f } = formatter();
 		const { wb_ragstatus: _ignored, ...noRag } = row();
 		expect(f.format(cell("wb_duedate", noRag))).toEqual({ container: CLEAR_CONTAINER, content: { kind: "text", color: "#C50F1F", fontWeight: 700 } });
+	});
+
+	it("matches no condition on a value it can't read, and warns once for that column", () => {
+		const warnings: string[] = [];
+		const { f } = formatter({
+			warn: createWarnOnce((m) => warnings.push(m)),
+			rules: [
+				{ id: "no-rag", when: { column: "wb_ragstatus", op: "isNull" }, scope: "row", style: { fontStyle: "italic" } },
+				{ id: "not-amber", when: { not: { column: "wb_ragstatus", op: "eq", value: AMBER } }, scope: "row", style: { textDecoration: "underline" } },
+			],
+		});
+		const garbled = row({ wb_ragstatus: "Amber" }); // a label, not an option value
+		expect(f.format(cell("wb_name", garbled))).toEqual(PLAIN_CELL);
+		expect(f.format(cell("wb_duedate", row({ __rec_id: "row-2", wb_ragstatus: "Red" })))).toEqual(PLAIN_CELL);
+		expect(warnings).toEqual([
+			'column "wb_ragstatus" (OptionSet) has a value the control can\'t read; conditions on it don\'t match, not even isNull or inside "not".',
+		]);
+		// An empty cell is different, and the row cache doesn't mix the two up.
+		expect(f.format(cell("wb_name", row({ wb_ragstatus: null }))).container).toEqual({ backgroundImage: "", fontStyle: "italic", textDecoration: "underline" });
+		expect(f.format(cell("wb_name", garbled))).toEqual(PLAIN_CELL);
 	});
 
 	it("works without a __rec_id", () => {

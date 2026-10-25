@@ -3,7 +3,7 @@
 // everything else returns null so the grid draws its own cell. The decisions
 // are made by the pure `engine/cellFormatter.ts`; this file only applies them.
 import * as React from "react";
-import { applyContainerStyle, type CellFormatter } from "../engine/cellFormatter";
+import { CLEAR_CONTAINER, applyContainerStyle, type CellFormatter } from "../engine/cellFormatter";
 import type { Warn } from "../engine/warnings";
 import { Pill } from "../components/Pill";
 import { StyledCell } from "../components/StyledCell";
@@ -45,6 +45,12 @@ function renderCell(formatter: CellFormatter, warn: Warn, props: CellRendererPro
 		return null;
 	} catch (error) {
 		warn(`a cell renderer failed, so the cell is drawn as normal (${String(error)}).`);
+		// The grid reuses containers, so clear what an earlier row may have left on this one.
+		try {
+			applyContainerStyle(props.cellContainerElement, CLEAR_CONTAINER);
+		} catch {
+			// Nothing more to do: the grid draws the cell.
+		}
 		return null;
 	}
 }

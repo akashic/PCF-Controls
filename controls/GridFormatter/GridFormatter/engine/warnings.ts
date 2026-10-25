@@ -8,9 +8,10 @@ export const WARNING_PREFIX = "[GridFormatter]";
 export const consoleWarn: Warn = (message) => console.warn(`${WARNING_PREFIX} ${message}`);
 
 /**
- * Wraps `sink` so each distinct message is passed on only once. Create one per
- * page (module scope) and pass it to `validateConfig` and `prepareRules`, so
- * re-preparing rules for another grid or a new column set doesn't repeat warnings.
+ * Wraps `sink` so each distinct message is passed on only once. Create one at
+ * module scope (it lasts until the browser tab reloads, not per app page) and
+ * pass it to `validateConfig` and `prepareRules`, so re-preparing rules for
+ * another grid or a new column set doesn't repeat warnings.
  */
 export function createWarnOnce(sink: Warn = consoleWarn): Warn {
 	const seen = new Set<string>();

@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "impossible-date",
+      "when": { "column": "wb_duedate", "op": "gt", "value": "2026-02-30" },
+      "style": { "fontWeight": "bold" }
+    }
+  ]
+}

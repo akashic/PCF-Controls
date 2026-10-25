@@ -6,7 +6,7 @@ import { gridTableOf } from "./engine/gridTable";
 import { WARNING_PREFIX, createWarnOnce } from "./engine/warnings";
 import { createConfigStore } from "./stores/configStore";
 import { createMetadataStore, type FetchJson } from "./stores/metadataStore";
-import { loadFormatting, startWhenLoaded, type Formatting } from "./stores/startup";
+import { loadFormatting, startWhenLoaded, type CancelStart, type Formatting } from "./stores/startup";
 import * as React from "react";
 
 /** Set to "1" in sessionStorage to log which rules matched each row. */
@@ -22,7 +22,7 @@ const fetchJson: FetchJson = async (url) => {
 	return (await response.json()) as unknown;
 };
 
-// Module scope: one per page, shared by every grid that uses this control.
+// Module scope: shared by every grid that uses this control, until the browser tab reloads.
 const warn = createWarnOnce();
 const configStore = createConfigStore({ warn });
 const metadataStore = createMetadataStore({ warn, fetchJson });
@@ -36,13 +36,19 @@ function readDebugFlag(): boolean {
 }
 
 export class GridFormatter implements ComponentFramework.ReactControl<IInputs, IOutputs> {
+	/** Cancels a start-up still waiting for its config, so `destroy()` stops a late `fireEvent`. */
+	private cancelStart: CancelStart | undefined;
+
 	/**
 	 * Loads the table's config and option colours, then hands the customizer to the
 	 * grid with `fireEvent` (V5). The grid waits for it, up to the 3 s timeout.
 	 */
 	public init(context: ComponentFramework.Context<IInputs>): void {
-		const eventName = context.parameters.EventName.raw;
-		if (!eventName) return;
+		const eventName = context.parameters.EventName?.raw;
+		if (!eventName) {
+			warn("the control didn't get an EventName from the grid, so it can't format it. Use it only as a Power Apps grid control's Customizer control.");
+			return;
+		}
 
 		const offset = (instant: Date): number => context.userSettings.getTimeZoneOffsetMinutes(instant);
 		const debug = readDebugFlag() ? (message: string) => console.info(`${WARNING_PREFIX} [debug] ${message}`) : undefined;
@@ -65,7 +71,7 @@ export class GridFormatter implements ComponentFramework.ReactControl<IInputs, I
 			warn(`config couldn't be loaded (${String(error)}); the grid is shown without formatting.`);
 			loading = Promise.resolve({ config: null, optionColours: new Map() });
 		}
-		startWhenLoaded(loading, {
+		this.cancelStart = startWhenLoaded(loading, {
 			warn,
 			onReady: (formatting) => {
 				try {
@@ -86,7 +92,9 @@ export class GridFormatter implements ComponentFramework.ReactControl<IInputs, I
 		return {};
 	}
 
+	/** Stops a pending start-up. The caches stay: they're shared with other grids until the tab reloads. */
 	public destroy(): void {
-		// Nothing to clean up: caches are per page and shared with other grids.
+		this.cancelStart?.();
+		this.cancelStart = undefined;
 	}
 }

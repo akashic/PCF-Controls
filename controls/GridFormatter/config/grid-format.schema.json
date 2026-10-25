@@ -35,7 +35,7 @@
       "additionalProperties": false,
       "properties": {
         "tintAlpha": {
-          "description": "Alpha (opacity, above 0 up to 1) used when a fromOption colour says \"alpha\": \"tint\".",
+          "description": "Alpha (opacity, above 0 up to 1) of every background that doesn't set its own alpha (a hex, a token, or fromOption without alpha), and of \"alpha\": \"tint\" anywhere. Text colours without an alpha are solid, and pill fills are always solid.",
           "type": "number",
           "exclusiveMinimum": 0,
           "maximum": 1,
@@ -86,14 +86,14 @@
           "$ref": "#/$defs/scope"
         },
         "display": {
-          "description": "How the style is applied. \"style\" (default) keeps the grid's own cell rendering and applies the style properties. \"pill\" renders the cell's formatted value as a rounded pill filled with backgroundColor and auto-contrast text (color is ignored); cell scope only.",
+          "description": "How the style is applied. \"style\" (default) keeps the grid's own cell rendering and applies the style properties. \"pill\" renders the cell's formatted value as a rounded pill filled with backgroundColor (not a theme token) and auto-contrast text (color is ignored); cell scope only.",
           "enum": [
             "style",
             "pill"
           ],
           "enumDescriptions": [
             "Apply the style properties and keep the grid's own cell rendering.",
-            "Render the formatted value as a pill filled with backgroundColor. Needs cell scope and a backgroundColor."
+            "Render the formatted value as a pill filled with backgroundColor. Needs cell scope and a backgroundColor that isn't a theme token."
           ],
           "default": "style"
         },
@@ -151,7 +151,7 @@
           }
         },
         {
-          "description": "A pill needs cell scope and a backgroundColor.",
+          "description": "A pill needs cell scope and a backgroundColor that isn't a theme token: its black or white text is picked for the light theme, so over a token fill it can be unreadable in dark mode.",
           "if": {
             "required": [
               "display"
@@ -174,7 +174,15 @@
                 "type": "object",
                 "required": [
                   "backgroundColor"
-                ]
+                ],
+                "properties": {
+                  "backgroundColor": {
+                    "description": "The pill's fill: a hex colour, { hex, alpha } (drawn solid) or { fromOption }. Not a { token }.",
+                    "not": {
+                      "$ref": "#/$defs/tokenColor"
+                    }
+                  }
+                }
               }
             }
           }
@@ -442,7 +450,7 @@
       "$ref": "#/$defs/leafCondition"
     },
     "leafCondition": {
-      "description": "Compares one column of the row with an operand. The rule only fires where the column is in the view. Choice, status and status reason compare by numeric option value (never the label); Yes/No by true/false; lookups by GUID; dates by ISO date string.",
+      "description": "Compares one column of the row with an operand. The rule only fires where the column is in the view. Choice, status and status reason compare by numeric option value (never the label); Yes/No by true/false; lookups by GUID; dates by ISO date string, and only on date-only and date-and-time columns. A cell value the control can't read matches nothing, not even isNull or inside not.",
       "type": "object",
       "required": [
         "column",
@@ -781,9 +789,9 @@
       ]
     },
     "isoDate": {
-      "description": "ISO 8601 date (\"2026-12-31\") or date and time (\"2026-12-31T17:00:00Z\").",
+      "description": "ISO 8601 date (\"2026-12-31\") or date and time (\"2026-12-31T17:00:00Z\"; without Z or an offset it's the user's local time). It must be a real date and time: the control skips a rule with \"2026-02-30\" or \"T25:00\".",
       "type": "string",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})?)?$"
+      "pattern": "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])(T([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d+)?)?(Z|[+-]([01]\\d|2[0-3]):[0-5]\\d)?)?$"
     },
     "columnOperand": {
       "description": "Compare with another column of the same row (for example wb_actualcost gt wb_budget). Both columns must be in the view.",
@@ -806,7 +814,7 @@
       "properties": {
         "backgroundColor": {
           "$ref": "#/$defs/colorValue",
-          "description": "Cell background colour. For display: \"pill\" this is the pill's fill."
+          "description": "Cell background colour, translucent at defaults.tintAlpha unless it sets its own alpha. For display: \"pill\" this is the pill's solid fill, and can't be a theme token."
         },
         "color": {
           "$ref": "#/$defs/colorValue",
@@ -915,7 +923,7 @@
           "description": "Logical name of the choice (or status reason) column whose option colour is used. It must be in the view."
         },
         "alpha": {
-          "description": "\"tint\" uses defaults.tintAlpha; a number from 0 to 1 sets the alpha. Omit for a solid colour.",
+          "description": "\"tint\" uses defaults.tintAlpha; a number from 0 to 1 sets the alpha. If omitted, a background uses defaults.tintAlpha and text is solid. A pill's fill is always solid.",
           "oneOf": [
             {
               "const": "tint"

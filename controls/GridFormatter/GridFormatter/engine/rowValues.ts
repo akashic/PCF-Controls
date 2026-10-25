@@ -8,12 +8,16 @@
  * need to tell those apart, so {@link readColumn} returns {@link NOT_VISIBLE}
  * for the first and `null` for the second.
  *
- * Every function here is pure and never throws. Unknown column types and
- * malformed values give `null`.
+ * A non-empty value that can't be normalised (malformed, or of a column type
+ * this module doesn't read) is {@link UNREADABLE}, not `null`, so it can't
+ * pass for an empty cell: no condition matches it, not even `isNull`.
+ *
+ * Every function here is pure and never throws.
  */
 
 import { parseCalendarDate, parseIso, type CalendarDate } from "./dates";
 import type { ColumnName } from "./configSchema";
+import { isRecord } from "./guards";
 
 /**
  * A normalised cell value:
@@ -27,7 +31,10 @@ import type { ColumnName } from "./configSchema";
  * | `DateOnly` | {@link CalendarDate} (`YYYY-MM-DD`) |
  * | `DateAndTime` | `Date` |
  * | `Text`, `Email`, `Phone`, `URL`, `Ticker`, `TextArea`, `Multiple`, `RichText`, `AutoNumber` | `string` (never empty) |
- * | `Image`, `File`, anything else, or an empty or malformed value | `null` |
+ * | Any type, empty (`null`, `undefined`, `""` or `[]`) | `null` |
+ *
+ * A non-empty value that doesn't fit its type, or a non-empty value of any other
+ * type (`Image`, `File`, ...), is {@link UNREADABLE} instead.
  */
 export type RowValue = number | number[] | boolean | string | CalendarDate | Date | null;
 
@@ -35,8 +42,12 @@ export type RowValue = number | number[] | boolean | string | CalendarDate | Dat
 export const NOT_VISIBLE: unique symbol = Symbol("GridFormatter.notVisible");
 export type NotVisible = typeof NOT_VISIBLE;
 
-/** A cell value, or {@link NOT_VISIBLE}. This is what conditions read. */
-export type ColumnValue = RowValue | NotVisible;
+/** A non-empty cell value that can't be read: malformed, or of a column type this module doesn't read. */
+export const UNREADABLE: unique symbol = Symbol("GridFormatter.unreadable");
+export type Unreadable = typeof UNREADABLE;
+
+/** A cell value, {@link UNREADABLE} or {@link NOT_VISIBLE}. This is what conditions read. */
+export type ColumnValue = RowValue | Unreadable | NotVisible;
 
 /** The part of the grid's `colDefs[]` entries this module uses. */
 export interface ColumnTypeInfo {
@@ -51,11 +62,8 @@ const GUID = /^\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})
 const INTEGER = /^\s*-?\d+\s*$/;
 const NUMBER = /^\s*-?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?\s*$/i;
 
+/** Normalises a non-empty raw value; `null` means it doesn't fit the type. */
 type Normaliser = (raw: unknown) => RowValue;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function toText(raw: unknown): string | null {
 	return typeof raw === "string" && raw !== "" ? raw : null;
@@ -141,6 +149,11 @@ const NORMALISERS: Readonly<Record<string, Normaliser>> = {
 	DateAndTime: toInstant,
 };
 
+/** An empty cell: `null` as the grid gives it (V1), or `undefined`, `""` or `[]`, which no type reads as a value. */
+function isEmpty(raw: unknown): boolean {
+	return raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0);
+}
+
 /** True when `column` is in the view, i.e. `rowData` has a key for it (even if its value is `null`). */
 export function isInView(rowData: unknown, column: ColumnName): boolean {
 	return isRecord(rowData) && !RESERVED_KEYS.has(column) && Object.prototype.hasOwnProperty.call(rowData, column);
@@ -148,13 +161,17 @@ export function isInView(rowData: unknown, column: ColumnName): boolean {
 
 /**
  * The normalised value of `column` in `rowData`, read as `dataType`
- * (`colDefs[].dataType`). `null` when the column is empty, not in the view,
- * of an unsupported type, or malformed. Use {@link isInView} or
- * {@link readColumn} to tell "not in the view" apart from "empty".
+ * (`colDefs[].dataType`). `null` when the column is empty or not in the view;
+ * {@link UNREADABLE} when it has a value that's malformed or of a type this
+ * module doesn't read. Use {@link isInView} or {@link readColumn} to tell
+ * "not in the view" apart from "empty".
  */
-export function getValue(rowData: unknown, column: ColumnName, dataType: string): RowValue {
-	if (!isInView(rowData, column) || !Object.prototype.hasOwnProperty.call(NORMALISERS, dataType)) return null;
-	return NORMALISERS[dataType]((rowData as Record<string, unknown>)[column]);
+export function getValue(rowData: unknown, column: ColumnName, dataType: string): RowValue | Unreadable {
+	if (!isInView(rowData, column)) return null;
+	const raw = (rowData as Record<string, unknown>)[column];
+	if (isEmpty(raw)) return null;
+	const normalise = Object.prototype.hasOwnProperty.call(NORMALISERS, dataType) ? NORMALISERS[dataType] : undefined;
+	return normalise?.(raw) ?? UNREADABLE;
 }
 
 /**
@@ -168,14 +185,11 @@ export function readColumn(rowData: unknown, column: ColumnName, dataType: strin
 }
 
 /**
- * A column reader for one row, for {@link evaluate}'s `getColumn`. Types come
- * from the grid's `colDefs`; a column missing from `colDefs` or `rowData` is
- * {@link NOT_VISIBLE}.
+ * Each column's `dataType` from the grid's `colDefs`, for `evaluate`'s
+ * `columnType`: `undefined` for a column that isn't in `colDefs`. Malformed
+ * entries are skipped.
  */
-export function columnReader(
-	rowData: unknown,
-	colDefs: readonly ColumnTypeInfo[],
-): (column: ColumnName) => ColumnValue {
+export function columnTypes(colDefs: readonly ColumnTypeInfo[]): (column: ColumnName) => string | undefined {
 	const types = new Map<string, string>();
 	if (Array.isArray(colDefs)) {
 		for (const def of colDefs) {
@@ -184,5 +198,18 @@ export function columnReader(
 			}
 		}
 	}
-	return (column) => readColumn(rowData, column, types.get(column));
+	return (column) => types.get(column);
+}
+
+/**
+ * A column reader for one row, for `evaluate`'s `getColumn`. Types come
+ * from the grid's `colDefs`; a column missing from `colDefs` or `rowData` is
+ * {@link NOT_VISIBLE}.
+ */
+export function columnReader(
+	rowData: unknown,
+	colDefs: readonly ColumnTypeInfo[],
+): (column: ColumnName) => ColumnValue {
+	const typeOf = columnTypes(colDefs);
+	return (column) => readColumn(rowData, column, typeOf(column));
 }

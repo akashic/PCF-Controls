@@ -1,28 +1,53 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { evaluate, referencedColumns, type ColumnLookup } from "../GridFormatter/engine/conditions";
+import { evaluate, type ColumnLookup, type ColumnTypeLookup } from "../GridFormatter/engine/conditions";
 import type { Condition, TableConfig } from "../GridFormatter/engine/configSchema";
 import type { TimeZoneOffset } from "../GridFormatter/engine/dates";
-import { NOT_VISIBLE, columnReader, type ColumnTypeInfo, type ColumnValue } from "../GridFormatter/engine/rowValues";
+import {
+	NOT_VISIBLE,
+	UNREADABLE,
+	columnReader,
+	columnTypes,
+	type ColumnTypeInfo,
+	type ColumnValue,
+} from "../GridFormatter/engine/rowValues";
 
 const TODAY = "2026-10-22";
 const AEST = 600; // UTC+10, as captured in the spike
 
 const GREEN = 948790002;
-const GUID = "64a20861-7fdd-f011-8406-7ced8d70a9f0";
+const GUID = "abcdef01-2345-6789-abcd-ef0123456789";
+
+const has = (values: object, column: string): boolean => Object.prototype.hasOwnProperty.call(values, column);
 
 /** A row with these normalised values; any other column is not in the view. */
 const rowOf =
 	(values: Record<string, ColumnValue>): ColumnLookup =>
 	(column) =>
-		Object.prototype.hasOwnProperty.call(values, column) ? values[column] : NOT_VISIBLE;
+		has(values, column) ? values[column] : NOT_VISIBLE;
+
+/**
+ * The column types for `values`, unless `types` says otherwise: a `Date` is a
+ * date-and-time column and `YYYY-MM-DD` text a date-only column, as the grid
+ * would give them. The evaluator only looks at whether a type is a date type.
+ */
+const typesOf =
+	(values: Record<string, ColumnValue>, types: Record<string, string>): ColumnTypeLookup =>
+	(column) => {
+		if (has(types, column)) return types[column];
+		if (!has(values, column)) return undefined;
+		const value = values[column];
+		if (value instanceof Date) return "DateAndTime";
+		return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? "DateOnly" : "Text";
+	};
 
 const check = (
 	condition: unknown,
 	values: Record<string, ColumnValue>,
 	today: string = TODAY,
 	offset: TimeZoneOffset = AEST,
-): boolean => evaluate(condition as Condition, rowOf(values), today, offset);
+	types: Record<string, string> = {},
+): boolean => evaluate(condition as Condition, rowOf(values), typesOf(values, types), today, offset);
 
 /** Evaluates `{ column: "c", op, value }` against `c = cell`. */
 const leaf = (op: string, cell: ColumnValue, value?: unknown, today?: string, offset?: TimeZoneOffset): boolean =>
@@ -497,12 +522,117 @@ describe("groups", () => {
 	});
 });
 
+describe("unreadable cells (UNREADABLE)", () => {
+	const unreadable: Record<string, ColumnValue> = { c: UNREADABLE };
+	const yes = { column: "n", op: "eq", value: 1 };
+	const no = { column: "n", op: "eq", value: 2 };
+	const leafOn = (op: string, value?: unknown) => (value === undefined ? { column: "c", op } : { column: "c", op, value });
+
+	it.each<[string, unknown?]>([
+		["isNull", undefined],
+		["isNotNull", undefined],
+		["eq", 1],
+		["ne", 1],
+		["in", [1]],
+		["notIn", [1]],
+		["gt", 1],
+		["between", [1, 2]],
+		["contains", "x"],
+		["beforeToday", undefined],
+		["olderThanDays", 1],
+		["containsAny", [1]],
+	])("%s is false for it", (op, value) => {
+		expect(check(leafOn(op, value), unreadable)).toBe(false);
+	});
+
+	it("isn't turned true by not, however deep", () => {
+		expect(check({ not: leafOn("isNull") }, unreadable)).toBe(false);
+		expect(check({ not: leafOn("ne", 1) }, unreadable)).toBe(false);
+		expect(check({ not: { not: leafOn("eq", 1) } }, unreadable)).toBe(false);
+	});
+
+	it("is unknown in groups: another item can still decide them", () => {
+		const row: Record<string, ColumnValue> = { c: UNREADABLE, n: 1 };
+		const c = leafOn("eq", 1);
+		expect(check({ any: [c, yes] }, row)).toBe(true);
+		expect(check({ any: [c, no] }, row)).toBe(false);
+		expect(check({ all: [c, yes] }, row)).toBe(false);
+		expect(check({ all: [c, no] }, row)).toBe(false);
+		expect(check({ not: { all: [c, no] } }, row)).toBe(true); // `no` alone makes the all false
+		expect(check({ not: { all: [c, yes] } }, row)).toBe(false);
+		expect(check({ not: { any: [c, no] } }, row)).toBe(false);
+	});
+
+	it("makes a comparison with that column unknown too", () => {
+		const row: Record<string, ColumnValue> = { a: 5, b: UNREADABLE };
+		expect(check({ column: "a", op: "eq", value: { column: "b" } }, row)).toBe(false);
+		expect(check({ column: "a", op: "ne", value: { column: "b" } }, row)).toBe(false);
+		expect(check({ not: { column: "a", op: "eq", value: { column: "b" } } }, row)).toBe(false);
+	});
+
+	it("is different from an empty cell", () => {
+		expect(check({ not: leafOn("eq", 1) }, { c: null })).toBe(true);
+		expect(check(leafOn("isNull"), { c: null })).toBe(true);
+	});
+});
+
+describe("dates only on date columns", () => {
+	const asText = { c: "Text" };
+
+	it("compares an ISO date with a text column as text, never as a date", () => {
+		expect(check({ column: "c", op: "eq", value: "2026-10-18" }, { c: "2026-10-18" }, TODAY, AEST, asText)).toBe(true);
+		expect(check({ column: "c", op: "eq", value: "2026-10-18T00:00:00Z" }, { c: "2026-10-18" }, TODAY, AEST, asText)).toBe(false);
+		expect(check({ column: "c", op: "eq", value: "2026-10-18T00:00:00Z" }, { c: "2026-10-18" })).toBe(true); // date-only
+	});
+
+	it.each([
+		["gt", "2026-10-17"],
+		["between", ["2026-10-01", "2026-10-31"]],
+		["beforeToday", undefined],
+		["onOrAfterToday", undefined],
+		["olderThanDays", 1],
+		["withinNextDays", 30],
+	])("%s on a text column holding a date is false", (op, value) => {
+		const condition = value === undefined ? { column: "c", op } : { column: "c", op, value };
+		const textResult = check(condition, { c: "2026-10-18" }, TODAY, AEST, asText);
+		expect(textResult).toBe(false);
+	});
+
+	it("treats a date-only column and a text column holding the same date as a type mismatch", () => {
+		const row = { due: "2026-10-18", note: "2026-10-18" };
+		const types = { note: "Text" };
+		for (const [column, other] of [["due", "note"], ["note", "due"]]) {
+			expect(check({ column, op: "eq", value: { column: other } }, row, TODAY, AEST, types)).toBe(false);
+			expect(check({ column, op: "ne", value: { column: other } }, row, TODAY, AEST, types)).toBe(false);
+			expect(check({ column, op: "gte", value: { column: other } }, row, TODAY, AEST, types)).toBe(false);
+		}
+	});
+
+	it("is a mismatch when a date column's value isn't a date", () => {
+		const asDate = { c: "DateOnly" };
+		expect(check({ column: "c", op: "beforeToday" }, { c: "18/10/2026" }, TODAY, AEST, asDate)).toBe(false);
+		expect(check({ column: "c", op: "eq", value: "18/10/2026" }, { c: "18/10/2026" }, TODAY, AEST, asDate)).toBe(false);
+	});
+
+	it("doesn't match text operators on a date-only column", () => {
+		expect(leaf("contains", "2026-10-18", "2026")).toBe(false);
+		expect(check({ column: "c", op: "contains", value: "2026" }, { c: "2026-10-18" }, TODAY, AEST, asText)).toBe(true);
+	});
+});
+
 describe("evaluate never throws", () => {
 	it("returns false when getColumn throws", () => {
 		const getColumn = () => {
 			throw new Error("boom");
 		};
-		expect(evaluate({ column: "a", op: "isNull" }, getColumn, TODAY, AEST)).toBe(false);
+		expect(evaluate({ column: "a", op: "isNull" }, getColumn, () => "Text", TODAY, AEST)).toBe(false);
+	});
+
+	it("returns false when columnType throws", () => {
+		const columnType = () => {
+			throw new Error("boom");
+		};
+		expect(evaluate({ column: "a", op: "isNotNull" }, rowOf({ a: 1 }), columnType, TODAY, AEST)).toBe(false);
 	});
 
 	it("returns false when the offset function throws", () => {
@@ -527,39 +657,42 @@ describe("against the captured rowData and the example config", () => {
 		return when;
 	};
 	const [row1, row2] = fixture.rows.map((row) => columnReader(row, fixture.colDefs));
+	const typeOf = columnTypes(fixture.colDefs);
+	const run = (condition: Condition, row: ColumnLookup, today = TODAY, offset: TimeZoneOffset = AEST) =>
+		evaluate(condition, row, typeOf, today, offset);
 
 	it("inactive-grey: both rows are active", () => {
-		expect(evaluate(rule("inactive-grey"), row1, TODAY, AEST)).toBe(false);
-		expect(evaluate(rule("inactive-grey"), row2, TODAY, AEST)).toBe(false);
+		expect(run(rule("inactive-grey"), row1)).toBe(false);
+		expect(run(rule("inactive-grey"), row2)).toBe(false);
 	});
 
 	it("rag-row: both rows have a RAG status", () => {
-		expect(evaluate(rule("rag-row"), row1, TODAY, AEST)).toBe(true);
+		expect(run(rule("rag-row"), row1)).toBe(true);
 	});
 
 	it("overdue: row 1 is Amber and past due; row 2 is Green", () => {
-		expect(evaluate(rule("overdue"), row1, TODAY, AEST)).toBe(true);
-		expect(evaluate(rule("overdue"), row2, TODAY, AEST)).toBe(false);
+		expect(run(rule("overdue"), row1)).toBe(true);
+		expect(run(rule("overdue"), row2)).toBe(false);
 		// On 18 Oct row 1 isn't overdue yet.
-		expect(evaluate(rule("overdue"), row1, "2026-10-18", AEST)).toBe(false);
+		expect(run(rule("overdue"), row1, "2026-10-18")).toBe(false);
 	});
 
 	it("over budget: row 2 spent more than its budget", () => {
 		const overBudget: Condition = { column: "wb_actualcost", op: "gt", value: { column: "wb_budget" } };
-		expect(evaluate(overBudget, row1, TODAY, AEST)).toBe(false);
-		expect(evaluate(overBudget, row2, TODAY, AEST)).toBe(true);
+		expect(run(overBudget, row1)).toBe(false);
+		expect(run(overBudget, row2)).toBe(true);
 	});
 
 	it("reviewed on (date and time) is 22 Oct for row 1 at UTC+10, 21 Oct at UTC", () => {
 		const reviewedToday: Condition = { column: "wb_reviewedon", op: "eq", value: TODAY };
-		expect(evaluate(reviewedToday, row1, TODAY, AEST)).toBe(true);
-		expect(evaluate(reviewedToday, row1, TODAY, 0)).toBe(false);
+		expect(run(reviewedToday, row1)).toBe(true);
+		expect(run(reviewedToday, row1, TODAY, 0)).toBe(false);
 	});
 
 	it("owner by GUID, tags and choice values", () => {
 		const mine: Condition = {
 			all: [
-				{ column: "ownerid", op: "eq", value: "64A20861-7FDD-F011-8406-7CED8D70A9F0" },
+				{ column: "ownerid", op: "eq", value: "{00000000-0000-0000-0000-000000000001}" },
 				{ column: "wb_tags", op: "containsAny", value: [948790001] },
 				{ column: "statuscode", op: "in", value: [1, 2] },
 				{ column: "wb_flagged", op: "eq", value: false },
@@ -567,57 +700,11 @@ describe("against the captured rowData and the example config", () => {
 				{ column: "wb_name", op: "startsWith", value: "SPIKE" },
 			],
 		};
-		expect(evaluate(mine, row1, TODAY, AEST)).toBe(true);
-		expect(evaluate(mine, row2, TODAY, AEST)).toBe(false);
+		expect(run(mine, row1)).toBe(true);
+		expect(run(mine, row2)).toBe(false);
 	});
 
 	it("a column that isn't in the view never matches", () => {
-		expect(evaluate({ column: "wb_hidden", op: "isNull" }, row1, TODAY, AEST)).toBe(false);
-	});
-});
-
-describe("referencedColumns", () => {
-	it("lists a leaf's column", () => {
-		expect(referencedColumns({ column: "statecode", op: "eq", value: 1 })).toEqual(["statecode"]);
-	});
-
-	it("lists every column in nested groups and column operands, once each, in order", () => {
-		const condition: Condition = {
-			all: [
-				{ column: "wb_duedate", op: "beforeToday" },
-				{ not: { column: "wb_ragstatus", op: "eq", value: GREEN } },
-				{
-					any: [
-						{ column: "wb_actualcost", op: "gt", value: { column: "wb_budget" } },
-						{ column: "wb_ragstatus", op: "isNull" },
-						{ column: "a_1.wb_name", op: "contains", value: "x" },
-					],
-				},
-			],
-		};
-		expect(referencedColumns(condition)).toEqual([
-			"wb_duedate",
-			"wb_ragstatus",
-			"wb_actualcost",
-			"wb_budget",
-			"a_1.wb_name",
-		]);
-	});
-
-	it("returns nothing for an omitted condition", () => {
-		expect(referencedColumns(undefined)).toEqual([]);
-	});
-
-	it("ignores malformed parts", () => {
-		const malformed = {
-			all: [null, { column: 1, op: "eq" }, { any: "x" }, { column: "ok", op: "eq", value: { column: 2 } }],
-		};
-		expect(referencedColumns(malformed as unknown as Condition)).toEqual(["ok"]);
-	});
-
-	it("stops below the deepest level the schema allows", () => {
-		const level5 = [{ column: "five", op: "isNull" }, { all: [{ column: "six", op: "isNull" }] }];
-		const deep = { all: [{ all: [{ all: [{ all: level5 }] }] }] };
-		expect(referencedColumns(deep as unknown as Condition)).toEqual(["five"]);
+		expect(run({ column: "wb_hidden", op: "isNull" }, row1)).toBe(false);
 	});
 });
