@@ -9,7 +9,7 @@ A form field control for a **single-select choice** column. It is a normal Fluen
 | Solution | `WBRagChoice` (display name "WB RAG Choice") |
 | Binds to | Choice (`OptionSet`) columns only |
 | Configuration | Option colours on the choice, plus two control properties ([configuration guide](docs/configuration.md)) |
-| Version | 0.1.2 |
+| Version | 0.1.3 |
 | Spec | [brief §6](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#6-control-b--ragchoice-form-field) |
 | Dev test results | [docs/decisions.md](docs/decisions.md) (issue #7) |
 | Architecture | [Diagram](docs/architecture.html) (open in a browser; source `docs/architecture.archify.json`) |
@@ -25,8 +25,9 @@ A form field control for a **single-select choice** column. It is a normal Fluen
 - **Field security without read:** shows `***` and no dot.
 - **External changes** (business rules, JavaScript `setValue`, a refresh) update the dropdown on the next render. Only a user's own selection writes the value back.
 - **Accessible name:** the form label (`context.mode.label`), or the column's display name if there's no label. The form doesn't associate its label with a custom control by itself.
-- The dot and bar are decoration (`aria-hidden="true"`). The label text is always visible, so colour is never the only signal. Keyboard behaviour is the standard Fluent `Dropdown`.
-- It never throws into the form. An invalid **Fallback colour** logs one console warning and is ignored.
+- **Required** (business or system required): the dropdown has `aria-required="true"`, so screen readers announce it as required.
+- The dot and bar are decoration (`aria-hidden="true"`). The label text is always visible, so colour is never the only signal. In Windows high contrast (forced colours) they keep their colours (`forced-color-adjust: none`). Keyboard behaviour is the standard Fluent `Dropdown`.
+- It never throws into the form. If rendering fails, it shows the value as plain text and logs a console warning, then tries the dropdown again when the value, options, lock or required level change. An invalid **Fallback colour** logs one console warning and is ignored.
 
 The control makes no network calls and declares no external services, so it isn't premium-licensed.
 
@@ -67,7 +68,7 @@ npm run start:watch -w @wb-pcf/rag-choice # PCF test harness at http://localhost
 dotnet build controls/RagChoice/solution -c Release   # WBRagChoice.zip + WBRagChoice_managed.zip
 ```
 
-All the decisions (colour resolution, option list, blank option, read and edit state, display text, re-syncing from the bound value, outputs) are pure functions in `RagChoice/logic.ts`, tested in `tests/logic.test.ts`. `index.ts` wires the PCF context to them and `RagChoiceView.tsx` renders the result.
+All the decisions (colour resolution, option list, blank option, read and edit state, display text, re-syncing from the bound value, error recovery, outputs) are pure functions in `RagChoice/logic.ts`, tested in `tests/logic.test.ts`. `index.ts` wires the PCF context to them and `RagChoiceView.tsx` renders the result. `tests/view.test.tsx` is a server-render smoke test of the view (`aria-required`, forced colours, the error boundary), outside the coverage gate.
 
 ### Harness checks (brief §8.2)
 
@@ -90,6 +91,7 @@ Per-option colours, read-only mode, field security (`***`), dark mode and screen
 
 ## Limitations
 
+- **English only, left to right.** The control is always used in an English context, so `--Select--`, `---` and `***` are hard-coded rather than localised, and it sets no `dir`. Neither is a bug.
 - **Single-select choice only.** Multi-select choices, Yes/No and Status Reason aren't supported in v1 (brief §2).
 - **Hidden options rely on an undocumented property.** The form host sends `IsHidden` on each option, but it isn't in the PCF typings or on Microsoft Learn. If the platform stops sending it, hidden options show in the list again.
 - **Not yet checked by a human (issue #7):** what a screen reader announces, the phone app, field security for a user without read access, and a real business-rule lock. See [docs/decisions.md](docs/decisions.md#left-for-a-human).
@@ -97,6 +99,13 @@ Per-option colours, read-only mode, field security (`***`), dark mode and screen
 - Option colours don't adapt to dark mode. The dot's neutral border keeps pale colours visible on light and dark backgrounds.
 
 ## Changelog
+
+### 0.1.3 (unreleased)
+
+- Error recovery: after a rendering failure, the plain-text fallback switches back to the dropdown when the data it renders changes, instead of staying text for the life of the form.
+- A required column sets `aria-required="true"` on the dropdown.
+- Windows high contrast: the dot and bar keep their colours (`forced-color-adjust: none`).
+- Documented that the control is English-only and left to right.
 
 ### 0.1.2 (unreleased)
 

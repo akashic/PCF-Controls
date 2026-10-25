@@ -120,7 +120,9 @@ Remove the control from every form before deleting `WBRagChoice` from an environ
 
 - **Colour is never the only signal.** The label is always shown next to the dot. Keep labels meaningful on their own ("Red – at risk", not just a colour name, if your users need more than the colour).
 - **The form label is the control's accessible name**, so screen reader users hear the label you give the field on the form. Give it a clear label, and keep it shown.
-- The dot and bar are decorative and hidden from screen readers.
+- **Required fields are announced as required.** When the column is business or system required, screen readers hear "required" along with the label.
+- The dot and bar are decorative and hidden from screen readers. In Windows high contrast mode they keep their colours, and the label is still shown.
+- **English only.** The control's own text (`--Select--`, `---`, `***`) is in English and it's laid out left to right, whatever the user's language.
 - Pick option colours with enough contrast against both the light and dark field backgrounds. Very pale colours (for example a light yellow) are hard to see even with the dot's border.
 
 ## Troubleshooting
@@ -143,4 +145,5 @@ Remove the control from every form before deleting `WBRagChoice` from an environ
 - **Single-select choice columns only.** Multi-select choices, Yes/No, Status and Status Reason aren't supported.
 - **Hidden options rely on an undocumented property** (`IsHidden`). If the platform stops sending it, hidden options appear in the list again. Retired values still save and display correctly.
 - **Option colours don't adapt to dark mode.** They're the colours you set on the choice.
+- **English only, left to right.** The control's own text isn't translated, and right-to-left languages aren't supported.
 - **Not yet tested (issue #7):** the phone app, a screen reader, a real business rule lock, and column security for a user who isn't an administrator. The [dev test results](decisions.md) list what was tested and how.

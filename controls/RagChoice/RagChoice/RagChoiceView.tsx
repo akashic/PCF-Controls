@@ -13,7 +13,15 @@ import {
   type Theme,
 } from "@fluentui/react-components";
 import type { HexColor } from "@wb-pcf/shared";
-import { PLACEHOLDER, READ_ONLY_EMPTY, type ChoiceItem, type DisplayValue, type IndicatorStyle } from "./logic";
+import {
+  PLACEHOLDER,
+  READ_ONLY_EMPTY,
+  resetBoundary,
+  type BoundaryState,
+  type ChoiceItem,
+  type DisplayValue,
+  type IndicatorStyle,
+} from "./logic";
 
 /**
  * Fields on a modern model-driven form are "filled-darker" (a grey fill, no
@@ -32,11 +40,20 @@ export interface RagChoiceViewProps {
    * readers, and in normal text colour.
    */
   readOnly: boolean;
+  /** Business or system required: announced as `aria-required` on the dropdown. */
+  required: boolean;
   ariaLabel: string | undefined;
   /** The platform's token theme, if modern theming is on. */
   theme: Theme | undefined;
   onChange: (key: string | undefined) => void;
 }
+
+/**
+ * Windows high contrast (forced colours) replaces backgrounds with system
+ * colours, which would blank the dot and bar. They keep their own colours;
+ * the label next to them is still the main signal.
+ */
+const KEEP_COLOURS = { forcedColorAdjust: "none" } as const;
 
 const useStyles = makeStyles({
   // The provider only carries the theme into the dropdown's portal; it mustn't paint a background.
@@ -54,6 +71,7 @@ const useStyles = makeStyles({
     borderBottomLeftRadius: tokens.borderRadiusMedium,
     zIndex: 1,
     pointerEvents: "none",
+    ...KEEP_COLOURS,
   },
   value: {
     display: "inline-flex",
@@ -75,6 +93,7 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusCircular,
     border: `${tokens.strokeWidthThin} solid ${tokens.colorNeutralStroke1}`,
     boxSizing: "border-box",
+    ...KEEP_COLOURS,
   },
   // In bar mode, each list option shows a small bar instead of a dot.
   optionBar: {
@@ -82,6 +101,7 @@ const useStyles = makeStyles({
     width: "4px",
     height: "16px",
     borderRadius: tokens.borderRadiusSmall,
+    ...KEEP_COLOURS,
   },
 });
 
@@ -93,15 +113,20 @@ function Indicator({ color, shape }: { color: HexColor | null; shape: "dot" | "o
 
 /**
  * Fail soft: if rendering ever throws, show the value as plain text rather
- * than breaking the form. Logs one warning per instance.
+ * than breaking the form. When the rendered data changes (`renderKey`), it
+ * tries the control again. Logs one warning per failure.
  */
 export class RagChoiceErrorBoundary extends React.Component<
-  { fallbackText: string; children?: React.ReactNode },
-  { failed: boolean }
+  { fallbackText: string; renderKey: string; children?: React.ReactNode },
+  BoundaryState
 > {
-  public state = { failed: false };
+  public state: BoundaryState = { failed: false, renderKey: null };
 
-  public static getDerivedStateFromError(): { failed: boolean } {
+  public static getDerivedStateFromProps(props: { renderKey: string }, state: BoundaryState): BoundaryState | null {
+    return resetBoundary(state, props.renderKey);
+  }
+
+  public static getDerivedStateFromError(): Partial<BoundaryState> {
     return { failed: true };
   }
 
@@ -115,7 +140,7 @@ export class RagChoiceErrorBoundary extends React.Component<
 }
 
 export function RagChoiceView(props: RagChoiceViewProps): React.ReactElement {
-  const { items, display, indicator, readOnly, ariaLabel, theme, onChange } = props;
+  const { items, display, indicator, readOnly, required, ariaLabel, theme, onChange } = props;
   const styles = useStyles();
   const showBar = indicator === "bar" && display.color !== null;
   const dot = indicator === "dot" ? <Indicator color={display.color} shape="dot" /> : null;
@@ -153,6 +178,7 @@ export function RagChoiceView(props: RagChoiceViewProps): React.ReactElement {
             className={styles.dropdown}
             appearance={APPEARANCE}
             aria-label={ariaLabel}
+            aria-required={required || undefined}
             value={display.text}
             placeholder={PLACEHOLDER}
             selectedOptions={display.selectedKey === null ? [] : [display.selectedKey]}
