@@ -97,7 +97,7 @@ RagChoice behaves like the platform's dropdown for everything around the field:
 - **Required level** comes from the column, or from a business rule or script that changes it.
 - **Column (field) security** is respected: no read shows `***`, read without update shows it read-only.
 
-One edge case: the platform takes a moment to apply a user's selection. A script that sets the field **back to its previous value** within that moment is overridden by the user's choice. Setting any other value works.
+An `OnChange` script that rejects a user's pick by setting the field back to its previous value works: RagChoice shows the script's value, the same as the platform's own control (tested in `LowCode`, #39; [decisions.md](decisions.md#script-resets-the-value-39)).
 
 ## Moving to UAT and prod
 

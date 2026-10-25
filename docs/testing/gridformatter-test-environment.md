@@ -68,6 +68,8 @@ The guard runs when a script imports [`lib.mjs`](../../scripts/test-env/lib.mjs)
 | `wb_budget` / `wb_actualcost` | Currency | Column-to-column comparison: even rows have actual cost **over** budget (+250), odd rows under (−250) |
 | `wb_duedate` | DateOnly | Overdue rules; values run from **5 days before today to 4 days after** (day = `(i % 10) − 5`), so some are overdue, one is today, some are in the future; empty on every 8th row |
 | `wb_reviewedon` | DateAndTime (user local) | Time-zone handling; `now − i × 7 hours`; empty on every 9th row |
+| `wb_startdate` | DateOnly, **User Local** behaviour (#39) | Stored as the UTC instant of the user's local midnight (`--tz`, default `Australia/Sydney`), same days as `wb_duedate` but relative to when they were set; empty on every 8th row |
+| `wb_meetingat` | DateAndTime, **Time Zone Independent** (#39) | Wall-clock 9:00 PM on the same days, shown the same to every user; empty on every 8th row |
 | `wb_notes` | Text | A plain non-primary text column; empty on every 4th row |
 | `createdon` | DateAndTime (system) | — |
 
@@ -115,6 +117,12 @@ The script runs these steps against the Web API (`/api/data/v9.2`):
 6. **Rows:** 30 `POST wb_gridspikes`. Parent lookups are bound with `"wb_ParentId@odata.bind": "/wb_gridspikes(<row 01 id>)"`. Rows 25–30 are then deactivated with `PATCH { statecode: 1, statuscode: 2 }`.
 
 Every metadata call sends the header **`MSCRM.SolutionUniqueName: WBGridSpikeTest`**, so the components land in the test solution and can be found and removed together. Data calls don't need it.
+
+Tables built before 26 Oct 2026 don't have `wb_startdate` and `wb_meetingat`. Add them, put them in the "all columns" view and fill rows 01–30 with:
+
+```sh
+node scripts/test-env/add-date-behaviour-columns.mjs        # idempotent
+```
 
 ### 4.3 More rows (volume and paging)
 
