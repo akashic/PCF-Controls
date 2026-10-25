@@ -40,6 +40,7 @@ Update this table when a control is added, released or retired.
 │   ├── briefs/                   # build briefs from the product owner, one per piece of work
 │   └── agents/                   # config for the agent skills (issue tracker, labels)
 ├── scripts/check-controls.mjs    # conventions check run in CI
+├── tools/Sync-FromUpstream.ps1   # merges this repo's updates into a copy of it (PowerShell 7)
 └── .github/workflows/            # ci.yml (every PR), release.yml (tags)
 ```
 
@@ -224,6 +225,17 @@ When the repo moves to the enterprise org:
 - Allow GitHub Actions (with GitHub-hosted Ubuntu runners) for the repo. If the org only allows approved actions, approve `actions/checkout`, `actions/setup-node`, `actions/setup-dotnet`, `actions/upload-artifact` and `actions/download-artifact`.
 - Add branch protection on `main`: require PRs, a passing CI, and review. Add a `CODEOWNERS` file naming the Power Platform team.
 - Update clone URLs in local checkouts with `git remote set-url origin https://github.com/William-Buck-Australia/<repo>.git`.
+
+## Keeping a copy up to date
+
+A project that works in its own copy of this repo (a fork, or a new repo made from it) can merge in later changes with `tools/Sync-FromUpstream.ps1` (PowerShell 7, Windows or macOS). Run it from a clone of the copy:
+
+```powershell
+./tools/Sync-FromUpstream.ps1 -UpstreamUrl https://github.com/<org>/PCF-Controls.git   # first time
+./tools/Sync-FromUpstream.ps1                                                           # later: reuses the 'upstream' remote
+```
+
+It makes a backup branch, merges `upstream/main` into `main`, runs the same checks as CI (`npm ci`, `check:controls`, `test:scripts`, `lint`, `test`, `validate:config`), and pushes only if they pass (it asks first). On a conflict it stops and lists the files; resolve `package.json` first and regenerate `package-lock.json` with `npm install` rather than editing it. A copy made with "Use this template" or by uploading files shares no history with this repo, so its first sync needs `-AllowUnrelatedHistories` and will have many conflicts. After this repo moves org, point the copy at the new URL with `git remote set-url upstream <url>`.
 
 ## References
 
