@@ -10,6 +10,8 @@ import {
   normalizeRawValue,
   parseFallbackColor,
   parseIndicatorStyle,
+  renderKey,
+  resetBoundary,
   resolveFieldState,
   resolveIndicatorColor,
   syncSelection,
@@ -265,6 +267,47 @@ describe("syncSelection", () => {
 
   it("treats a non-numeric raw value as empty", () => {
     expect(syncSelection({ selected: 1, lastRaw: 1 }, "1")).toEqual({ selected: null, lastRaw: null });
+  });
+});
+
+describe("renderKey", () => {
+  const items = buildChoiceItems(RAG_OPTIONS, null, false);
+  const data = {
+    items,
+    display: displayValue(items, 948790000, true),
+    indicator: "dot" as const,
+    readOnly: false,
+    required: false,
+    ariaLabel: "RAG status",
+  };
+
+  it("is the same for the same data", () => {
+    expect(renderKey({ ...data, items: [...items] })).toBe(renderKey(data));
+  });
+
+  it.each([
+    ["a new value", { display: displayValue(items, 948790001, true) }],
+    ["new options", { items: items.slice(1) }],
+    ["another indicator", { indicator: "bar" as const }],
+    ["a lock", { readOnly: true }],
+    ["a required level change", { required: true }],
+    ["a new label", { ariaLabel: undefined }],
+  ])("changes with %s", (_name, change) => {
+    expect(renderKey({ ...data, ...change })).not.toBe(renderKey(data));
+  });
+});
+
+describe("resetBoundary", () => {
+  it("takes the first key on mount", () => {
+    expect(resetBoundary({ failed: false, renderKey: null }, "a")).toEqual({ failed: false, renderKey: "a" });
+  });
+
+  it("stays failed while the data is the same", () => {
+    expect(resetBoundary({ failed: true, renderKey: "a" }, "a")).toBeNull();
+  });
+
+  it("tries again when the data changes", () => {
+    expect(resetBoundary({ failed: true, renderKey: "a" }, "b")).toEqual({ failed: false, renderKey: "b" });
   });
 });
 

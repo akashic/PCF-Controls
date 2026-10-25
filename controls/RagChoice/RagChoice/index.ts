@@ -9,6 +9,7 @@ import {
   normalizeRawValue,
   parseFallbackColor,
   parseIndicatorStyle,
+  renderKey,
   resolveFieldState,
   syncSelection,
   toOutputs,
@@ -47,25 +48,25 @@ export class RagChoice implements ComponentFramework.ReactControl<IInputs, IOutp
       const fallback = parseFallbackColor(context.parameters.fallbackColor?.raw);
       if (fallback.invalid) this.warnInvalidFallback(context.parameters.fallbackColor?.raw);
 
-      this.items = buildChoiceItems(
-        attributes?.Options,
-        fallback.color,
-        isRequired(attributes?.RequiredLevel),
-        this.selection.selected,
-      );
+      const required = isRequired(attributes?.RequiredLevel);
+      this.items = buildChoiceItems(attributes?.Options, fallback.color, required, this.selection.selected);
       const state = resolveFieldState({ isControlDisabled: context.mode.isControlDisabled, security: value?.security });
       const display = displayValue(this.items, this.selection.selected, state.readable);
       fallbackText = display.text;
 
+      const data = {
+        items: state.readable ? this.items : [],
+        display,
+        indicator: parseIndicatorStyle(context.parameters.indicator?.raw),
+        readOnly: !state.editable,
+        required,
+        ariaLabel: ariaLabelFor(context.mode.label, attributes?.DisplayName),
+      };
       return React.createElement(
         RagChoiceErrorBoundary,
-        { fallbackText },
+        { fallbackText, renderKey: renderKey(data) },
         React.createElement(RagChoiceView, {
-          items: state.readable ? this.items : [],
-          display,
-          indicator: parseIndicatorStyle(context.parameters.indicator?.raw),
-          readOnly: !state.editable,
-          ariaLabel: ariaLabelFor(context.mode.label, attributes?.DisplayName),
+          ...data,
           theme: context.fluentDesignLanguage?.tokenTheme as Theme | undefined,
           onChange: this.onChange,
         }),

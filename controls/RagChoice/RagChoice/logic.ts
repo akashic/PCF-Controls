@@ -202,6 +202,40 @@ export function syncSelection(current: Selection, raw: unknown): Selection {
   return value === current.lastRaw ? current : { selected: value, lastRaw: value };
 }
 
+/** What the view renders, apart from the theme and the change handler. */
+export interface RenderedData {
+  items: readonly ChoiceItem[];
+  display: DisplayValue;
+  indicator: IndicatorStyle;
+  readOnly: boolean;
+  required: boolean;
+  ariaLabel: string | undefined;
+}
+
+/**
+ * The rendered data as one string, so the error boundary can tell when it
+ * changes (a new value, new options, a lock, a required level change).
+ */
+export function renderKey(data: RenderedData): string {
+  return JSON.stringify(data);
+}
+
+/** The error boundary's state: whether rendering failed, and for which data. */
+export interface BoundaryState {
+  failed: boolean;
+  renderKey: string | null;
+}
+
+/**
+ * The error boundary's `getDerivedStateFromProps`: once rendering has
+ * failed, the boundary shows plain text until the data changes, then tries
+ * the control again. The same data stays on the text, so a render that
+ * always throws doesn't throw on every update.
+ */
+export function resetBoundary(state: BoundaryState, key: string): BoundaryState | null {
+  return state.renderKey === key ? null : { failed: false, renderKey: key };
+}
+
 /** `getOutputs()` result: `undefined` clears the column. */
 export function toOutputs(selected: number | null): { value: number | undefined } {
   return { value: selected ?? undefined };
