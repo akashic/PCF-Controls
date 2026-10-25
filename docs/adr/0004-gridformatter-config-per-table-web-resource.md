@@ -1,6 +1,6 @@
 # ADR-0004: GridFormatter rules live in one JSON web resource per table
 
-- **Status:** Accepted
+- **Status:** Accepted, name amended by ADR-0005
 - **Date:** 2026-10-22
 
 ## Context
@@ -31,3 +31,7 @@ The environment variable `wb_GridFormatConfig` is dropped.
 - Rules are the same in every environment by default. If an environment ever needs different rules, it needs its own copy of the web resource; that hasn't been asked for.
 - Matching rule sets by table (§5.2.1) is replaced by the file name. Filtering by view stays unsupported, because the view id isn't available to the customizer (V4).
 - Issues #10, #13 and #14 follow this shape rather than the brief's `ruleSets` and environment variable.
+
+## Amendment (25 Oct 2026): name under any publisher prefix
+
+[ADR-0005](0005-prefix-agnostic-controls.md) replaces the name `wb_/GridFormatter/<table logical name>.json` with `<prefix>_GridFormatter.<table logical name>.json`, where `<prefix>` is any publisher's prefix, and changes how the control finds the file. Everything else in this ADR stands.
