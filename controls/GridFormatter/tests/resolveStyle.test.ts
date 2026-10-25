@@ -13,6 +13,7 @@ import {
 	type PrepareOptions,
 	type RowStyles,
 } from "../GridFormatter/engine/resolveStyle";
+import { UNREADABLE } from "../GridFormatter/engine/rowValues";
 import { AMBER, GREEN, RED, UNKNOWN, column, columns, example, getter, matchIds, ragColours, rowMatcher } from "./engineHelpers";
 
 const config = (rules: Rule[], defaults?: TableConfig["defaults"]): TableConfig => ({ version: 1, defaults, rules });
@@ -378,6 +379,44 @@ describe("resolveStyles precedence (§5.2.5)", () => {
 			});
 		});
 
+		it("draws no pill where the fill would be a theme-token fallbackColor, and warns once for the rule", () => {
+			const defaults = { fallbackColor: { token: "colorNeutralForeground3" } };
+			const tint: Rule = { id: "tint", priority: 2, scope: "row", style: { backgroundColor: { fromOption: "wb_ragstatus" } } };
+			const { prepared, warnings } = prepare([pill("rag", { fromOption: "wb_ragstatus" }, 1), tint], { columns: visible, defaults });
+			expect(warnings).toEqual([
+				'rule "rag": a pill\'s fill can\'t be a theme token, so where its option has no colour the cell is drawn without a pill (defaults.fallbackColor is a token); use a hex fallbackColor.',
+			]);
+			// No colour: no pill, but the token fallback still applies to the background.
+			expect(cellsOf(resolveStyles(prepared, getter({ wb_ragstatus: UNKNOWN }), matchIds("rag", "tint")))).toEqual({
+				wb_ragstatus: { backgroundColor: GREY_TINT, customRender: false },
+				wb_notes: { backgroundColor: GREY_TINT, customRender: false },
+			});
+			// An option with a colour is a pill as usual (and the tint has no condition, so it applies too).
+			expect(cellsOf(resolveStyles(prepared, getter({ wb_ragstatus: AMBER }), matchIds("rag"))).wb_ragstatus).toEqual({
+				backgroundColor: "rgba(255, 185, 0, 0.18)",
+				pill: { backgroundColor: "#FFB900", color: BLACK },
+				customRender: true,
+			});
+		});
+
+		it("doesn't warn about a token fallbackColor for a pill that never falls back", () => {
+			const defaults = { fallbackColor: { token: "colorNeutralForeground3" } };
+			const stopOnly: Rule = { id: "stop", when: { column: "wb_ragstatus", op: "isNull" }, display: "pill", stop: true };
+			const { prepared, warnings } = prepare([pill("hex", "#107C10"), stopOnly], { columns: visible, defaults });
+			expect(warnings).toEqual([]);
+			expect(cellsOf(resolveStyles(prepared, getter({}), matchIds("hex")))).toEqual({
+				wb_ragstatus: { pill: { backgroundColor: "#107C10", color: WHITE }, customRender: true },
+			});
+		});
+
+		it("uses a hex fallbackColor as a pill's fill, with no warning", () => {
+			const { prepared, warnings } = prepare([pill("rag", { fromOption: "wb_ragstatus" })], { columns: visible, defaults: { fallbackColor: "#616161" } });
+			expect(warnings).toEqual([]);
+			expect(cellsOf(resolveStyles(prepared, getter({ wb_ragstatus: UNKNOWN }), matchIds("rag")))).toEqual({
+				wb_ragstatus: { pill: { backgroundColor: "#616161", color: WHITE }, customRender: true },
+			});
+		});
+
 		it("doesn't count as the cell's background, so a row tint still shows around it", () => {
 			const { prepared } = prepare(
 				[pill("p", { fromOption: "wb_ragstatus" }, 1), { id: "tint", priority: 2, scope: "row", style: { backgroundColor: { fromOption: "wb_ragstatus" } } }],
@@ -490,6 +529,12 @@ describe("row memoisation (§5.9)", () => {
 		const row = { statecode: 0, wb_ragstatus: RED, wb_duedate: "2026-01-01", wb_notes: "ignored" };
 		expect(rowStyleKey(prepared, "rec-1", getter(row))).toBe('rec-1\u0000[0,948790000,"2026-01-01"]');
 		expect(rowStyleKey(prepared, "rec-1", getter({}))).toBe("rec-1\u0000[null,null,null]");
+	});
+
+	it("keys a value that can't be read apart from an empty one", () => {
+		const unreadable = rowStyleKey(prepared, "rec-1", getter({ statecode: UNREADABLE }));
+		expect(unreadable).toBe('rec-1\u0000[{"symbol":"GridFormatter.unreadable"},null,null]');
+		expect(unreadable).not.toBe(rowStyleKey(prepared, "rec-1", getter({ statecode: null })));
 	});
 
 	it("resolves a row once while its referenced values are unchanged", () => {

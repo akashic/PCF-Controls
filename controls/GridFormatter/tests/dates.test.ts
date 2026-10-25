@@ -1,4 +1,4 @@
-import { dayNumber, parseCalendarDate, parseIso, toLocalDate, type CalendarDate } from "../GridFormatter/engine/dates";
+import { dayNumber, fromWallClock, parseCalendarDate, parseIso, toLocalDate, type CalendarDate } from "../GridFormatter/engine/dates";
 
 const AEST = 600; // UTC+10, the offset captured in the spike
 
@@ -111,7 +111,28 @@ describe("parseIso", () => {
 		expect(parseIso("2026-12-31T17:00Z", NaN)?.kind).toBe("instant");
 	});
 
+	describe("a time without a zone near a daylight-saving change", () => {
+		// Sydney: AEST (UTC+10) until 02:00 on 4 Oct 2026, which is 16:00 UTC on 3 Oct; then AEDT (UTC+11).
+		const change = Date.parse("2026-10-03T16:00:00Z");
+		const sydney = (at: Date): number => (at.getTime() < change ? 600 : 660);
+
+		it.each([
+			// The evening before: still AEST. One pass would have read the offset at 20:00 UTC (AEDT) and been an hour out.
+			["2026-10-03T20:00", "2026-10-03T10:00:00.000Z"],
+			["2026-10-04T01:59", "2026-10-03T15:59:00.000Z"],
+			// After the change: AEDT.
+			["2026-10-04T03:00", "2026-10-03T16:00:00.000Z"],
+			["2026-10-04T12:00", "2026-10-04T01:00:00.000Z"],
+		])("reads %p in the offset in force then: %p", (input, expected) => {
+			const parsed = parseIso(input, sydney);
+			expect(parsed?.kind === "instant" && parsed.instant.toISOString()).toBe(expected);
+		});
+	});
+
 	it.each([
+		"2026-12-31T17:00+24:00",
+		"2026-12-31T17:00-10:60",
+		"2026-12-31T24:00Z",
 		"2026-12-31T25:00:00Z",
 		"2026-12-31T17:60Z",
 		"2026-12-31T17:00:61Z",
@@ -124,5 +145,29 @@ describe("parseIso", () => {
 		1,
 	])("rejects %p", (input) => {
 		expect(parseIso(input)).toBeNull();
+	});
+});
+
+describe("fromWallClock", () => {
+	const wallClock = Date.UTC(2026, 9, 22, 9, 0); // 09:00 on 22 Oct, as if UTC
+
+	it("converts a local wall-clock time to UTC", () => {
+		expect(new Date(fromWallClock(wallClock, AEST) ?? NaN).toISOString()).toBe("2026-10-21T23:00:00.000Z");
+		expect(new Date(fromWallClock(wallClock, -300) ?? NaN).toISOString()).toBe("2026-10-22T14:00:00.000Z");
+	});
+
+	it("asks for the offset at its first guess, not at the wall-clock fields", () => {
+		const asked: string[] = [];
+		fromWallClock(wallClock, (at) => {
+			asked.push(at.toISOString());
+			return AEST;
+		});
+		expect(asked).toEqual(["2026-10-22T09:00:00.000Z", "2026-10-21T23:00:00.000Z"]);
+	});
+
+	it("is null when either reading of the offset fails", () => {
+		expect(fromWallClock(wallClock, NaN)).toBeNull();
+		const readings = [AEST, NaN];
+		expect(fromWallClock(wallClock, () => readings.shift() ?? AEST)).toBeNull();
 	});
 });

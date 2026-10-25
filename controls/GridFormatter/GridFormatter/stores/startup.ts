@@ -45,8 +45,15 @@ export interface StartOptions<T> {
 	readonly clearTimer?: (handle: unknown) => void;
 }
 
-/** Waits for `loading`, but no longer than `timeoutMs`, then calls `onReady` once. */
-export function startWhenLoaded<T>(loading: Promise<T>, options: StartOptions<T>): void {
+/** Stops a start-up that hasn't finished: `onReady` is then never called. Does nothing once it has. */
+export type CancelStart = () => void;
+
+/**
+ * Waits for `loading`, but no longer than `timeoutMs`, then calls `onReady`
+ * once. Returns a function that cancels it, for `destroy()`: a grid removed
+ * while loading must not get a late `fireEvent`.
+ */
+export function startWhenLoaded<T>(loading: Promise<T>, options: StartOptions<T>): CancelStart {
 	const {
 		onReady,
 		warn,
@@ -75,4 +82,9 @@ export function startWhenLoaded<T>(loading: Promise<T>, options: StartOptions<T>
 		finish(value);
 	};
 	void settle();
+	return () => {
+		if (done) return;
+		done = true;
+		clearTimer(timer);
+	};
 }

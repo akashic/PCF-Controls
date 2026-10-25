@@ -10,14 +10,14 @@ A **Power Apps grid customizer** that formats rows and cells of a table's views 
 | Solution | `WBGridFormatter` (display name "WB Grid Formatter") |
 | Works with | The **Power Apps grid control** on main grids and subgrids |
 | Configuration | One web resource per table, under any publisher prefix: `<prefix>_GridFormatter.<table>.json` ([configuration guide](docs/configuration.md)) |
-| Version | 0.3.0 |
+| Version | 0.4.0 |
 | Decisions | [ADR-0004](../../docs/adr/0004-gridformatter-config-per-table-web-resource.md) (config per table), [ADR-0005](../../docs/adr/0005-prefix-agnostic-controls.md) (any publisher prefix), [spike results](docs/decisions.md) |
 | Architecture | [Diagram](docs/architecture.html) (open in a browser; source `docs/architecture.archify.json`) |
 | Spec | [brief §5](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#5-control-a--gridformatter-views-and-subgrids), superseded where ADR-0004 and the spike results differ |
 
 ## What it does
 
-- Loads the grid's table's rules once per page, then hands its cell renderers to the grid. The grid waits for it, so the first paint is already formatted. If loading takes more than **3 seconds**, the grid is shown unformatted, with one console warning.
+- Loads the grid's table's rules once until the browser tab reloads (moving between views and records doesn't reload them), then hands its cell renderers to the grid. The grid waits for it, so the first paint is already formatted. If loading takes more than **3 seconds**, the grid is shown unformatted, with one console warning.
 - No web resource for the table, invalid JSON or a load failure: the grid behaves exactly like the plain Power Apps grid. Invalid rules are skipped one at a time, each with a console warning; the rest still work.
 - Backgrounds are a translucent layer on the cell, so hover and selection stay visible. Italic and underline go on the cell too. Text colour and bold are drawn by the control only on plain value columns, never on the primary name, lookups or Owner ([what works where](docs/configuration.md#what-works-on-which-column)).
 - Renderers only: it never changes grid data, never overrides cell editors, and never throws into the grid.
@@ -127,6 +127,21 @@ The local test harness can't host a grid customizer, so check visual changes in 
 - Rules are cached for the browser tab's lifetime. After publishing new rules, reload the page.
 
 ## Changelog
+
+### 0.4.0 (unreleased)
+
+Robustness fixes from the portability review (#40). Rules that worked before still work, except where noted.
+
+- **A value the control can't read never matches.** A non-empty cell that doesn't fit its column type, or a value in a type the control doesn't read (file, image), used to look empty, so `isNull` and `not` conditions matched it. Now no condition matches it, `not` doesn't turn it true, and the console warns once per column ([guide](docs/configuration.md#values-the-control-cant-read)). Empty cells work as before.
+- **Dates only on date columns.** Date comparisons and the day operators only work on date-only and date-and-time columns; on a text column holding a date they're false, and `eq` compares the text.
+- **Pill fills can't be theme tokens.** A pill rule with a `{ "token" }` fill is skipped with a warning, because its black or white text can't follow dark mode. Use a hex colour or `fromOption`. Nor is a token `defaults.fallbackColor` used as a fill: a `fromOption` pill whose option has no colour is drawn as a normal cell, with one warning per rule.
+- **Impossible dates and times** (`2026-02-30`, `T25:00`) in a condition skip the rule with a warning. The schema rejects impossible months, days over 31 and times, and `npm run validate:config` catches the rest.
+- **Daylight saving:** a time without a zone in a rule, and the midnight when "today" moves on, use the offset in force at that moment. Near a change they could be an hour out.
+- **Each request has a 3 s limit.** A config or option-colour request that fails or hangs is dropped from the cache, so the next grid of the table asks again. Failed option-colour reads are no longer cached.
+- The config lookup returns up to 50 matching names (was 10), so names the exact check rejects can't hide the real file.
+- If a cell renderer fails, the cell's container styling is cleared, so a reused cell doesn't keep an earlier row's background.
+- Removing a grid while its rules are loading cancels the start-up (no late `fireEvent`). A missing `EventName` (the control used outside a grid's customizer setting) is now warned about once.
+- Guide: the Web API metadata fallback is best-effort and web-only, currency compares the stored amount (use `<column>_base` in multi-currency orgs), and text matching is simple case-insensitive matching. Schema hover text for `tintAlpha` and `fromOption` `alpha` now says backgrounds default to the tint.
 
 ### 0.3.0 (unreleased)
 

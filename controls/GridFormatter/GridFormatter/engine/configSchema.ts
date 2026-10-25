@@ -28,7 +28,10 @@ export interface TableConfig {
 }
 
 export interface ConfigDefaults {
-	/** Alpha for `fromOption` colours with `alpha: "tint"`. Defaults to 0.18. */
+	/**
+	 * Alpha for every background without its own alpha (a hex, a token, or `fromOption` without
+	 * `alpha`), and for `alpha: "tint"` anywhere. Defaults to 0.18.
+	 */
 	tintAlpha?: number;
 	/** Used when `fromOption` finds no colour. `null` (default) means the rule doesn't set the property. */
 	fallbackColor?: StaticColor | null;
@@ -44,7 +47,7 @@ export interface Rule {
 	when?: Condition;
 	/** Required unless `when` is a leaf, in which case it defaults to that leaf's column. */
 	scope?: Scope;
-	/** Defaults to `"style"`. `"pill"` needs cell scope and `style.backgroundColor`. */
+	/** Defaults to `"style"`. `"pill"` needs cell scope and a `style.backgroundColor` that isn't a token. */
 	display?: Display;
 	/** Required unless `stop` is true. */
 	style?: StyleProps;
@@ -140,7 +143,10 @@ export interface TokenColor {
 export interface FromOptionColor {
 	/** Choice column whose selected option's colour is used. */
 	fromOption: ColumnName;
-	/** `"tint"` uses `defaults.tintAlpha`; omit for a solid colour. */
+	/**
+	 * `"tint"` uses `defaults.tintAlpha`; a number sets the alpha. Omitted: a background uses
+	 * `defaults.tintAlpha` and text is solid. A pill's fill is always solid.
+	 */
 	alpha?: "tint" | number;
 }
 
@@ -156,8 +162,4 @@ export function isLeafCondition(condition: Condition): condition is LeafConditio
 
 export function isFromOptionColor(color: ColorValue): color is FromOptionColor {
 	return typeof color === "object" && "fromOption" in color;
-}
-
-export function isCellScope(scope: Scope): scope is CellScope {
-	return typeof scope === "object";
 }

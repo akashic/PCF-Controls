@@ -1,5 +1,6 @@
 import { createConfigStore, type WebApiLike } from "../GridFormatter/stores/configStore";
 import { createWarnOnce } from "../GridFormatter/engine/warnings";
+import { REQUEST_TIMEOUT_MS } from "../GridFormatter/stores/timeout";
 import { example, exampleBase64 } from "./engineHelpers";
 
 const base64 = (text: string): string => Buffer.from(text).toString("base64");
@@ -28,7 +29,7 @@ describe("configStore", () => {
 		const expected = example("wb_gridspike");
 		expect(config).toEqual({ version: 1, defaults: expected.defaults, rules: expected.rules });
 		expect(calls).toEqual([
-			["webresource", "?$select=name,content&$filter=endswith(name,'[_]GridFormatter.wb[_]gridspike.json')&$orderby=name&$top=10"],
+			["webresource", "?$select=name,content&$filter=endswith(name,'[_]GridFormatter.wb[_]gridspike.json')&$orderby=name&$top=50"],
 		]);
 		expect(warnings).toEqual([]);
 		expect(infos).toEqual([]);
@@ -117,6 +118,23 @@ describe("configStore", () => {
 		fail = false;
 		expect(await store.load("t", webAPI)).not.toBeNull();
 		expect(calls).toHaveLength(2);
+	});
+
+	it("gives up on a request after 3 s, and the next grid asks again", async () => {
+		jest.useFakeTimers();
+		try {
+			let hang = true;
+			const { store, webAPI, warnings, calls } = setup(() => (hang ? new Promise(() => undefined) : found(exampleBase64("rag-row"))));
+			const first = store.load("t", webAPI);
+			await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+			expect(await first).toBeNull();
+			expect(warnings).toEqual(["config <prefix>_GridFormatter.t.json couldn't be loaded (timed out after 3 s); the grid is shown without formatting."]);
+			hang = false;
+			expect(await store.load("t", webAPI)).not.toBeNull();
+			expect(calls).toHaveLength(2);
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it("reports a request failure that isn't an Error", async () => {

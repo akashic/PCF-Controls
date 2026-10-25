@@ -6,6 +6,8 @@
  *
  * - Not JSON, not an object, wrong `version` or no `rules` array: one warning, no config.
  * - An invalid rule: that rule is skipped with one warning naming its `id`; the rest still work.
+ *   That includes a date or time that doesn't exist (`2026-02-30`, `T25:00`; the schema's
+ *   pattern can't catch the first), and a pill whose fill is a theme token.
  * - An invalid `defaults` value: that value is ignored with a warning.
  * - A rule's text colour below 4.5:1 against its background: a warning; the rule is kept.
  *
@@ -29,6 +31,8 @@ import {
 	type ColourDefaults,
 	type ColourUsage,
 } from "./colours";
+import { parseIso } from "./dates";
+import { isRecord } from "./guards";
 import { consoleWarn, type Warn } from "./warnings";
 
 /** WCAG AA minimum contrast for normal text. */
@@ -44,13 +48,12 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\
 const RULE_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 const MAX_ID_LENGTH = 64;
 
-const isObject = (value: unknown): value is JsonObject => typeof value === "object" && value !== null && !Array.isArray(value);
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const isAlpha = (value: unknown): boolean => isNumber(value) && value >= 0 && value <= 1;
 const isScalar = (value: unknown): boolean => isNumber(value) || typeof value === "string" || typeof value === "boolean";
 const isColumn = (value: unknown): value is string => typeof value === "string" && COLUMN.test(value);
 const isIsoDate = (value: unknown): boolean => typeof value === "string" && ISO_DATE.test(value);
-const isColumnOperand = (value: unknown): boolean => isObject(value) && Object.keys(value).length === 1 && isColumn(value.column);
+const isColumnOperand = (value: unknown): boolean => isRecord(value) && Object.keys(value).length === 1 && isColumn(value.column);
 const isList = (value: unknown, item: (v: unknown) => boolean): value is unknown[] =>
 	Array.isArray(value) && value.length > 0 && value.every(item);
 const isDistinct = (values: unknown[]): boolean => new Set(values).size === values.length;
@@ -96,6 +99,17 @@ const OPERATORS: ReadonlyMap<string, ((value: unknown) => boolean) | null> = new
 	["containsAll", optionList],
 ]);
 
+/**
+ * The first text in an operand (a value or a list item) shaped like an ISO date
+ * that isn't a real date or time, such as `2026-02-30` or `2026-10-22T25:00`.
+ * The schema's pattern only checks the shape.
+ */
+function impossibleDate(value: unknown): string | undefined {
+	return (Array.isArray(value) ? value : [value]).find(
+		(item): item is string => isIsoDate(item) && parseIso(item) === null,
+	);
+}
+
 function checkLeaf(leaf: JsonObject, path: string): Problem {
 	const extra = unknownKey(leaf, ["column", "op", "value"], path);
 	if (extra) return extra;
@@ -103,12 +117,14 @@ function checkLeaf(leaf: JsonObject, path: string): Problem {
 	const operand = typeof leaf.op === "string" ? OPERATORS.get(leaf.op) : undefined;
 	if (operand === undefined) return `${path}/op ${quote(leaf.op)} isn't a known operator`;
 	if (operand === null) return "value" in leaf ? `${path}/value: "${String(leaf.op)}" takes no value` : null;
+	const impossible = impossibleDate(leaf.value);
+	if (impossible !== undefined) return `${path}/value ${quote(impossible)} isn't a real date or time`;
 	return operand(leaf.value) ? null : `${path}/value ${quote(leaf.value)} isn't a valid operand for "${String(leaf.op)}"`;
 }
 
 /** `depth` is 1 for `when`; each group adds a level, up to `MAX_CONDITION_DEPTH`. */
 function checkCondition(condition: unknown, path: string, depth: number): Problem {
-	if (!isObject(condition)) return `${path} must be a condition object`;
+	if (!isRecord(condition)) return `${path} must be a condition object`;
 	if ("column" in condition || "op" in condition) return checkLeaf(condition, path);
 	const keys = Object.keys(condition);
 	if (keys.length !== 1) return `${path} must be a leaf { column, op, value } or exactly one of all, any or not`;
@@ -129,7 +145,7 @@ function checkCondition(condition: unknown, path: string, depth: number): Proble
 
 function checkColour(colour: unknown, path: string, allowFromOption: boolean): Problem {
 	if (typeof colour === "string") return HEX.test(colour) ? null : `${path} ${quote(colour)} isn't a #RGB or #RRGGBB colour`;
-	if (!isObject(colour)) return `${path} must be a colour`;
+	if (!isRecord(colour)) return `${path} must be a colour`;
 	if ("token" in colour) {
 		return (
 			unknownKey(colour, ["token"], path) ??
@@ -159,7 +175,7 @@ const STYLE_ENUMS: ReadonlyMap<string, readonly string[]> = new Map([
 ]);
 
 function checkStyle(style: unknown, path: string): Problem {
-	if (!isObject(style) || Object.keys(style).length === 0) return `${path} must be an object with at least one property`;
+	if (!isRecord(style) || Object.keys(style).length === 0) return `${path} must be an object with at least one property`;
 	for (const [key, value] of Object.entries(style)) {
 		const allowed = STYLE_ENUMS.get(key);
 		let problem: Problem;
@@ -173,7 +189,7 @@ function checkStyle(style: unknown, path: string): Problem {
 
 function checkScope(scope: unknown, path: string): Problem {
 	if (scope === "row") return null;
-	if (!isObject(scope)) return `${path} must be "row" or { "columns": [...] }`;
+	if (!isRecord(scope)) return `${path} must be "row" or { "columns": [...] }`;
 	const extra = unknownKey(scope, ["columns"], path);
 	if (extra) return extra;
 	const { columns } = scope;
@@ -186,7 +202,7 @@ const RULE_KEYS = ["id", "description", "priority", "when", "scope", "display", 
 
 /** The first problem with a rule, mirroring the schema's `rule` definition. */
 function checkRule(rule: unknown, path: string): Problem {
-	if (!isObject(rule)) return `${path} must be an object`;
+	if (!isRecord(rule)) return `${path} must be an object`;
 	const checks: (() => Problem)[] = [
 		() => unknownKey(rule, RULE_KEYS, path),
 		() =>
@@ -201,13 +217,18 @@ function checkRule(rule: unknown, path: string): Problem {
 		() => (rule.stop === undefined || typeof rule.stop === "boolean" ? null : `${path}/stop must be true or false`),
 		() => (rule.style === undefined ? (rule.stop === true ? null : `${path}: style is required unless stop is true`) : checkStyle(rule.style, `${path}/style`)),
 		() =>
-			rule.scope !== undefined || (isObject(rule.when) && "column" in rule.when)
+			rule.scope !== undefined || (isRecord(rule.when) && "column" in rule.when)
 				? null
 				: `${path}: scope is required unless when is a single leaf condition`,
 		() => (rule.display === "pill" && rule.scope === "row" ? `${path}/scope: a pill needs cell scope, not "row"` : null),
 		() =>
-			rule.display === "pill" && !(isObject(rule.style) && rule.style.backgroundColor !== undefined)
+			rule.display === "pill" && !(isRecord(rule.style) && rule.style.backgroundColor !== undefined)
 				? `${path}/style: a pill needs a backgroundColor`
+				: null,
+		// The pill's black or white text is picked against the token's light-theme value, so it can be unreadable in dark mode.
+		() =>
+			rule.display === "pill" && isRecord(rule.style) && isRecord(rule.style.backgroundColor) && "token" in rule.style.backgroundColor
+				? `${path}/style/backgroundColor: a pill's fill can't be a theme token, because its text colour can't follow dark mode; use a hex colour or fromOption`
 				: null,
 	];
 	for (const check of checks) {
@@ -219,7 +240,7 @@ function checkRule(rule: unknown, path: string): Problem {
 
 function checkDefaults(defaults: unknown, warn: Warn): ConfigDefaults | undefined {
 	if (defaults === undefined) return undefined;
-	if (!isObject(defaults)) {
+	if (!isRecord(defaults)) {
 		warn("config: /defaults must be an object; ignored.");
 		return undefined;
 	}
@@ -274,7 +295,7 @@ export function contrastWarning(rule: Rule, defaults: ColourDefaults): string | 
 // Entry points --------------------------------------------------------------------
 
 function ruleLabel(rule: unknown, index: number): string {
-	return isObject(rule) && typeof rule.id === "string" ? `"${rule.id}"` : `at /rules/${index}`;
+	return isRecord(rule) && typeof rule.id === "string" ? `"${rule.id}"` : `at /rules/${index}`;
 }
 
 /**
@@ -284,7 +305,7 @@ function ruleLabel(rule: unknown, index: number): string {
  */
 export function validateConfig(input: unknown, warn: Warn = consoleWarn): TableConfig | null {
 	try {
-		if (!isObject(input)) {
+		if (!isRecord(input)) {
 			warn("config ignored: it isn't a JSON object.");
 			return null;
 		}

@@ -19,7 +19,8 @@
 import { backgroundLayer, type OptionColours, type PillSpec, type ValueGetter } from "./colours";
 import type { TableConfig } from "./configSchema";
 import { evaluate } from "./conditions";
-import { toLocalDate, type TimeZoneOffset } from "./dates";
+import { fromWallClock, toLocalDate, type TimeZoneOffset } from "./dates";
+import { isRecord } from "./guards";
 import {
 	canDrawCell,
 	createRowStyleCache,
@@ -29,7 +30,7 @@ import {
 	type PreparedRules,
 	type RowStyleCache,
 } from "./resolveStyle";
-import { NOT_VISIBLE, readColumn, type ColumnValue } from "./rowValues";
+import { NOT_VISIBLE, UNREADABLE, readColumn, type ColumnValue } from "./rowValues";
 import { consoleWarn, type Warn } from "./warnings";
 
 // Container ---------------------------------------------------------------------
@@ -112,22 +113,11 @@ export interface DayTracker {
 	today(): string;
 }
 
-function offsetMinutes(offset: TimeZoneOffset, instant: Date): number | null {
-	try {
-		const minutes = typeof offset === "function" ? offset(instant) : offset;
-		return typeof minutes === "number" && Number.isFinite(minutes) ? minutes : null;
-	} catch {
-		return null;
-	}
-}
-
 /** When to work out "today" again: the next local midnight, but at most an hour away (DST changes). */
 function nextCheck(nowMs: number, today: string, offset: TimeZoneOffset): number {
 	if (today === "") return nowMs + MINUTE;
 	const [year, month, day] = today.split("-").map(Number);
-	const midnightWallClock = Date.UTC(year, month - 1, day + 1);
-	const minutes = offsetMinutes(offset, new Date(midnightWallClock));
-	const midnight = minutes === null ? NaN : midnightWallClock - minutes * MINUTE;
+	const midnight = fromWallClock(Date.UTC(year, month - 1, day + 1), offset) ?? NaN;
 	// Already past the estimate but still the same day (an offset change): look again in a minute.
 	return midnight > nowMs ? Math.min(midnight, nowMs + HOUR) : nowMs + MINUTE;
 }
@@ -170,7 +160,7 @@ export interface FormatterOptions {
 	readonly offset: TimeZoneOffset;
 	/** Clock, for tests. */
 	readonly now?: () => number;
-	/** One `createWarnOnce()` per page. */
+	/** One `createWarnOnce()` at module scope, shared until the browser tab reloads. */
 	readonly warn?: Warn;
 	/** Set to log which rules matched each row (`sessionStorage['GridFormatter.debug'] === '1'`). */
 	readonly debug?: (message: string) => void;
@@ -193,8 +183,6 @@ interface PreparedGrid {
 const MAX_COLUMN_SETS = 8;
 /** Debug log keys kept before starting again. */
 const MAX_LOGGED_ROWS = 5000;
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 /** The grid's columns from `colDefs`, skipping malformed entries. */
 export function gridColumns(colDefs: readonly unknown[]): GridColumn[] {
@@ -263,14 +251,27 @@ export function createCellFormatter(options: FormatterOptions): CellFormatter {
 		const column = isRecord(def) && typeof def.name === "string" ? grid.columns.get(def.name) : undefined;
 		if (!column || !isRecord(rowData) || grid.prepared.rules.length === 0) return PLAIN_CELL;
 
-		const getColumn = (name: string): ColumnValue => readColumn(rowData, name, grid.types.get(name));
+		const columnType = (name: string): string | undefined => grid.types.get(name);
+		const getColumn = (name: string): ColumnValue => {
+			const dataType = columnType(name);
+			const value = readColumn(rowData, name, dataType);
+			// Once per column: the sink is a createWarnOnce().
+			if (value === UNREADABLE) {
+				warn(`column "${name}" (${String(dataType)}) has a value the control can't read; conditions on it don't match, not even isNull or inside "not".`);
+			}
+			return value;
+		};
 		const getValue: ValueGetter = (name) => {
 			const value = getColumn(name);
 			return value === NOT_VISIBLE ? undefined : value;
 		};
 		const rawId = rowData.__rec_id;
 		const recordId = typeof rawId === "string" ? rawId : "";
-		const styles = grid.cache.get(recordId, getValue, (rule) => rule.when !== undefined && evaluate(rule.when, getColumn, today, offset));
+		const styles = grid.cache.get(
+			recordId,
+			getValue,
+			(rule) => rule.when !== undefined && evaluate(rule.when, getColumn, columnType, today, offset),
+		);
 		if (debug) logMatches(debug, recordId, styles.matchedRuleIds);
 
 		const cell = styles.cells.get(column.name);

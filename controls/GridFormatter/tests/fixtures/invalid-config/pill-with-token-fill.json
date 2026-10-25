@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../config/grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "pill-with-token-fill",
+      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "scope": { "columns": ["wb_ragstatus"] },
+      "display": "pill",
+      "style": { "backgroundColor": { "token": "colorPaletteRedBackground3" } }
+    }
+  ]
+}

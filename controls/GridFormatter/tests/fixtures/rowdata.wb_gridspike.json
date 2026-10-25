@@ -1,5 +1,5 @@
 {
-  "_source": "Captured from the Power Apps grid in the LowCode test environment, 22 Oct 2026 (issue #9, spike V1). 'params' (functions) removed. Columns not in the view are absent from rowData (V2).",
+  "_source": "Captured from the Power Apps grid in the LowCode test environment, 22 Oct 2026 (issue #9, spike V1). 'params' (functions) removed. Columns not in the view are absent from rowData (V2). The owner's id and name are replaced with neutral test values.",
   "colDefs": [
     { "name": "wb_name", "dataType": "Text", "isPrimary": true },
     { "name": "statecode", "dataType": "OptionSet", "isPrimary": false },
@@ -28,7 +28,7 @@
       "wb_tags": [948790000, 948790001],
       "wb_flagged": false,
       "wb_parentid": null,
-      "ownerid": { "id": { "guid": "64a20861-7fdd-f011-8406-7ced8d70a9f0" }, "etn": "systemuser", "name": "Giles Gregg" },
+      "ownerid": { "id": { "guid": "00000000-0000-0000-0000-000000000001" }, "etn": "systemuser", "name": "Test User" },
       "wb_count": 10,
       "wb_score": 3.14,
       "wb_budget": 1000,
@@ -47,7 +47,7 @@
       "wb_tags": [948790002],
       "wb_flagged": false,
       "wb_parentid": null,
-      "ownerid": { "id": { "guid": "64a20861-7fdd-f011-8406-7ced8d70a9f0" }, "etn": "systemuser", "name": "Giles Gregg" },
+      "ownerid": { "id": { "guid": "00000000-0000-0000-0000-000000000001" }, "etn": "systemuser", "name": "Test User" },
       "wb_count": 20,
       "wb_score": 6.28,
       "wb_budget": 2000,

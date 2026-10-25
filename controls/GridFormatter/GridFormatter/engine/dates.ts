@@ -70,13 +70,31 @@ export function dayNumber(date: CalendarDate): number {
 }
 
 /** The offset in minutes at `instant`, or `null` if the offset source fails or isn't a finite number. */
-function offsetAt(offset: TimeZoneOffset, instant: Date): number | null {
+export function offsetAt(offset: TimeZoneOffset, instant: Date): number | null {
 	try {
 		const minutes = typeof offset === "function" ? offset(instant) : offset;
 		return typeof minutes === "number" && Number.isFinite(minutes) ? minutes : null;
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * The UTC timestamp of a wall-clock time in the user's time zone, where
+ * `wallClock` is that time's fields read as UTC (`Date.UTC(...)`). `null` when
+ * the offset can't be read.
+ *
+ * Two passes, because the offset is only known for an instant: the first guess
+ * uses the offset at the wall-clock fields read as UTC, which is up to the
+ * offset itself away from the real instant and so can be on the other side of
+ * a daylight-saving change; the second uses the offset at that guess. In the
+ * hour a change skips or repeats, the result is one of the two readings.
+ */
+export function fromWallClock(wallClock: number, offset: TimeZoneOffset): number | null {
+	const first = offsetAt(offset, new Date(wallClock));
+	if (first === null) return null;
+	const second = offsetAt(offset, new Date(wallClock - first * MS_PER_MINUTE));
+	return second === null ? null : wallClock - second * MS_PER_MINUTE;
 }
 
 /**
@@ -99,8 +117,9 @@ export type IsoValue = { kind: "date"; date: CalendarDate } | { kind: "instant";
 /**
  * Parses `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm[:ss[.fff]]` with an optional `Z`
  * or `±HH:mm` suffix. A date and time **without** a suffix is wall-clock time
- * in `localOffset` (the user's time zone, for config operands), or UTC when
- * `localOffset` is omitted.
+ * in `localOffset` (the user's time zone, for config operands, converted with
+ * {@link fromWallClock}), or UTC when `localOffset` is omitted. Impossible
+ * dates and times (`2026-02-30`, `T25:00`, `+24:00`) give `null`.
  */
 export function parseIso(input: unknown, localOffset: TimeZoneOffset = 0): IsoValue | null {
 	const date = parseCalendarDate(input);
@@ -114,14 +133,15 @@ export function parseIso(input: unknown, localOffset: TimeZoneOffset = 0): IsoVa
 	const wallClock = utcMillis(+y, +mo, +d, +h, +mi, +s, ms);
 	if (wallClock === null) return null;
 
-	let minutes: number | null;
+	let instant: number | null;
 	if (zone === undefined) {
-		minutes = offsetAt(localOffset, new Date(wallClock));
+		instant = fromWallClock(wallClock, localOffset);
 	} else if (zone === "Z") {
-		minutes = 0;
+		instant = wallClock;
+	} else if (Number(zh) > 23 || Number(zm) > 59) {
+		instant = null;
 	} else {
-		minutes = (sign === "-" ? -1 : 1) * (Number(zh) * 60 + Number(zm));
+		instant = wallClock - (sign === "-" ? -1 : 1) * (Number(zh) * 60 + Number(zm)) * MS_PER_MINUTE;
 	}
-	if (minutes === null) return null;
-	return { kind: "instant", instant: new Date(wallClock - minutes * MS_PER_MINUTE) };
+	return instant === null ? null : { kind: "instant", instant: new Date(instant) };
 }

@@ -1,4 +1,5 @@
-import { isCellScope, isFromOptionColor, isLeafCondition } from "../GridFormatter/engine/configSchema";
+import { isFromOptionColor, isLeafCondition } from "../GridFormatter/engine/configSchema";
+import { isRecord } from "../GridFormatter/engine/guards";
 
 describe("configSchema type guards", () => {
 	it("isLeafCondition tells leaves from groups", () => {
@@ -14,8 +15,12 @@ describe("configSchema type guards", () => {
 		expect(isFromOptionColor({ token: "colorNeutralBackground3" })).toBe(false);
 	});
 
-	it("isCellScope tells cell scope from row scope", () => {
-		expect(isCellScope({ columns: ["wb_duedate"] })).toBe(true);
-		expect(isCellScope("row")).toBe(false);
+});
+
+describe("isRecord", () => {
+	it("is true for objects, and false for null, arrays and other values", () => {
+		expect(isRecord({})).toBe(true);
+		expect(isRecord(new Map())).toBe(true);
+		for (const value of [null, undefined, [], "x", 1, true]) expect(isRecord(value)).toBe(false);
 	});
 });
