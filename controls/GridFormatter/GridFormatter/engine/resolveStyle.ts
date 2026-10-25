@@ -194,6 +194,24 @@ function colourSource(
 	return (getValue) => resolveColour(colour, usage, { defaults, optionColours, getValue });
 }
 
+/**
+ * The defaults for a pill's fill. A pill's black or white text is picked for the
+ * fill's light-theme colour, so a theme token can't be a fill (validation skips a
+ * `{ token }` fill). A token `fallbackColor` is dropped here, with a warning, so
+ * a `fromOption` pill whose option has no colour draws no pill rather than a token one.
+ */
+function pillDefaults(rule: Rule, defaults: ColourDefaults, warn: Warn): ColourDefaults {
+	const { fallbackColor } = defaults;
+	if (!(typeof fallbackColor === "object" && fallbackColor !== null && "token" in fallbackColor)) return defaults;
+	const fill = rule.style?.backgroundColor;
+	if (fill !== undefined && isFromOptionColor(fill)) {
+		warn(
+			`rule "${rule.id}": a pill's fill can't be a theme token, so where its option has no colour the cell is drawn without a pill (defaults.fallbackColor is a token); use a hex fallbackColor.`,
+		);
+	}
+	return { ...defaults, fallbackColor: null };
+}
+
 function describeColumn(column: GridColumn): string {
 	return `"${column.name}" (${column.dataType}${column.isPrimary === true ? ", primary name" : ""})`;
 }
@@ -232,7 +250,7 @@ export function prepareRules({ config, columns, optionColours = new Map(), warn 
 			targets,
 			background: pill ? undefined : colourSource(style.backgroundColor, "background", defaults, optionColours),
 			color: pill ? undefined : colourSource(style.color, "text", defaults, optionColours),
-			pillFill: pill ? colourSource(style.backgroundColor, "pill", defaults, optionColours) : undefined,
+			pillFill: pill ? colourSource(style.backgroundColor, "pill", pillDefaults(rule, defaults, warn), optionColours) : undefined,
 		});
 	}
 	return { rules, referencedColumns: [...referenced] };

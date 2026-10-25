@@ -42,7 +42,7 @@
           "default": 0.18
         },
         "fallbackColor": {
-          "description": "Colour used when fromOption finds no colour (unknown option, no colour set, or an invalid hex). null means the rule doesn't set that property, so a later rule may.",
+          "description": "Colour used when fromOption finds no colour (unknown option, no colour set, or an invalid hex). null means the rule doesn't set that property, so a later rule may. A theme token here isn't used as a pill's fill: that cell gets no pill, with a console warning.",
           "default": null,
           "oneOf": [
             {

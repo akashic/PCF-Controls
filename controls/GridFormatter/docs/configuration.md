@@ -339,7 +339,7 @@ Option colours don't change in dark mode (see [Use theme tokens](#use-theme-toke
 ```
 
 - A pill needs **cell scope** (not `"row"`) and a `backgroundColor`.
-- **The fill can't be a theme token.** The pill's black or white text is picked for the fill's light-theme colour, and a token fill changes in dark mode while the text doesn't, so it could become unreadable. A pill rule with a `{ "token" }` fill is skipped with a warning. Use a hex colour, `{ "hex", "alpha" }` (drawn solid) or `fromOption`. If `defaults.fallbackColor` is a token, a `fromOption` pill whose option has no colour falls back to it and has the same problem, so use a hex fallback in a file with pills.
+- **The fill can't be a theme token.** The pill's black or white text is picked for the fill's light-theme colour, and a token fill changes in dark mode while the text doesn't, so it could become unreadable. A pill rule with a `{ "token" }` fill is skipped with a warning. Use a hex colour, `{ "hex", "alpha" }` (drawn solid) or `fromOption`. A token `defaults.fallbackColor` isn't used as a pill's fill either: where a `fromOption` pill's option has no colour, the cell is drawn as normal, with no pill, and the console warns once for the rule. The token fallback still applies to backgrounds and text. To get a pill there, use a hex `fallbackColor`.
 - Pills only work on the columns with ✅ in the pill column [above](#what-works-on-which-column): never on the primary name, lookups, Owner or multi-select. Elsewhere the pill is dropped with a console warning.
 - An empty cell has no pill.
 - A pill's fill isn't the cell's background, so a row tint still shows around the pill. You can have both (see [Precedence](#precedence)).
@@ -620,6 +620,7 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 | `<file>: rule "…" skipped: /rules/3/id is a duplicate.` | Two rules have the same `id`. The second is skipped. | Give each rule its own id. |
 | `<file>: rule "…" skipped: /rules/0/when/value "2026-02-30" isn't a real date or time.` | A date or time in the condition doesn't exist (30 February, `T25:00`, an offset over `23:59`). | Fix the date. |
 | `<file>: rule "…" skipped: /rules/0/style/backgroundColor: a pill's fill can't be a theme token, because its text colour can't follow dark mode; use a hex colour or fromOption.` | A pill rule's fill is a `{ "token" }` ([why](#pills)). | Use a hex colour or `fromOption`. |
+| `rule "…": a pill's fill can't be a theme token, so where its option has no colour the cell is drawn without a pill (defaults.fallbackColor is a token); use a hex fallbackColor.` | A `fromOption` pill would fall back to a token `fallbackColor` ([why](#pills)). Rows whose option has a colour still get their pill. | Use a hex `fallbackColor`, or `null` for no pill without the warning. |
 | `<file>: config: /defaults/tintAlpha must be a number above 0 and up to 1; using the default.` | `tintAlpha` is 0, negative, above 1 or not a number. | Use a number such as `0.18`. |
 | `<file>: config: … ; no fallback colour is used.` | `fallbackColor` isn't a valid colour (note `fromOption` isn't allowed there). | Fix it, or use `null`. |
 | `<file>: config: /defaults has an unknown property "…"; ignored.` or `/defaults must be an object; ignored.` | A typo in `defaults`. | Fix it. |
