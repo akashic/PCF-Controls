@@ -9,9 +9,9 @@ A **Power Apps grid customizer** that formats rows and cells of a table's views 
 | Logical name | `wb_Controls.GridFormatter` |
 | Solution | `WBGridFormatter` (display name "WB Grid Formatter") |
 | Works with | The **Power Apps grid control** on main grids and subgrids |
-| Configuration | One web resource per table: `wb_/GridFormatter/<table>.json` ([configuration guide](docs/configuration.md)) |
-| Version | 0.2.0 |
-| Decisions | [ADR-0004](../../docs/adr/0004-gridformatter-config-per-table-web-resource.md) (config per table), [spike results](docs/decisions.md) |
+| Configuration | One web resource per table, under any publisher prefix: `<prefix>_GridFormatter.<table>.json` ([configuration guide](docs/configuration.md)) |
+| Version | 0.3.0 |
+| Decisions | [ADR-0004](../../docs/adr/0004-gridformatter-config-per-table-web-resource.md) (config per table), [ADR-0005](../../docs/adr/0005-prefix-agnostic-controls.md) (any publisher prefix), [spike results](docs/decisions.md) |
 | Architecture | [Diagram](docs/architecture.html) (open in a browser; source `docs/architecture.archify.json`) |
 | Spec | [brief §5](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#5-control-a--gridformatter-views-and-subgrids), superseded where ADR-0004 and the spike results differ |
 
@@ -67,13 +67,13 @@ Pointing a grid at the control is a customisation of that **table**, so do it in
 
 The classic designer works too: open the form, select the subgrid, **Change Properties → Controls → Add Control… → Power Apps grid control**, and set the same properties.
 
-A subgrid uses the rules file of the table it **shows** (`wb_/GridFormatter/<that table>.json`), even on another table's form (from 0.2.0). It needs no other files, but the [view rule](docs/configuration.md#the-view-rule) applies: a rule only formats the subgrid if the subgrid's view includes every column the rule reads. Hard-reload the form (Cmd+Shift+R or Ctrl+Shift+R) after publishing, because the app caches grid settings.
+A subgrid uses the rules file of the table it **shows** (`<prefix>_GridFormatter.<that table>.json`), even on another table's form (from 0.2.0). It needs no other files, but the [view rule](docs/configuration.md#the-view-rule) applies: a rule only formats the subgrid if the subgrid's view includes every column the rule reads. Hard-reload the form (Cmd+Shift+R or Ctrl+Shift+R) after publishing, because the app caches grid settings.
 
 Only one customizer can run on a grid, so a grid using GridFormatter can't use another customizer too.
 
 ## Deploy the rules
 
-Each table's rules are a JSON web resource named `wb_/GridFormatter/<table logical name>.json` (type Script (JScript)) in the project solution that owns the table. Save and **publish** it, then reload the app page. The **[configuration guide](docs/configuration.md)** covers writing rules, deploying the file, recipes and troubleshooting. Worked examples are in [`config/examples/`](config/examples/), and [`config/grid-format.schema.json`](config/grid-format.schema.json) is the source of truth for the file format.
+Each table's rules are a JSON web resource named `<prefix>_GridFormatter.<table logical name>.json` (type JavaScript (JS)) in the project solution that owns the table, where `<prefix>` is that solution's publisher prefix. Paste the JSON into the web resource's **Code** box (the file picker doesn't offer `.json`), save and **publish** it, then reload the app page. The **[configuration guide](docs/configuration.md)** covers writing rules, deploying the file, recipes and troubleshooting. Worked examples are in [`config/examples/`](config/examples/), and [`config/grid-format.schema.json`](config/grid-format.schema.json) is the source of truth for the file format.
 
 Check a file against the schema from the repo root:
 
@@ -86,10 +86,10 @@ npm run validate:config
 Every console message starts with `[GridFormatter]`. To log which rules matched each row, run this in the browser console on the app's tab and reload:
 
 ```js
-sessionStorage.setItem("wb_GridFormatDebug", "1")
+sessionStorage.setItem("GridFormatter.debug", "1")
 ```
 
-Turn it off with `sessionStorage.removeItem("wb_GridFormatDebug")`. The [troubleshooting section](docs/configuration.md#troubleshooting) lists every message and what to do about it.
+Turn it off with `sessionStorage.removeItem("GridFormatter.debug")`. The [troubleshooting section](docs/configuration.md#troubleshooting) lists every message and what to do about it.
 
 ## Develop and test
 
@@ -127,6 +127,12 @@ The local test harness can't host a grid customizer, so check visual changes in 
 - Rules are cached for the browser tab's lifetime. After publishing new rules, reload the page.
 
 ## Changelog
+
+### 0.3.0 (unreleased)
+
+- Rules files are found under **any publisher prefix**, named `<prefix>_GridFormatter.<table>.json` with no `/` (#35, [ADR-0005](../../docs/adr/0005-prefix-agnostic-controls.md)). **Breaking:** `wb_/GridFormatter/<table>.json` is no longer read; recreate each file under the new name (a web resource can't be renamed).
+- If two files match one table, the first name in alphabetical order is used, with a warning.
+- The debug log's `sessionStorage` key is now `GridFormatter.debug`.
 
 ### 0.2.0 (unreleased)
 

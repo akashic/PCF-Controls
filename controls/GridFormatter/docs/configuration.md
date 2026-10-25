@@ -11,10 +11,12 @@ Contents: [Where config lives](#where-config-lives) · [A rule](#a-rule) · [Con
 Each table has **one** JSON file of rules, deployed as a web resource named:
 
 ```text
-wb_/GridFormatter/<table logical name>.json
+<prefix>_GridFormatter.<table logical name>.json
 ```
 
-For example `wb_/GridFormatter/account.json` or `wb_/GridFormatter/wb_engagement.json`. The file name is what ties the rules to the table. They apply to every grid of that table that uses the control: every view of the main grid, and every subgrid showing that table on any form. Each subgrid has to be set up to use the control separately; the main grid's setting doesn't reach it ([README](../README.md#subgrids-on-forms)).
+`<prefix>` is the customization prefix of **your project solution's publisher**, whatever it is: the control finds the file under any prefix. For example `abc_GridFormatter.account.json` or `abc_GridFormatter.abc_engagement.json`. The file name is what ties the rules to the table. They apply to every grid of that table that uses the control: every view of the main grid, and every subgrid showing that table on any form. Each subgrid has to be set up to use the control separately; the main grid's setting doesn't reach it ([README](../README.md#subgrids-on-forms)).
+
+**Keep one file per table in an environment.** If two solutions both ship one for the same table (say `abc_GridFormatter.account.json` and `xyz_GridFormatter.account.json`), the control uses the first name in alphabetical order and logs a warning listing both ([ADR-0005](../../../docs/adr/0005-prefix-agnostic-controls.md)).
 
 A file looks like this:
 
@@ -41,13 +43,13 @@ A file looks like this:
 
 1. In [make.powerapps.com](https://make.powerapps.com), open the **project solution that owns the table** (not `WBGridFormatter`).
 2. **New → More → Web resource.**
-   - **Name:** `wb_/GridFormatter/<table>.json`. The form adds the publisher prefix for you, so type `/GridFormatter/<table>.json` after the `wb_`. The prefix must be `wb_`: if your project solution uses a different publisher, create the web resource from a solution that uses the **William Buck** publisher, then add it to your project solution with **Add existing → More → Web resource**.
-   - **Type:** Script (JScript). Dataverse has no JSON type, and the control doesn't check the type.
-   - **File:** upload your `.json` file. Save it as UTF-8.
+   - **Code:** paste the contents of your `.json` file. The **Choose file** button only offers file types Dataverse knows, and JSON isn't one of them.
+   - **File type:** JavaScript (JS). Dataverse has no JSON type, and the control doesn't check the type.
+   - **Name:** `GridFormatter.<table>.json`. The form shows your publisher's prefix (for example `abc_`) in front of it, so the full name becomes `abc_GridFormatter.<table>.json`. Keep the `.json` at the end, and use the table's logical name exactly (`account`, `abc_engagement`).
 3. **Save, then Publish.** The control reads the *published* version, so an unpublished file looks missing (or keeps the old rules).
 4. **Reload the app page** (F5, or Ctrl+Shift+R). The control loads each table's rules once per browser tab, so moving between views or records in the app doesn't pick up a new file.
 
-To change the rules later, edit the web resource (upload the new file), save, publish and reload. Rules travel with the project solution from dev to UAT to prod, so they're the same in every environment.
+To change the rules later, open the web resource, replace the code with your new file's contents, save, publish and reload. Rules travel with the project solution from dev to UAT to prod, so they're the same in every environment.
 
 ### Write it in VS Code
 
@@ -345,13 +347,13 @@ For each row, the rules run like this:
 
 ### Worked examples
 
-These use [`wb_gridspike.json`](../config/examples/wb_gridspike.json), the file deployed on the test table, on 22 October:
+These use [`wb_gridspike.json`](../config/examples/wb_gridspike.json), the file deployed on the test table (25 October). Only Red and Amber rows are tinted, because only they need attention; every RAG value still gets its pill:
 
 | Priority | Rule | When | Scope | Style |
 |---|---|---|---|---|
 | 10 | `inactive-grey` | Inactive | Row | Grey background, grey text, italic, **stop** |
 | 15 | `over-budget` | Actual cost > budget | `wb_actualcost` | Red 12% background, red text, semibold |
-| 20 | `rag-row` | RAG is set | Row | RAG option colour at 18% |
+| 20 | `rag-row` | RAG is Red or Amber | Row | RAG option colour at 18% |
 | 25 | `rag-pill` | RAG is set | `wb_ragstatus` | Pill in the RAG option colour |
 | 30 | `overdue` | Due before today and RAG isn't Green | `wb_duedate` | Red text, bold |
 | 40 | `flagged-name` | Flagged | `wb_name` | Underline |
@@ -371,11 +373,11 @@ These use [`wb_gridspike.json`](../config/examples/wb_gridspike.json), the file 
 | Rule | Matches? | Effect |
 |---|---|---|
 | `over-budget` | Yes | `wb_actualcost` gets a red 12% background, red semibold text |
-| `rag-row` | Yes | Every **other** cell gets a green background. `wb_actualcost` keeps red, because `over-budget` set it first. |
+| `rag-row` | No (Green) | No tint |
 | `rag-pill` | Yes | Green pill with white text |
 | `overdue` | No (RAG is Green) | |
 
-If `over-budget` had priority 25 instead, `rag-row` would run first and win the background on `wb_actualcost`: that cell would be green with red semibold text.
+On an **Amber** row that's over budget, `rag-row` would match too, and `wb_actualcost` would still keep its red background because `over-budget` (priority 15) runs first. If `over-budget` had priority 25 instead, `rag-row` would win the background on that cell: amber with red semibold text.
 
 **Row 3: inactive, Red, overdue.**
 
@@ -406,7 +408,7 @@ Watch out for these:
 - **Contrast.** When the control loads your file, it checks each rule's text `color` against that rule's own `backgroundColor` (or white, if the rule has no background), as it would look in the light theme. Below 4.5:1 it logs a warning, and keeps the rule:
 
   ```text
-  [GridFormatter] wb_/GridFormatter/<table>.json: rule "r": text colour contrast is 4.41:1 against its background in the light theme, below 4.5:1.
+  [GridFormatter] abc_GridFormatter.<table>.json: rule "r": text colour contrast is 4.41:1 against its background in the light theme, below 4.5:1.
   ```
 
   That example is `#C50F1F` text on its own 18% tint. Fix it with a darker text colour or a paler background.
@@ -578,7 +580,7 @@ Open the browser's developer tools (F12) → **Console**, and filter on `GridFor
 In the console of the app's tab, run:
 
 ```js
-sessionStorage.setItem("wb_GridFormatDebug", "1")
+sessionStorage.setItem("GridFormatter.debug", "1")
 ```
 
 Reload the page. For each row, the console then shows which rules matched, in the order they ran:
@@ -587,15 +589,16 @@ Reload the page. For each row, the console then shows which rules matched, in th
 [GridFormatter] [debug] row 4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5: matched rag-row, rag-pill, overdue
 ```
 
-The row id is the record's GUID. A rule that isn't listed either didn't match, or was skipped because a column it reads isn't in the view. Turn the log off with `sessionStorage.removeItem("wb_GridFormatDebug")` and reload. It only lasts for that browser tab anyway.
+The row id is the record's GUID. A rule that isn't listed either didn't match, or was skipped because a column it reads isn't in the view. Turn the log off with `sessionStorage.removeItem("GridFormatter.debug")` and reload. It only lasts for that browser tab anyway.
 
 ### Messages
 
-In the messages below, `<file>` is the web resource name, for example `wb_/GridFormatter/account.json`.
+In the messages below, `<file>` is the web resource name, for example `abc_GridFormatter.account.json`. Before a file is found, messages show the pattern `<prefix>_GridFormatter.<table>.json` instead.
 
 | Message | What it means | What to do |
 |---|---|---|
-| `no config web resource <file>; the grid is shown without formatting.` (info) | No published web resource has that name. | Check the name exactly (prefix `wb_`, the table's logical name, `.json`), and publish it. |
+| `no config web resource <prefix>_GridFormatter.<table>.json; the grid is shown without formatting.` (info) | No published web resource has a name of that form. | Check the name exactly (`_GridFormatter.`, the table's logical name, `.json`, and no `/`), and publish it. |
+| `2 configs found for table <table>: <file>, <file>. Using <file>; keep one per table.` | More than one solution has a rules file for this table. The first name in alphabetical order is used. | Delete or rename the extra file, so there's one per table. |
 | `config <file> couldn't be loaded (…); the grid is shown without formatting.` | The request for the web resource failed, for example a network or permissions problem. | Reload. If it persists, check the user can read web resources. |
 | `config <file> ignored: the web resource is empty.` | The web resource has no content. | Upload the file and publish. |
 | `config <file> ignored: its content isn't UTF-8 text.` | The file was saved in another encoding. | Save it as UTF-8 and upload it again. |
@@ -623,7 +626,7 @@ In the messages below, `<file>` is the web resource name, for example `wb_/GridF
 |---|---|
 | No formatting, and no `[GridFormatter]` messages at all | The grid doesn't use the control. Check the grid's **Customizer control** is `wb_Controls.GridFormatter` ([README](../README.md#set-up-a-table)). |
 | The main grid is formatted but a subgrid isn't | The subgrid hasn't been given its own Power Apps grid control with the customizer: the main grid's setting doesn't reach subgrids ([README](../README.md#subgrids-on-forms)). Then hard-reload the form. |
-| No formatting, and the `no config web resource` info line | Wrong file name (table logical name, `wb_` prefix, `.json`), or not published. |
+| No formatting, and the `no config web resource` info line | Wrong file name (`_GridFormatter.`, table logical name, `.json`), or not published. Names from before 0.3.0 (`wb_/GridFormatter/<table>.json`) aren't read any more; recreate the file under the new name. |
 | The old rules still show | Not published, or the page wasn't reloaded. |
 | A rule works on one view but not another | A column it reads isn't in that view ([The view rule](#the-view-rule)). Use the debug log to see which rules matched. |
 | Some RAG rows aren't tinted | Those options have no colour in Dataverse, and `fallbackColor` is `null`. |

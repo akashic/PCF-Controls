@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "WB GridFormatter table config",
-  "description": "Conditional formatting rules for one Dataverse table's grids (views and subgrids). One file per table, deployed as the web resource wb_/GridFormatter/<table logical name>.json; the file name says which table the rules apply to.",
+  "description": "Conditional formatting rules for one Dataverse table's grids (views and subgrids). One file per table, deployed as the web resource <prefix>_GridFormatter.<table logical name>.json under any publisher prefix; the file name says which table the rules apply to.",
   "type": "object",
   "required": [
     "version",

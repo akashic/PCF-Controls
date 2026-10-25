@@ -3,9 +3,10 @@
 //   - its manifest uses the PCF namespace "Controls" and its solution declares the canonical WB publisher exactly
 //   - manifest, package.json and Solution.xml versions agree
 //   - manifest *-key attributes have no apostrophes (Dataverse rejects them on import)
+//   - its runtime source doesn't hard-code the wb_ prefix outside comments (ADR-0005)
 // Usage: node scripts/check-controls.mjs [--tag <ControlName>-v<x.y.z>]
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // `pac solution init` generates a random option value prefix on every run,
@@ -61,6 +62,18 @@ for (const name of controls) {
   const tsconfigPath = join(dir, "tsconfig.json");
   if (existsSync(tsconfigPath) && /"(\.\/)?node_modules\//.test(readFileSync(tsconfigPath, "utf8"))) {
     errors.push(`${name}: tsconfig.json must extend "pcf-scripts/tsconfig_base.json" and use "../../node_modules/@types"`);
+  }
+
+  // A control can't know the publisher prefix of the project that uses it (ADR-0005).
+  const sourceDir = join(dir, name);
+  if (existsSync(sourceDir)) {
+    for (const file of readdirSync(sourceDir, { recursive: true })) {
+      if (!/\.tsx?$/.test(file) || file.split(/[\\/]/).includes("generated")) continue;
+      const code = readFileSync(join(sourceDir, file), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+      if (/\bwb_/i.test(code)) {
+        errors.push(`${name}: ${relative(root, join(sourceDir, file))} hard-codes the wb_ prefix; find project components under any prefix (ADR-0005)`);
+      }
+    }
   }
 
   const pkgPath = join(dir, "package.json");

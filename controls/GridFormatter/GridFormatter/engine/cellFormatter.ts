@@ -172,7 +172,7 @@ export interface FormatterOptions {
 	readonly now?: () => number;
 	/** One `createWarnOnce()` per page. */
 	readonly warn?: Warn;
-	/** Set to log which rules matched each row (`sessionStorage['wb_GridFormatDebug'] === '1'`). */
+	/** Set to log which rules matched each row (`sessionStorage['GridFormatter.debug'] === '1'`). */
 	readonly debug?: (message: string) => void;
 }
 
