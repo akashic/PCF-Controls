@@ -192,7 +192,9 @@ To release:
 
 1. Merge to `main` with all three versions bumped and the control's changelog updated.
 2. Tag the merge commit: `git tag GridFormatter-v1.2.0 && git push origin GridFormatter-v1.2.0`.
-3. `release.yml` checks that the tag matches the versions, lints, tests, builds the solution, and publishes a GitHub Release with the managed and unmanaged zips attached.
+3. `release.yml` fails unless the tagged commit is on `main`. It checks that the tag matches the versions, lints, tests, validates the config files, builds the solution, and publishes a GitHub Release with the managed and unmanaged zips attached. The release notes start from the same control's previous tag, so they list only changes since that control's last release.
+
+The build and the publish are separate jobs: the build job has read-only access to the repo and uploads the zips, and only the publish job (which just runs `gh release create`) can write.
 
 ## Deployment
 
@@ -210,7 +212,7 @@ To release:
 
 `.github/workflows/ci.yml` runs on every PR and every push to `main`:
 
-1. Checks the conventions (`scripts/check-controls.mjs`: publisher, version alignment).
+1. Checks the conventions (`scripts/check-controls.mjs`: publisher, version alignment, no hard-coded `wb_` in runtime source) and runs the scripts' own tests (`npm run test:scripts`).
 2. Runs `npm ci`, lint and test across all workspaces, then `npm run validate:config` (each control's config files against its JSON Schema).
 3. Builds the solution for each **changed** control, and uploads the zips as workflow artifacts. Changes to `packages/`, root tooling or workflows rebuild every control.
 
@@ -219,7 +221,7 @@ To release:
 When the repo moves to the enterprise org:
 
 - Transfer the repo (or push to a new repo and archive this one). Issues, labels and releases come across with a transfer.
-- Allow GitHub Actions (with GitHub-hosted Ubuntu runners) for the repo. If the org only allows approved actions, approve `actions/checkout`, `actions/setup-node`, `actions/setup-dotnet` and `actions/upload-artifact`.
+- Allow GitHub Actions (with GitHub-hosted Ubuntu runners) for the repo. If the org only allows approved actions, approve `actions/checkout`, `actions/setup-node`, `actions/setup-dotnet`, `actions/upload-artifact` and `actions/download-artifact`.
 - Add branch protection on `main`: require PRs, a passing CI, and review. Add a `CODEOWNERS` file naming the Power Platform team.
 - Update clone URLs in local checkouts with `git remote set-url origin https://github.com/William-Buck-Australia/<repo>.git`.
 
