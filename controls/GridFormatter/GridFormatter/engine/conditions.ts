@@ -43,7 +43,7 @@ import {
 } from "./dates";
 import { MAX_CONDITION_DEPTH, type ColumnName, type Condition } from "./configSchema";
 import { isRecord } from "./guards";
-import { NOT_VISIBLE, UNREADABLE, normalizeGuid, type ColumnValue, type RowValue } from "./rowValues";
+import { DATE_TYPES, NOT_VISIBLE, UNREADABLE, normalizeGuid, type ColumnValue, type RowValue } from "./rowValues";
 
 /** Reads a column of the row being evaluated (see `columnReader` in `rowValues.ts`). */
 export type ColumnLookup = (column: ColumnName) => ColumnValue;
@@ -58,9 +58,6 @@ type Mismatch = typeof MISMATCH;
 /** The third truth value: a leaf read an {@link UNREADABLE} cell. */
 const UNKNOWN: unique symbol = Symbol("unknown");
 type Truth = boolean | typeof UNKNOWN;
-
-/** Column types whose values are compared as dates. */
-const DATE_TYPES: ReadonlySet<string> = new Set(["DateOnly", "DateAndTime"]);
 
 /** Per-evaluation context. */
 interface Env {
@@ -104,7 +101,8 @@ function isColumnOperand(value: unknown): value is { column: ColumnName } {
  * Dates:
  * - Only date-only and date-and-time columns are dates. A date operator, or a comparison with a date,
  *   on any other column is a type mismatch (`false`); `eq` with an ISO date on a text column compares text.
- * - Date-only cells are calendar dates and are never shifted.
+ * - Cells arrive already read by their date behaviour (`DateReading` in `rowValues.ts`, V11), so they
+ *   hold the date or time the user sees. Date-only cells are calendar dates and aren't shifted here.
  * - Date-and-time cells are instants. Compared with a calendar date (a date-only operand, a date-only
  *   column, or `today`), they're first converted to the user's local date. Compared with another instant
  *   (an operand with a time, or another date-and-time column), the instants are compared exactly.

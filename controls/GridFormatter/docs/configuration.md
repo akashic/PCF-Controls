@@ -208,7 +208,16 @@ An empty file or image column is still empty, so `isNull` matches it, but don't 
 
 - **"Today" is the user's date**, in the time zone set in their Dataverse personal settings. A user in Sydney and a user in London can see different rows as overdue at the same moment.
 - **Only date-only and date-and-time columns are dates.** On any other column, the day operators (`beforeToday` and the rest) and `gt`, `lt` or `between` with a date are false, even if the text looks like a date. `eq` with `"2026-10-18"` on a text column compares the text. Comparing a date column with `{ "column": ... }` of a non-date column is false.
-- **Date-only columns are just dates.** `2026-10-18` is 18 October for everyone; no time-zone shift.
+- **Date rules follow what the user sees in the grid**, for every date behaviour (set on the column in the maker portal):
+
+  | Column | Behaviour | What a rule compares |
+  |---|---|---|
+  | Date only | Date only | The date. `2026-10-18` is 18 October for everyone. |
+  | Date only | User local | The date in the user's time zone, as the grid shows it. Users in different time zones can see different dates. |
+  | Date and time | User local | The moment, shown in each user's time zone. |
+  | Date and time | Time zone independent | The date and time as written: 21/10/2026 9:00 PM is 9:00 PM on 21 October for every user, read as their local time. |
+
+  If a platform update stops the grid saying which behaviour a column has, the control reads date-only columns as **Date only** and date-and-time columns as **User local**, and the console warns once per column (see [Messages](#messages)).
 - **Date-and-time columns** are compared with a date (a date-only value, a date-only column, or "today") by first turning them into the user's local date. So `{ "column": "wb_reviewedon", "op": "eq", "value": "2026-10-22" }` matches any time on 22 October in the user's time zone.
 - A value **with a time** (`"2026-12-31T17:00:00Z"`) compared with a date-and-time column compares the exact moment. A time without `Z` or an offset (`"2026-12-31T17:00"`) is the user's local time, with the daylight-saving offset in force at that time. A time that a change skips or repeats (such as 02:30 on the night clocks go forward) is read one way or the other, so avoid those.
 - `beforeToday`: the date is before today. `onOrAfterToday`: today or later.
@@ -628,6 +637,7 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 | `rule "…": color, fontWeight can't be shown on column "…" (…); ignored there.` (also `display: pill`) | The rule sets something that column type can't show ([table](#what-works-on-which-column)). Everything else in the rule still applies. | Expected for row-scope text colours. To silence it, list only supported columns in `scope`. |
 | `option colours for <table>.<column> couldn't be read; fromOption colours on it use defaults.fallbackColor.` | The control couldn't read that choice column's option colours. If a metadata request failed or took longer than 3 s, the next grid of that table asks again. | Check `fromOption` names a choice, status or status reason column of this table. If it does, reload. |
 | `column "…" (…) has a value the control can't read; conditions on it don't match, not even isNull or inside "not".` | A cell in that column has a value of a shape the control doesn't know, or the column's type (such as file or image) isn't one it reads. Conditions on that cell [match nothing](#values-the-control-cant-read). | Don't use that column in conditions. If it's a choice, number, lookup or date column, report it with the column type. |
+| `column "…" (DateOnly): the grid didn't say its date behaviour, so it's read as Date Only; …` or `column "…" (DateAndTime): … so it's read as User Local; …` | The grid didn't give that date column's behaviour, probably after a platform update. Rules on it work as if the column is **Date only** (date-only) or **User local** (date and time). If it isn't, they can be a day out, or out by the user's time-zone offset. | Report it. Meanwhile, check rules on that column against what users see. |
 | `config took longer than 3 s to load; the grid is shown without formatting.` | Loading the rules and option colours took over 3 seconds, so the grid was shown plain rather than late. | Reload. If it keeps happening, the environment is slow; report it. |
 | `couldn't read this subgrid's table, so it uses the rules for the form's table ….` | A platform update may have changed how a subgrid tells the control its table. A subgrid of another table may get the wrong rules. | Report it. |
 | `no config loaded: the grid's table name … isn't a table logical name.` | The control couldn't tell which table the grid shows. | Report it, with where the grid is (main grid or subgrid). |

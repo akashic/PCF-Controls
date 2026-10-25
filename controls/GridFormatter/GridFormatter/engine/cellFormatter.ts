@@ -30,7 +30,7 @@ import {
 	type PreparedRules,
 	type RowStyleCache,
 } from "./resolveStyle";
-import { NOT_VISIBLE, UNREADABLE, readColumn, type ColumnValue } from "./rowValues";
+import { NOT_VISIBLE, UNREADABLE, dateReadings, readColumn, type ColumnValue, type DateReading } from "./rowValues";
 import { consoleWarn, type Warn } from "./warnings";
 
 // Container ---------------------------------------------------------------------
@@ -175,6 +175,10 @@ interface PreparedGrid {
 	readonly columns: ReadonlyMap<string, GridColumn>;
 	/** Column name → `colDefs[].dataType`, for `readColumn`. */
 	readonly types: ReadonlyMap<string, string>;
+	/** Date column name → how to read it (V11), for `readColumn`. */
+	readonly dates: ReadonlyMap<string, DateReading>;
+	/** Date column name → the warning that its date behaviour isn't known, for the columns that have one. */
+	readonly behaviourWarnings: ReadonlyMap<string, string>;
 	readonly prepared: PreparedRules;
 	readonly cache: RowStyleCache;
 }
@@ -194,8 +198,28 @@ export function gridColumns(colDefs: readonly unknown[]): GridColumn[] {
 	);
 }
 
-const signatureOf = (columns: readonly GridColumn[]): string =>
-	columns.map((c) => `${c.name}:${c.dataType}:${c.isPrimary === true ? 1 : 0}`).join("|");
+/** A column set's key: names, types, primary flag and date behaviours, since each changes how rows are read. */
+const signatureOf = (columns: readonly GridColumn[], dates: ReadonlyMap<string, DateReading>): string =>
+	columns
+		.map((c) => `${c.name}:${c.dataType}:${c.isPrimary === true ? 1 : 0}:${String(dates.get(c.name)?.timeZoneIndependent)}`)
+		.join("|");
+
+/** What's assumed for a date column whose behaviour the grid didn't give (V11). */
+const UNKNOWN_BEHAVIOUR_WARNINGS: Readonly<Record<string, string>> = {
+	DateOnly: "it's read as Date Only; if it's User Local, date rules on it can be a day out.",
+	DateAndTime: "it's read as User Local; if it's Time Zone Independent, date rules on it can be out by the user's time-zone offset.",
+};
+
+function behaviourWarnings(columns: readonly GridColumn[], dates: ReadonlyMap<string, DateReading>): Map<string, string> {
+	const warnings = new Map<string, string>();
+	for (const { name, dataType } of columns) {
+		const reading = dates.get(name);
+		if (reading && reading.timeZoneIndependent === undefined) {
+			warnings.set(name, `column "${name}" (${dataType}): the grid didn't say its date behaviour, so ${UNKNOWN_BEHAVIOUR_WARNINGS[dataType]}`);
+		}
+	}
+	return warnings;
+}
 
 /** A cell formatter for one grid. With no config (or no rules) every cell is {@link PLAIN_CELL}. */
 export function createCellFormatter(options: FormatterOptions): CellFormatter {
@@ -213,7 +237,8 @@ export function createCellFormatter(options: FormatterOptions): CellFormatter {
 	function gridFor(colDefs: readonly unknown[]): PreparedGrid {
 		if (colDefs === lastColDefs && lastGrid) return lastGrid;
 		const columns = gridColumns(colDefs);
-		const signature = signatureOf(columns);
+		const dates = dateReadings(colDefs, offset);
+		const signature = signatureOf(columns, dates);
 		let grid = grids.get(signature);
 		if (!grid) {
 			if (grids.size >= MAX_COLUMN_SETS) grids.clear();
@@ -221,6 +246,8 @@ export function createCellFormatter(options: FormatterOptions): CellFormatter {
 			grid = {
 				columns: new Map(columns.map((c) => [c.name, c])),
 				types: new Map(columns.map((c) => [c.name, c.dataType])),
+				dates,
+				behaviourWarnings: behaviourWarnings(columns, dates),
 				prepared,
 				cache: createRowStyleCache(prepared),
 			};
@@ -254,11 +281,13 @@ export function createCellFormatter(options: FormatterOptions): CellFormatter {
 		const columnType = (name: string): string | undefined => grid.types.get(name);
 		const getColumn = (name: string): ColumnValue => {
 			const dataType = columnType(name);
-			const value = readColumn(rowData, name, dataType);
+			const value = readColumn(rowData, name, dataType, grid.dates.get(name));
 			// Once per column: the sink is a createWarnOnce().
 			if (value === UNREADABLE) {
 				warn(`column "${name}" (${String(dataType)}) has a value the control can't read; conditions on it don't match, not even isNull or inside "not".`);
 			}
+			const behaviourWarning = grid.behaviourWarnings.get(name);
+			if (behaviourWarning !== undefined) warn(behaviourWarning);
 			return value;
 		};
 		const getValue: ValueGetter = (name) => {

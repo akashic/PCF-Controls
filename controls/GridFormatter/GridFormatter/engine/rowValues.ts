@@ -12,10 +12,14 @@
  * this module doesn't read) is {@link UNREADABLE}, not `null`, so it can't
  * pass for an empty cell: no condition matches it, not even `isNull`.
  *
+ * Date columns are read by their behaviour (V11), which the grid gives in the
+ * undocumented `colDefs[].customizerParams.timeZoneIndependent`; see
+ * {@link DateReading}.
+ *
  * Every function here is pure and never throws.
  */
 
-import { parseCalendarDate, parseIso, type CalendarDate } from "./dates";
+import { fromWallClock, parseCalendarDate, parseIso, toLocalDate, type CalendarDate, type TimeZoneOffset } from "./dates";
 import type { ColumnName } from "./configSchema";
 import { isRecord } from "./guards";
 
@@ -28,8 +32,8 @@ import { isRecord } from "./guards";
  * | `MultiSelectPicklist` | `number[]` (never empty) |
  * | `TwoOptions` | `boolean` |
  * | `Lookup`, `Customer`, `Owner`, `Persona`, `UniqueIdentifier` | lower-case GUID `string` |
- * | `DateOnly` | {@link CalendarDate} (`YYYY-MM-DD`) |
- * | `DateAndTime` | `Date` |
+ * | `DateOnly` | {@link CalendarDate} (`YYYY-MM-DD`): the date the user sees ({@link DateReading}) |
+ * | `DateAndTime` | `Date`: the instant the user's clock shows what the grid shows ({@link DateReading}) |
  * | `Text`, `Email`, `Phone`, `URL`, `Ticker`, `TextArea`, `Multiple`, `RichText`, `AutoNumber` | `string` (never empty) |
  * | Any type, empty (`null`, `undefined`, `""` or `[]`) | `null` |
  *
@@ -53,7 +57,35 @@ export type ColumnValue = RowValue | Unreadable | NotVisible;
 export interface ColumnTypeInfo {
 	readonly name: string;
 	readonly dataType: string;
+	/** Undocumented; `{ timeZoneIndependent: boolean }` on date columns (V11). Read with {@link timeZoneIndependentOf}. */
+	readonly customizerParams?: unknown;
 }
+
+/** Column types whose values are dates. */
+export const DATE_TYPES: ReadonlySet<string> = new Set(["DateOnly", "DateAndTime"]);
+
+/**
+ * How to read a date column's raw value (V11). The grid passes the stored
+ * value, which means different things per behaviour:
+ *
+ * | `dataType` | `timeZoneIndependent` | Behaviour | Raw value | Read as |
+ * |---|---|---|---|---|
+ * | `DateOnly` | `true` | Date Only | the date at UTC midnight | its date part |
+ * | `DateOnly` | `false` | User Local | the instant of the user's local midnight | the user's local date at that instant |
+ * | `DateAndTime` | `false` | User Local | an instant | that instant |
+ * | `DateAndTime` | `true` | Time Zone Independent | the wall-clock time, as UTC | the instant the user's clock shows that time ({@link fromWallClock}) |
+ * | either | `undefined` | not known | | as Date Only, or as User Local |
+ *
+ * `offset` is the user's, as for conditions. A reading that needs it gives
+ * {@link UNREADABLE} when it can't be read.
+ */
+export interface DateReading {
+	readonly timeZoneIndependent: boolean | undefined;
+	readonly offset: TimeZoneOffset;
+}
+
+/** A date column whose behaviour isn't known: read as before V11. */
+const UNKNOWN_BEHAVIOUR: DateReading = Object.freeze({ timeZoneIndependent: undefined, offset: 0 });
 
 /** Grid bookkeeping keys in `rowData` that aren't columns. */
 const RESERVED_KEYS = new Set(["__rec_id", "params"]);
@@ -62,8 +94,8 @@ const GUID = /^\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})
 const INTEGER = /^\s*-?\d+\s*$/;
 const NUMBER = /^\s*-?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?\s*$/i;
 
-/** Normalises a non-empty raw value; `null` means it doesn't fit the type. */
-type Normaliser = (raw: unknown) => RowValue;
+/** Normalises a non-empty raw value; `null` means it doesn't fit the type. Only date types use `dates`. */
+type Normaliser = (raw: unknown, dates: DateReading) => RowValue;
 
 function toText(raw: unknown): string | null {
 	return typeof raw === "string" && raw !== "" ? raw : null;
@@ -107,17 +139,39 @@ function toLookupId(raw: unknown): string | null {
 	return normalizeGuid(isRecord(id) ? id.guid : id);
 }
 
-/** Date-only columns arrive at UTC midnight (`"2026-10-18T00:00:00.000Z"`). The date part is the date; no shift. */
-function toCalendarDate(raw: unknown): CalendarDate | null {
+/** An ISO string (UTC without a zone suffix) or a `Date`, as a new `Date`; `null` if it isn't one. */
+function parseInstant(raw: unknown): Date | null {
+	if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : new Date(raw.getTime());
+	const parsed = parseIso(raw);
+	return parsed?.kind === "instant" ? parsed.instant : null;
+}
+
+/**
+ * Date-only columns. Date Only (or not known) arrives at UTC midnight
+ * (`"2026-10-18T00:00:00.000Z"`): the date part is the date, with no shift.
+ * User Local arrives as the instant of the user's local midnight
+ * (`"2026-10-20T13:00:00.000Z"` at UTC+11 is 21 Oct).
+ */
+function toCalendarDate(raw: unknown, dates: DateReading): CalendarDate | null {
+	if (dates.timeZoneIndependent === false) {
+		const instant = parseInstant(raw);
+		return instant && toLocalDate(instant, dates.offset);
+	}
 	if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : (raw.toISOString().slice(0, 10) as CalendarDate);
 	return typeof raw === "string" ? parseCalendarDate(raw.slice(0, 10)) : null;
 }
 
-/** Date-and-time columns arrive as ISO UTC strings. A string without a zone suffix is read as UTC. */
-function toInstant(raw: unknown): Date | null {
-	if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : new Date(raw.getTime());
-	const parsed = parseIso(raw);
-	return parsed?.kind === "instant" ? parsed.instant : null;
+/**
+ * Date-and-time columns arrive as ISO UTC strings. User Local (or not known)
+ * is that instant. Time Zone Independent is the wall-clock time every user
+ * sees (`"2026-10-21T21:00:00.000Z"` is 9:00 PM), read as the moment the user's
+ * clock shows it.
+ */
+function toInstant(raw: unknown, dates: DateReading): Date | null {
+	const instant = parseInstant(raw);
+	if (!instant || dates.timeZoneIndependent !== true) return instant;
+	const time = fromWallClock(instant.getTime(), dates.offset);
+	return time === null ? null : new Date(time);
 }
 
 const NORMALISERS: Readonly<Record<string, Normaliser>> = {
@@ -164,14 +218,15 @@ export function isInView(rowData: unknown, column: ColumnName): boolean {
  * (`colDefs[].dataType`). `null` when the column is empty or not in the view;
  * {@link UNREADABLE} when it has a value that's malformed or of a type this
  * module doesn't read. Use {@link isInView} or {@link readColumn} to tell
- * "not in the view" apart from "empty".
+ * "not in the view" apart from "empty". A date column is read by `dates`
+ * (from {@link dateReadings}); without it, as a column whose behaviour isn't known.
  */
-export function getValue(rowData: unknown, column: ColumnName, dataType: string): RowValue | Unreadable {
+export function getValue(rowData: unknown, column: ColumnName, dataType: string, dates: DateReading = UNKNOWN_BEHAVIOUR): RowValue | Unreadable {
 	if (!isInView(rowData, column)) return null;
 	const raw = (rowData as Record<string, unknown>)[column];
 	if (isEmpty(raw)) return null;
 	const normalise = Object.prototype.hasOwnProperty.call(NORMALISERS, dataType) ? NORMALISERS[dataType] : undefined;
-	return normalise?.(raw) ?? UNREADABLE;
+	return normalise?.(raw, dates) ?? UNREADABLE;
 }
 
 /**
@@ -179,9 +234,42 @@ export function getValue(rowData: unknown, column: ColumnName, dataType: string)
  * in the view, or its data type isn't known (`undefined`, because it isn't in
  * `colDefs`).
  */
-export function readColumn(rowData: unknown, column: ColumnName, dataType: string | undefined): ColumnValue {
+export function readColumn(rowData: unknown, column: ColumnName, dataType: string | undefined, dates?: DateReading): ColumnValue {
 	if (dataType === undefined || !isInView(rowData, column)) return NOT_VISIBLE;
-	return getValue(rowData, column, dataType);
+	return getValue(rowData, column, dataType, dates);
+}
+
+/**
+ * A colDef's `customizerParams.timeZoneIndependent` (V11), or `undefined` when
+ * it isn't a boolean. It isn't documented, so every step is checked, and a
+ * throwing property gives `undefined` too.
+ */
+export function timeZoneIndependentOf(def: unknown): boolean | undefined {
+	try {
+		if (!isRecord(def)) return undefined;
+		const params = def.customizerParams;
+		if (!isRecord(params)) return undefined;
+		const value = params.timeZoneIndependent;
+		return typeof value === "boolean" ? value : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * How to read each date column in `colDefs` (V11), with the user's `offset`.
+ * Only date columns are in the map; malformed entries are skipped.
+ */
+export function dateReadings(colDefs: readonly unknown[], offset: TimeZoneOffset): Map<ColumnName, DateReading> {
+	const readings = new Map<ColumnName, DateReading>();
+	if (Array.isArray(colDefs)) {
+		for (const def of colDefs) {
+			if (isRecord(def) && typeof def.name === "string" && typeof def.dataType === "string" && DATE_TYPES.has(def.dataType)) {
+				readings.set(def.name, { timeZoneIndependent: timeZoneIndependentOf(def), offset });
+			}
+		}
+	}
+	return readings;
 }
 
 /**
@@ -202,14 +290,17 @@ export function columnTypes(colDefs: readonly ColumnTypeInfo[]): (column: Column
 }
 
 /**
- * A column reader for one row, for `evaluate`'s `getColumn`. Types come
- * from the grid's `colDefs`; a column missing from `colDefs` or `rowData` is
+ * A column reader for one row, for `evaluate`'s `getColumn`. Types and date
+ * behaviours come from the grid's `colDefs`, and `offset` is the user's (UTC
+ * when left out); a column missing from `colDefs` or `rowData` is
  * {@link NOT_VISIBLE}.
  */
 export function columnReader(
 	rowData: unknown,
 	colDefs: readonly ColumnTypeInfo[],
+	offset: TimeZoneOffset = 0,
 ): (column: ColumnName) => ColumnValue {
 	const typeOf = columnTypes(colDefs);
-	return (column) => readColumn(rowData, column, typeOf(column));
+	const dates = dateReadings(colDefs, offset);
+	return (column) => readColumn(rowData, column, typeOf(column), dates.get(column));
 }
