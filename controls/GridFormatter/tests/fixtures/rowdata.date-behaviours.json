@@ -1,0 +1,39 @@
+{
+  "_source": "Captured from the Power Apps grid in the LowCode test environment, 26 Oct 2026 (issue #39, spike V11), on wb_gridspike, user time zone Australia/Sydney (UTC+11 on these dates). Only the four date columns and the colDefs fields that matter here are kept. 'shown' is what the grid displayed in each cell; row 03's display wasn't captured.",
+  "user": { "timeZone": "Australia/Sydney", "timeZoneOffsetMinutes": 660, "locale": "en-AU" },
+  "colDefs": [
+    { "name": "wb_duedate", "dataType": "DateOnly", "isPrimary": false, "customizerParams": { "timeZoneIndependent": true } },
+    { "name": "wb_startdate", "dataType": "DateOnly", "isPrimary": false, "customizerParams": { "timeZoneIndependent": false } },
+    { "name": "wb_reviewedon", "dataType": "DateAndTime", "isPrimary": false, "customizerParams": { "timeZoneIndependent": false } },
+    { "name": "wb_meetingat", "dataType": "DateAndTime", "isPrimary": false, "customizerParams": { "timeZoneIndependent": true } }
+  ],
+  "rows": [
+    {
+      "wb_duedate": "2026-10-18T00:00:00.000Z",
+      "wb_startdate": "2026-10-20T13:00:00.000Z",
+      "wb_reviewedon": "2026-10-21T19:48:00.000Z",
+      "wb_meetingat": "2026-10-21T21:00:00.000Z"
+    },
+    {
+      "wb_startdate": "2026-10-21T13:00:00.000Z",
+      "wb_meetingat": "2026-10-22T21:00:00.000Z"
+    },
+    {
+      "wb_startdate": "2026-10-22T13:00:00.000Z",
+      "wb_meetingat": "2026-10-23T21:00:00.000Z"
+    }
+  ],
+  "shown": [
+    {
+      "wb_duedate": "18/10/2026",
+      "wb_startdate": "21/10/2026",
+      "wb_reviewedon": "22/10/2026 6:48 AM",
+      "wb_meetingat": "21/10/2026 9:00 PM"
+    },
+    {
+      "wb_startdate": "22/10/2026",
+      "wb_meetingat": "22/10/2026 9:00 PM"
+    },
+    {}
+  ]
+}

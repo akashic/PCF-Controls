@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	CLEAR_CONTAINER,
 	PLAIN_CELL,
@@ -23,7 +25,7 @@ const NOON_22_OCT = Date.parse("2026-10-22T02:00:00Z");
 const colDefs = [
 	{ name: "wb_name", dataType: "Text", isPrimary: true },
 	{ name: "wb_ragstatus", dataType: "OptionSet", isPrimary: false },
-	{ name: "wb_duedate", dataType: "DateOnly", isPrimary: false },
+	{ name: "wb_duedate", dataType: "DateOnly", isPrimary: false, customizerParams: { timeZoneIndependent: true } },
 	{ name: "ownerid", dataType: "Persona", isPrimary: false },
 ];
 const col = (name: string): number => colDefs.findIndex((c) => c.name === name);
@@ -401,6 +403,75 @@ describe("createCellFormatter", () => {
 		};
 		expect(f.format(cell("wb_ragstatus", rowData))).toBe(PLAIN_CELL);
 		expect(warnings).toEqual(["a cell couldn't be formatted, so it's drawn as normal (Error: boom)."]);
+	});
+
+	describe("date behaviours (V11)", () => {
+		const behaviours = JSON.parse(readFileSync(join(__dirname, "fixtures", "rowdata.date-behaviours.json"), "utf8")) as {
+			colDefs: { name: string; dataType: string; isPrimary: boolean; customizerParams?: unknown }[];
+			rows: Record<string, unknown>[];
+			user: { timeZoneOffsetMinutes: number };
+		};
+		const AEDT = behaviours.user.timeZoneOffsetMinutes; // 660
+		const NOON_22_OCT_AEDT = Date.parse("2026-10-22T01:00:00Z");
+		const rows = behaviours.rows.map((r, i) => ({ __rec_id: `row-0${i + 1}`, ...r }));
+		const italicIf = (id: string, when: Rule["when"]): Rule => ({ id, when, scope: "row", style: { fontStyle: "italic" } });
+		const fontStyle = (f: ReturnType<typeof createCellFormatter>, rowData: unknown, defs: readonly unknown[] = behaviours.colDefs): string =>
+			f.format({ colDefs: defs, columnIndex: 0, rowData, formattedValue: "x" }).container.fontStyle;
+		const at = (rules: Rule[], warn: (m: string) => void = () => undefined) =>
+			createCellFormatter({ config: config(...rules), offset: AEDT, now: () => NOON_22_OCT_AEDT, warn });
+		/** The captured colDefs without customizerParams, as if the platform stopped sending it. */
+		const withoutBehaviours = behaviours.colDefs.map(({ customizerParams: _ignored, ...def }) => def);
+
+		it.each([
+			// [rule, row 01, row 02, row 03], as the user sees the rows: start 21/22/23 Oct, meeting 21/22/23 Oct 9:00 PM.
+			["User Local date-only eq today", { column: "wb_startdate", op: "eq", value: "2026-10-22" }, ["", "italic", ""]],
+			["User Local date-only beforeToday", { column: "wb_startdate", op: "beforeToday" }, ["italic", "", ""]],
+			["Time Zone Independent beforeToday", { column: "wb_meetingat", op: "beforeToday" }, ["italic", "", ""]],
+			["Time Zone Independent eq a date", { column: "wb_meetingat", op: "eq", value: "2026-10-23" }, ["", "", "italic"]],
+			["Time Zone Independent eq a zone-less time", { column: "wb_meetingat", op: "eq", value: "2026-10-22T21:00" }, ["", "italic", ""]],
+			["Time Zone Independent withinNextDays 0", { column: "wb_meetingat", op: "withinNextDays", value: 0 }, ["", "italic", ""]],
+			["Time Zone Independent against User Local date-only", { column: "wb_meetingat", op: "eq", value: { column: "wb_startdate" } }, ["italic", "italic", "italic"]],
+		] as [string, Rule["when"], string[]][])("%s matches the rows the user would expect", (_label, when, expected) => {
+			const warnings: string[] = [];
+			const f = at([italicIf("r", when)], (m) => warnings.push(m));
+			expect(rows.map((r) => fontStyle(f, r))).toEqual(expected);
+			expect(warnings).toEqual([]);
+		});
+
+		it("reads Date Only and User Local date-and-time columns as before", () => {
+			const f = at([
+				italicIf("due", { column: "wb_duedate", op: "eq", value: "2026-10-18" }),
+				{ id: "reviewed", when: { column: "wb_reviewedon", op: "eq", value: "2026-10-22" }, scope: "row", style: { textDecoration: "underline" } },
+			]);
+			expect(f.format({ colDefs: behaviours.colDefs, columnIndex: 0, rowData: rows[0], formattedValue: "x" }).container).toEqual({
+				backgroundImage: "",
+				fontStyle: "italic",
+				textDecoration: "underline",
+			});
+		});
+
+		it("without customizerParams, reads dates as before and warns once per date column it reads", () => {
+			const warnings: string[] = [];
+			const f = at(
+				[italicIf("start", { column: "wb_startdate", op: "eq", value: "2026-10-21" }), italicIf("meeting", { column: "wb_meetingat", op: "isNull" })],
+				createWarnOnce((m) => warnings.push(m)),
+			);
+			// Read the old way: row 02's start (22 Oct for the user) as 21 Oct.
+			expect(rows.map((r) => fontStyle(f, r, withoutBehaviours))).toEqual(["", "italic", ""]);
+			expect(warnings).toEqual([
+				'column "wb_startdate" (DateOnly): the grid didn\'t say its date behaviour, so it\'s read as Date Only; if it\'s User Local, date rules on it can be a day out.',
+				'column "wb_meetingat" (DateAndTime): the grid didn\'t say its date behaviour, so it\'s read as User Local; if it\'s Time Zone Independent, date rules on it can be out by the user\'s time-zone offset.',
+			]);
+		});
+
+		it("keeps column sets that differ only in a date behaviour apart", () => {
+			const f = at([italicIf("start", { column: "wb_startdate", op: "eq", value: "2026-10-22" })]);
+			expect(fontStyle(f, rows[1])).toBe("italic");
+			expect(fontStyle(f, rows[1], withoutBehaviours)).toBe("");
+			const flipped = behaviours.colDefs.map((d) => (d.name === "wb_startdate" ? { ...d, customizerParams: { timeZoneIndependent: true } } : d));
+			expect(fontStyle(f, rows[1], flipped)).toBe("");
+			expect(fontStyle(f, rows[1])).toBe("italic");
+		});
 	});
 
 	it("warns to the console by default", () => {

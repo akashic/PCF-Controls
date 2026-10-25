@@ -3,9 +3,9 @@
  *
  * Two kinds of date reach the engine:
  *
- * - **Calendar dates** (`CalendarDate`, `YYYY-MM-DD`): date-only columns, the
- *   user's "today", and date-only operands in config. They have no time zone
- *   and are never shifted.
+ * - **Calendar dates** (`CalendarDate`, `YYYY-MM-DD`): date-only columns (as
+ *   the user sees them, read by `rowValues.ts`, V11), the user's "today", and
+ *   date-only operands in config. They have no time zone and are never shifted.
  * - **Instants** (`Date`): date-and-time columns and operands with a time.
  *   For the day-based operators, an instant is converted to the user's local
  *   calendar date with {@link toLocalDate}.

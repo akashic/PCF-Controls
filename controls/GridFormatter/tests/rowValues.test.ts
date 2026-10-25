@@ -5,11 +5,14 @@ import {
 	UNREADABLE,
 	columnReader,
 	columnTypes,
+	dateReadings,
 	getValue,
 	isInView,
 	normalizeGuid,
 	readColumn,
+	timeZoneIndependentOf,
 	type ColumnTypeInfo,
+	type ColumnValue,
 } from "../GridFormatter/engine/rowValues";
 
 interface Fixture {
@@ -349,5 +352,199 @@ describe("normalizeGuid", () => {
 
 	it.each([["abcdef01"], ["abcdef01-2345-6789-abcd-ef012345678g"], [null], [1]])("%p → null", (raw) => {
 		expect(normalizeGuid(raw)).toBeNull();
+	});
+});
+
+// Date behaviours (V11) -------------------------------------------------------
+
+interface DateBehavioursFixture {
+	colDefs: ColumnTypeInfo[];
+	rows: Record<string, unknown>[];
+	shown: Record<string, string>[];
+	user: { timeZoneOffsetMinutes: number };
+}
+
+/** rowData for the four date behaviours, captured in spike V11 at UTC+11. */
+const behaviours = JSON.parse(readFileSync(join(__dirname, "fixtures", "rowdata.date-behaviours.json"), "utf8")) as DateBehavioursFixture;
+const AEDT = behaviours.user.timeZoneOffsetMinutes; // 660
+const pad = (n: number): string => String(n).padStart(2, "0");
+
+/** A normalised date as the grid shows it (en-AU): `21/10/2026`, or `21/10/2026 9:00 PM` at `offsetMinutes`. */
+function shown(value: ColumnValue, offsetMinutes: number): string {
+	if (typeof value === "string") {
+		const [y, m, d] = value.split("-");
+		return `${d}/${m}/${y}`;
+	}
+	if (!(value instanceof Date)) return `not a date: ${String(value)}`;
+	const local = new Date(value.getTime() + offsetMinutes * 60_000);
+	const hours = local.getUTCHours();
+	const date = `${pad(local.getUTCDate())}/${pad(local.getUTCMonth() + 1)}/${local.getUTCFullYear()}`;
+	return `${date} ${hours % 12 || 12}:${pad(local.getUTCMinutes())} ${hours < 12 ? "AM" : "PM"}`;
+}
+
+describe("date behaviours against the captured rowData (V11)", () => {
+	const cases = behaviours.rows.flatMap((row, index) =>
+		Object.entries(behaviours.shown[index]).map(([column, expected]) => [index + 1, column, expected, row] as const),
+	);
+
+	it("has a captured display for every column of row 01", () => {
+		expect(Object.keys(behaviours.shown[0]).sort()).toEqual(behaviours.colDefs.map((d) => d.name).sort());
+		expect(cases).toHaveLength(6);
+	});
+
+	it.each(cases)("row %i: %s reads as %p, as the user sees it at UTC+11", (_row, column, expected, row) => {
+		expect(shown(columnReader(row, behaviours.colDefs, AEDT)(column), AEDT)).toBe(expected);
+	});
+
+	it("row 03 (display not captured) follows the same pattern", () => {
+		const get = columnReader(behaviours.rows[2], behaviours.colDefs, AEDT);
+		expect(get("wb_startdate")).toBe("2026-10-23");
+		expect(shown(get("wb_meetingat"), AEDT)).toBe("23/10/2026 9:00 PM");
+	});
+
+	it("reads a Time Zone Independent date and time as the instant the user's clock shows it", () => {
+		const meeting = columnReader(behaviours.rows[0], behaviours.colDefs, AEDT)("wb_meetingat");
+		expect((meeting as Date).toISOString()).toBe("2026-10-21T10:00:00.000Z"); // 21:00 at UTC+11
+		// A user at UTC+10 sees the same wall-clock time.
+		expect(shown(columnReader(behaviours.rows[0], behaviours.colDefs, 600)("wb_meetingat"), 600)).toBe("21/10/2026 9:00 PM");
+	});
+
+	it("reads a User Local date-only value at the user's offset, so a user at UTC+10 sees the day before", () => {
+		// Stored as 21 Oct 00:00 at UTC+11, which is 20 Oct 23:00 at UTC+10.
+		expect(columnReader(behaviours.rows[0], behaviours.colDefs, 600)("wb_startdate")).toBe("2026-10-20");
+	});
+
+	it("leaves Date Only and User Local date-and-time columns as they were", () => {
+		const get = columnReader(behaviours.rows[0], behaviours.colDefs, AEDT);
+		expect(get("wb_duedate")).toBe("2026-10-18");
+		expect((get("wb_reviewedon") as Date).toISOString()).toBe("2026-10-21T19:48:00.000Z");
+	});
+
+	it("reads empty values as null whatever the behaviour", () => {
+		const get = columnReader({ wb_duedate: null, wb_startdate: null, wb_reviewedon: null, wb_meetingat: null }, behaviours.colDefs, AEDT);
+		for (const { name } of behaviours.colDefs) expect(get(name)).toBeNull();
+	});
+
+	it("reads at UTC when no offset is given", () => {
+		expect(columnReader(behaviours.rows[0], behaviours.colDefs)("wb_startdate")).toBe("2026-10-20");
+	});
+});
+
+describe("getValue: date behaviours (V11)", () => {
+	const userLocal = { timeZoneIndependent: false, offset: AEDT };
+	const independent = { timeZoneIndependent: true, offset: AEDT };
+
+	it.each([
+		["DateOnly", "2026-10-20T13:00:00.000Z"],
+		["DateAndTime", "2026-10-21T21:00:00.000Z"],
+	])("%s without a behaviour reads as before (the date part, or the instant)", (dataType, raw) => {
+		const before = getValue({ c: raw }, "c", dataType);
+		expect(getValue({ c: raw }, "c", dataType, { timeZoneIndependent: undefined, offset: AEDT })).toEqual(before);
+		expect(before).toEqual(dataType === "DateOnly" ? "2026-10-20" : new Date(raw));
+	});
+
+	it("DateOnly, User Local: the local date of the stored instant", () => {
+		expect(getValue({ c: "2026-10-20T13:00:00.000Z" }, "c", "DateOnly", userLocal)).toBe("2026-10-21");
+		expect(getValue({ c: new Date("2026-10-20T13:00:00.000Z") }, "c", "DateOnly", userLocal)).toBe("2026-10-21");
+	});
+
+	it("DateOnly, Date Only: the date part, whatever the offset", () => {
+		expect(getValue({ c: "2026-10-18T00:00:00.000Z" }, "c", "DateOnly", { timeZoneIndependent: true, offset: -600 })).toBe("2026-10-18");
+	});
+
+	it("DateAndTime, User Local: the instant, whatever the offset", () => {
+		expect((getValue({ c: "2026-10-21T19:48:00.000Z" }, "c", "DateAndTime", userLocal) as Date).toISOString()).toBe("2026-10-21T19:48:00.000Z");
+	});
+
+	it("DateAndTime, Time Zone Independent: the stored wall-clock time in the user's zone", () => {
+		expect((getValue({ c: "2026-10-21T21:00:00.000Z" }, "c", "DateAndTime", independent) as Date).toISOString()).toBe("2026-10-21T10:00:00.000Z");
+		expect((getValue({ c: new Date("2026-10-21T21:00:00.000Z") }, "c", "DateAndTime", independent) as Date).toISOString()).toBe(
+			"2026-10-21T10:00:00.000Z",
+		);
+	});
+
+	it("uses the offset in force at each value, across a daylight-saving change", () => {
+		// Sydney: UTC+10 until 4 Oct 2026 02:00 local (2026-10-03T16:00Z), then UTC+11.
+		const sydney = (instant: Date): number => (instant.getTime() < Date.parse("2026-10-03T16:00:00Z") ? 600 : 660);
+		const local = { timeZoneIndependent: false, offset: sydney };
+		expect(getValue({ c: "2026-10-03T14:00:00.000Z" }, "c", "DateOnly", local)).toBe("2026-10-04"); // midnight at +10
+		expect(getValue({ c: "2026-10-04T13:00:00.000Z" }, "c", "DateOnly", local)).toBe("2026-10-05"); // midnight at +11
+		const tzi = { timeZoneIndependent: true, offset: sydney };
+		expect((getValue({ c: "2026-10-04T01:00:00.000Z" }, "c", "DateAndTime", tzi) as Date).toISOString()).toBe("2026-10-03T15:00:00.000Z");
+		expect((getValue({ c: "2026-10-04T09:00:00.000Z" }, "c", "DateAndTime", tzi) as Date).toISOString()).toBe("2026-10-03T22:00:00.000Z");
+	});
+
+	it.each([
+		["DateOnly", false],
+		["DateAndTime", true],
+	])("%s (timeZoneIndependent %p) can't be read when the offset can't", (dataType, timeZoneIndependent) => {
+		const broken = (): number => {
+			throw new Error("no settings");
+		};
+		expect(getValue({ c: "2026-10-20T13:00:00.000Z" }, "c", dataType, { timeZoneIndependent, offset: broken })).toBe(UNREADABLE);
+		expect(getValue({ c: "2026-10-20T13:00:00.000Z" }, "c", dataType, { timeZoneIndependent, offset: NaN })).toBe(UNREADABLE);
+	});
+
+	it.each([["18/10/2026"], ["2026-02-30T00:00:00Z"], [new Date(NaN)], [20261018]])("a malformed %p is UNREADABLE in either behaviour", (raw) => {
+		for (const dataType of ["DateOnly", "DateAndTime"]) {
+			expect(getValue({ c: raw }, "c", dataType, userLocal)).toBe(UNREADABLE);
+			expect(getValue({ c: raw }, "c", dataType, independent)).toBe(UNREADABLE);
+		}
+	});
+
+	it("ignores a behaviour on columns that aren't dates", () => {
+		expect(getValue({ c: "Spike" }, "c", "Text", independent)).toBe("Spike");
+		expect(getValue({ c: "10" }, "c", "Integer", userLocal)).toBe(10);
+	});
+});
+
+describe("timeZoneIndependentOf", () => {
+	it.each([
+		[{ customizerParams: { timeZoneIndependent: true } }, true],
+		[{ customizerParams: { timeZoneIndependent: false } }, false],
+	])("%j → %p", (def, expected) => {
+		expect(timeZoneIndependentOf(def)).toBe(expected);
+	});
+
+	const throwing = {
+		get customizerParams(): unknown {
+			throw new Error("boom");
+		},
+	};
+
+	it.each([
+		["no customizerParams", { name: "c" }],
+		["null customizerParams", { customizerParams: null }],
+		["customizerParams that isn't an object", { customizerParams: "x" }],
+		["no timeZoneIndependent", { customizerParams: { dropDownOptions: [] } }],
+		["a string", { customizerParams: { timeZoneIndependent: "true" } }],
+		["a number", { customizerParams: { timeZoneIndependent: 1 } }],
+		["a throwing getter", throwing],
+		["a colDef that isn't an object", null],
+	])("%s → undefined", (_label, def) => {
+		expect(timeZoneIndependentOf(def)).toBeUndefined();
+	});
+});
+
+describe("dateReadings", () => {
+	it("gives each date column's behaviour and the offset, and nothing for other columns", () => {
+		const readings = dateReadings(
+			[
+				...behaviours.colDefs,
+				{ name: "wb_name", dataType: "Text", customizerParams: { timeZoneIndependent: true } },
+				{ name: "createdon", dataType: "DateAndTime" },
+				null,
+				{ name: 1, dataType: "DateOnly" },
+			],
+			AEDT,
+		);
+		expect([...readings.keys()]).toEqual(["wb_duedate", "wb_startdate", "wb_reviewedon", "wb_meetingat", "createdon"]);
+		expect(readings.get("wb_startdate")).toEqual({ timeZoneIndependent: false, offset: AEDT });
+		expect(readings.get("wb_meetingat")).toEqual({ timeZoneIndependent: true, offset: AEDT });
+		expect(readings.get("createdon")).toEqual({ timeZoneIndependent: undefined, offset: AEDT });
+	});
+
+	it("is empty for colDefs that isn't an array", () => {
+		expect(dateReadings(null as unknown as unknown[], 0).size).toBe(0);
 	});
 });

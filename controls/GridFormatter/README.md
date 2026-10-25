@@ -10,7 +10,7 @@ A **Power Apps grid customizer** that formats rows and cells of a table's views 
 | Solution | `WBGridFormatter` (display name "WB Grid Formatter") |
 | Works with | The **Power Apps grid control** on main grids and subgrids |
 | Configuration | One web resource per table, under any publisher prefix: `<prefix>_GridFormatter.<table>.json` ([configuration guide](docs/configuration.md)) |
-| Version | 0.4.0 |
+| Version | 0.4.1 |
 | Decisions | [ADR-0004](../../docs/adr/0004-gridformatter-config-per-table-web-resource.md) (config per table), [ADR-0005](../../docs/adr/0005-prefix-agnostic-controls.md) (any publisher prefix), [spike results](docs/decisions.md) |
 | Architecture | [Diagram](docs/architecture.html) (open in a browser; source `docs/architecture.archify.json`) |
 | Spec | [brief §5](../../docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md#5-control-a--gridformatter-views-and-subgrids), superseded where ADR-0004 and the spike results differ |
@@ -127,6 +127,14 @@ The local test harness can't host a grid customizer, so check visual changes in 
 - Rules are cached for the browser tab's lifetime. After publishing new rules, reload the page.
 
 ## Changelog
+
+### 0.4.1 (unreleased)
+
+Date rules follow what users see, for every date behaviour (#39, [decisions.md V11](docs/decisions.md#v11-date-column-behaviours-39)).
+
+- **Date-only columns with User local behaviour** were read a day early east of UTC (21 October in Sydney was read as 20 October). They're now read as the date the user sees.
+- **Date-and-time columns with Time zone independent behaviour** were read as a moment, so out by the user's offset (9:00 PM on 21 October was 8:00 AM on 22 October in Sydney). They're now read as that date and time in the user's time zone, so "today", the day operators, date equality and times without a zone match what the grid shows.
+- The behaviour comes from an undocumented grid property. If it's missing, dates are read as before and the console warns once per column ([guide](docs/configuration.md#dates-and-today)).
 
 ### 0.4.0 (unreleased)
 

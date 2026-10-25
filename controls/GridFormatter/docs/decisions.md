@@ -21,6 +21,7 @@ Results of the VERIFY spikes in the brief (`docs/briefs/2026-10-21-grid-formatti
 | V7 Font properties | Italic and underline inherit; colour and bold do not | Colour and bold only by drawing simple types ourselves (see V7) |
 | V8 Environment variable size | **Max 2,000 characters** | The environment variable is dropped; one JSON web resource per table (ADR-0004) |
 | V9 A form subgrid's table (#30) | `context.page.entityTypeName` is the **form's** table; the subgrid's own table is only in the undocumented `factory._customControlProperties.descriptor.Parameters.TargetEntityType` | Read `TargetEntityType` first, fall back to the page's table, and warn on a form if it's missing (0.2.0) |
+| V11 Date column behaviours (#39) | `rowData` holds the stored value; each date column's behaviour is only in the undocumented `colDefs[].customizerParams.timeZoneIndependent`. User Local date-only and Time Zone Independent date-and-time columns were read wrongly | Read each date column by `timeZoneIndependent`; if it's missing, read as before and warn once per column (0.4.1) |
 | Theme tokens | `var(--colorNeutralBackground3)` resolves inside grid cells (`#f5f5f5`), not on `:root` | Theme tokens in config are emitted as CSS `var(--token, fallback)` on the cell |
 | Fluent 9 declaration | 0.0.4 declares Fluent 9.46.2 in place of the template's Fluent 8; the customizer loads and styles as before | Declare Fluent 9.46.2 (as PR #18 recommends) |
 
@@ -37,8 +38,8 @@ Results of the VERIFY spikes in the brief (`docs/briefs/2026-10-21-grid-formatti
 | `Lookup` | `{ id: { guid }, etn, name }` or `null` | `{ "id": { "guid": "4c2d…" }, "etn": "wb_gridspike", "name": "Spike row 01" }` | GUID string |
 | `Persona` (**Owner**; the type is not `Owner`) | `{ id: { guid }, etn, name }` | `etn: "systemuser"` | GUID string |
 | `Integer`, `Decimal`, `Currency` | number | `10`, `3.14`, `1000` | number |
-| `DateOnly` | ISO string at UTC midnight | `"2026-10-18T00:00:00.000Z"` | date-only string `2026-10-18` (take the UTC date part; no time-zone shift) |
-| `DateAndTime` (user local) | ISO UTC string | `"2026-10-21T19:48:00.000Z"` (shown as 22/10/2026 6:48 AM at UTC+10) | `Date` |
+| `DateOnly` | ISO string: the date at UTC midnight (Date Only behaviour), or the user's local midnight (User Local); see [V11](#v11-date-column-behaviours-39) | `"2026-10-18T00:00:00.000Z"` | date-only string `2026-10-18`, the date the user sees (V11) |
+| `DateAndTime` | ISO UTC string: an instant (User Local), or the wall-clock time (Time Zone Independent); see [V11](#v11-date-column-behaviours-39) | `"2026-10-21T19:48:00.000Z"` (User Local, shown as 22/10/2026 6:48 AM at UTC+10) | `Date`, the moment the user's clock shows what the grid shows (V11) |
 
 Empty values are `null`, except multi-select, which is also `null` when empty. `props.formattedValue` matches what the grid shows; multi-select joins with `"; "`.
 
@@ -173,6 +174,33 @@ This is the same trade-off as V3's option colours: an undocumented property, rea
 - With a purple probe added as `wb_GridFormatter.wb_gridspike.json`: the console showed `2 configs found for table wb_gridspike: lc_GridFormatter.wb_gridspike.json, wb_GridFormatter.wb_gridspike.json. Using lc_GridFormatter.wb_gridspike.json; keep one per table.`, and no row was purple.
 - With the `lc_` file deleted: all 272 cells were purple, so the `wb_` file was used.
 - The final rules as `wb_GridFormatter.wb_gridspike.json`: the main grid (255 cells) and the Child rows subgrid on Spike row 01 matched, Green rows with a pill and no tint. The old slash-named file was then deleted.
+
+## V11: Date column behaviours (#39)
+
+V1 only covered a date-only column with **Date Only** behaviour and a date-and-time column with **User Local** behaviour. Two columns were added to `wb_gridspike`, a date-only column with User Local behaviour and a date-and-time column with Time Zone Independent behaviour, and `rowData` and `colDefs` were captured in `LowCode` on 26 Oct 2026, user time zone Australia/Sydney (UTC+11 then). Fixture: `tests/fixtures/rowdata.date-behaviours.json`.
+
+| Column | `colDefs[].dataType` | `customizerParams` | Raw `rowData` value | User sees | Engine read (0.4.0) |
+|---|---|---|---|---|---|
+| `wb_duedate` (date only, Date Only) | `DateOnly` | `{"timeZoneIndependent":true}` | `"2026-10-18T00:00:00.000Z"` | 18/10/2026 | 18 Oct ✅ |
+| `wb_startdate` (date only, User Local) | `DateOnly` | `{"timeZoneIndependent":false}` | `"2026-10-20T13:00:00.000Z"` | 21/10/2026 | 20 Oct ❌ (a day early) |
+| `wb_reviewedon` (date and time, User Local) | `DateAndTime` | `{"timeZoneIndependent":false}` | `"2026-10-21T19:48:00.000Z"` | 22/10/2026 6:48 AM | that instant ✅ |
+| `wb_meetingat` (date and time, Time Zone Independent) | `DateAndTime` | `{"timeZoneIndependent":true}` | `"2026-10-21T21:00:00.000Z"` | 21/10/2026 9:00 PM | the instant 21:00Z, which is 22 Oct 08:00 for the user ❌ |
+
+Rows 02 and 03 gave `wb_startdate` `"2026-10-21T13:00:00.000Z"` (shown 22/10/2026) and `"2026-10-22T13:00:00.000Z"`, and `wb_meetingat` `"2026-10-22T21:00:00.000Z"` (shown 22/10/2026 9:00 PM) and `"2026-10-23T21:00:00.000Z"`. Empty values are `null`. Of the `colDefs` fields seen (`name`, `displayName`, `dataType`, `isPrimary`, `editable`, `width` and others), only `customizerParams` tells the behaviour.
+
+**Finding:** the grid passes the stored value, not what it shows. A User Local date-only value is the instant of the user's local midnight, so taking its date part is a day early east of UTC. A Time Zone Independent date and time is the wall-clock time written as UTC, so reading it as an instant is out by the user's offset. The behaviour is only in `customizerParams.timeZoneIndependent`, which isn't documented, like `attributeDescriptor` in V3.
+
+**Decision (0.4.1, `engine/rowValues.ts`):** read each date column by its `timeZoneIndependent`, so it holds what the user sees:
+
+| `dataType` | `timeZoneIndependent` | Read as |
+|---|---|---|
+| `DateOnly` | `true` | the date part, as before |
+| `DateOnly` | `false` | the user's local date at the stored instant, with the user's offset at that instant |
+| `DateAndTime` | `false` | the instant, as before |
+| `DateAndTime` | `true` | the moment the user's clock shows the stored wall-clock time (the two-pass `fromWallClock` in `dates.ts`), so "today", the day operators, date equality and zone-less times in rules compare as the user expects |
+| either | missing, or not a boolean | as before (the date part, or the instant), with one warning per column that its date behaviour couldn't be read, so a platform change shows |
+
+`customizerParams` is read through a defensive accessor that checks every step and never throws. The column set's cache key includes each date column's behaviour.
 
 ## Theme
 
