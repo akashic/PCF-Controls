@@ -8,7 +8,7 @@ William Buck's long-term monorepo for PCF (Power Apps Component Framework) contr
 
 `README.md` is the team's standard for PCF development and deployment (conventions, commands, adding a control, release and deploy steps). Read it before structural work, and keep it current when conventions change. Decisions behind the layout are in `docs/adr/`. Product-owner briefs for each piece of work are in `docs/briefs/`.
 
-Two controls exist, both at 0.1.0: `GridFormatter` and `RagChoice`, specified in `docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md`. Work continues from the GitHub issues. The brief's §4.2 layout and single `WBGridFormatting` solution are **superseded** by the layout below.
+The controls are listed in the README's control catalogue. The first two, `GridFormatter` and `RagChoice`, are specified in `docs/briefs/2026-10-21-grid-formatting-and-rag-choice.md`. Work continues from the GitHub issues. The brief's §4.2 layout and single `WBGridFormatting` solution are **superseded** by the layout below.
 
 ## Commands
 
