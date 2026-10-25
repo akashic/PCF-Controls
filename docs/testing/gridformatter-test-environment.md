@@ -19,7 +19,7 @@ How the `wb_gridspike` test table was built, populated and wired to GridFormatte
 | Table | `wb_gridspike` (entity set `wb_gridspikes`) |
 | Views | "Grid spike - all columns" `c98e5bf5-c2cd-f111-a05b-70a8a59b69e5` (default, all columns, includes inactive rows); "Grid spike - narrow (no RAG, no status)"; plus the system view "Active Grid spikes" `79452fbc-5bad-4400-bf25-a7049fce521a` (Name + Created On only) |
 | Grid configuration | `customcontroldefaultconfig` `2680912c-8703-4375-965a-93b8a4b457ab` (`GridCustomizerControlFullName` = `wb_Controls.GridFormatter`, editing off) |
-| Rules web resource | `wb_/GridFormatter/wb_gridspike.json` (webresourceid changes if it's deleted and recreated; look it up by name) |
+| Rules web resource | `wb_GridFormatter.wb_gridspike.json` (from 25 Oct 2026, GridFormatter 0.3.0; webresourceid changes if it's deleted and recreated, so look it up by name) |
 | Data | 260 rows: `Spike row 01`–`30` (rows 25–30 inactive) and `Spike row 031`–`260` (all active) |
 
 IDs are specific to `LowCode`. In a rebuilt environment, look things up by name.
@@ -152,7 +152,7 @@ This is the scripted equivalent of the classic UI: **Customize the system → En
 node scripts/test-env/upload-web-resource.mjs controls/GridFormatter/config/examples/wb_gridspike.json
 ```
 
-This creates or updates `wb_/GridFormatter/wb_gridspike.json` and publishes it.
+This creates or updates `wb_GridFormatter.wb_gridspike.json` and publishes it. Add `--prefix <prefix>` to name it under another publisher's prefix: the Web API accepts any publisher's prefix, so this tests a project that isn't on `wb` (25 Oct: `--prefix lc`, the `LowCode` publisher).
 - **Type:** Script (JScript, `webresourcetype` 3), because Dataverse has no JSON type.
 - **Content:** the file's Base64.
 - **Publishing:** an unpublished web resource isn't what the control reads, so the script always publishes.
@@ -173,7 +173,7 @@ Details found doing it:
 - After publishing, **hard-reload the form**. The first plain reload still showed the old form (the Owner field only).
 - **Limit:** the subgrid shows the form's own table, so it can't tell whether the control uses the **subgrid's** table or the form's. That needs a subgrid of another table (#30, [decisions.md V9](../../controls/GridFormatter/docs/decisions.md#v9-a-form-subgrids-table-30)). The method that worked:
   1. Temporarily add an unrelated **Users** subgrid (`TargetEntityType` `systemuser`, view "Enabled Users", no `RelationshipName`) to the "Information" form. Give it the same `controlDescription` as the Child rows subgrid, with its own `data-set`.
-  2. Upload a probe `wb_/GridFormatter/systemuser.json` with one row rule (`fullname isNotNull` → a distinct background).
+  2. Upload a probe `wb_GridFormatter.systemuser.json` with one row rule (`fullname isNotNull` → a distinct background).
   3. Hard-reload and check the Users cells' `style.backgroundImage`. To see whether the form's rules are used instead, put the same probe rule in `wb_gridspike.json`.
   4. Remove the subgrid and delete the probe web resource afterwards.
 
@@ -197,7 +197,7 @@ Details found doing it:
 - All columns: https://lowcode.crm.dynamics.com/main.aspx?forceUCI=1&pagetype=entitylist&etn=wb_gridspike&viewid=c98e5bf5-c2cd-f111-a05b-70a8a59b69e5&viewType=1039
 - Subgrid: open **Spike row 01** (https://lowcode.crm.dynamics.com/main.aspx?forceUCI=1&pagetype=entityrecord&etn=wb_gridspike&id=4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5).
 - Dark mode: add `&flags=themeOption%3Ddarkmode` to the URL.
-- Debug log of matched rules per row: `sessionStorage.setItem("wb_GridFormatDebug","1")`, then reload. Remove it afterwards.
+- Debug log of matched rules per row: `sessionStorage.setItem("GridFormatter.debug","1")`, then reload. Remove it afterwards.
 
 ## 5. Changing data and configuration for a test
 
@@ -205,7 +205,8 @@ Details found doing it:
 |---|---|
 | Edit one row's value | `PATCH /api/data/v9.2/wb_gridspikes(<id>)` with `If-Match: *`, e.g. `{"wb_ragstatus": 948790000}` |
 | Deactivate/activate | `PATCH … {"statecode": 1, "statuscode": 2}` / `{"statecode": 0, "statuscode": 1}` |
-| Try a different rules file | `node scripts/test-env/upload-web-resource.mjs <file> --name wb_/GridFormatter/wb_gridspike.json`, then hard-reload |
+| Try a different rules file | `node scripts/test-env/upload-web-resource.mjs <file> --name wb_GridFormatter.wb_gridspike.json`, then hard-reload |
+| Two files for one table | Upload a probe with `--prefix lc` as well: the control warns and uses the first name alphabetically (`lc_…` before `wb_…`). Delete the probe afterwards |
 | Inline editing on/off | `node scripts/test-env/set-grid-customizer.mjs wb_gridspike wb_Controls.GridFormatter --editing yes` (then `no`), then hard-reload |
 | Find a row id | `GET /api/data/v9.2/wb_gridspikes?$select=wb_name&$filter=wb_name eq 'Spike row 03'` |
 

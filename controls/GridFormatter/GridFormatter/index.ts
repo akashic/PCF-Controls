@@ -10,7 +10,7 @@ import { loadFormatting, startWhenLoaded, type Formatting } from "./stores/start
 import * as React from "react";
 
 /** Set to "1" in sessionStorage to log which rules matched each row. */
-const DEBUG_KEY = "wb_GridFormatDebug";
+const DEBUG_KEY = "GridFormatter.debug";
 
 /** GETs the Web API metadata fallback (same origin, the user's session). */
 const fetchJson: FetchJson = async (url) => {

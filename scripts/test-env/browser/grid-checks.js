@@ -3,7 +3,7 @@
 // See docs/testing/gridformatter-test-environment.md.
 //
 //   __wbCheck()        → { cells, bad }: compares every rendered cell's tint with the row's expected
-//                        colour (RAG option colour at 18%, inactive rows the neutral token, Unknown/empty
+//                        colour (Red and Amber at 18%, inactive rows the neutral token, Green/Unknown/empty
 //                        none). Actual cost is skipped (over-budget layers its own tint there).
 //   await __wbStress() → scrolls the grid up and down 15 times, running __wbCheck after each move and
 //                        timing every animation frame. Compare with a run using an empty rules file to
@@ -14,7 +14,8 @@
 // Expected tints match config/examples/wb_gridspike.json at the time of writing. Update EXPECT if the
 // RAG option colours or tintAlpha change.
 
-const EXPECT = { Amber: "rgba(255, 185, 0, 0.18)", Green: "rgba(16, 124, 16, 0.18)", Red: "rgba(209, 52, 56, 0.18)" };
+// Green has a pill but no row tint: only Red and Amber need attention.
+const EXPECT = { Amber: "rgba(255, 185, 0, 0.18)", Red: "rgba(209, 52, 56, 0.18)" };
 
 window.__wbCheck = () => {
   let cells = 0;

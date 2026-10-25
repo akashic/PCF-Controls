@@ -1,6 +1,6 @@
 /**
  * TypeScript types for one table's GridFormatter config file (the web resource
- * `wb_/GridFormatter/<table logical name>.json`).
+ * `<prefix>_GridFormatter.<table logical name>.json`).
  *
  * These mirror `config/grid-format.schema.json`, which is the source of truth.
  * Change both together. CI validates config files against the schema; the

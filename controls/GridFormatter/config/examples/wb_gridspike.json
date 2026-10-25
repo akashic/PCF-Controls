@@ -35,9 +35,9 @@
     },
     {
       "id": "rag-row",
-      "description": "Tint the row by RAG status",
+      "description": "Tint the row for Red and Amber only, the statuses that need attention (Green still gets its pill)",
       "priority": 20,
-      "when": { "column": "wb_ragstatus", "op": "isNotNull" },
+      "when": { "column": "wb_ragstatus", "op": "in", "value": [948790000, 948790001] },
       "scope": "row",
       "style": {
         "backgroundColor": { "fromOption": "wb_ragstatus", "alpha": "tint" }

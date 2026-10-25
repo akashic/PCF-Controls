@@ -1,51 +1,117 @@
 import {
-	CONFIG_WEB_RESOURCE_PREFIX,
+	CONFIG_NAME_MARKER,
+	configNamePattern,
 	configQuery,
-	configWebResourceName,
+	configTable,
 	decodeBase64Utf8,
+	isConfigName,
 	readConfigRecord,
 } from "../GridFormatter/engine/webResource";
 
 const base64 = (bytes: Uint8Array | string): string => Buffer.from(bytes).toString("base64");
 
-describe("configWebResourceName (ADR-0004)", () => {
-	it("names the table's config file", () => {
-		expect(CONFIG_WEB_RESOURCE_PREFIX).toBe("wb_/GridFormatter/");
-		expect(configWebResourceName("wb_gridspike")).toBe("wb_/GridFormatter/wb_gridspike.json");
-		expect(configWebResourceName("Account")).toBe("wb_/GridFormatter/account.json");
+describe("configTable", () => {
+	it("is the table's logical name in lower case", () => {
+		expect(configTable("wb_gridspike")).toBe("wb_gridspike");
+		expect(configTable("Account")).toBe("account");
 	});
 
-	it.each([null, undefined, "", 42, "wb_x'; drop", "a/b", "1abc", "wb x"])("rejects %p", (table) => {
-		expect(configWebResourceName(table)).toBeNull();
+	it.each([null, undefined, "", 42, "wb_x'; drop", "a/b", "a.b", "1abc", "wb x"])("rejects %p", (table) => {
+		expect(configTable(table)).toBeNull();
+	});
+});
+
+describe("configNamePattern (ADR-0005)", () => {
+	it("names the file under any prefix", () => {
+		expect(CONFIG_NAME_MARKER).toBe("_GridFormatter.");
+		expect(configNamePattern("abc_project")).toBe("<prefix>_GridFormatter.abc_project.json");
+	});
+});
+
+describe("isConfigName", () => {
+	it.each(["abc_GridFormatter.account.json", "wb_GridFormatter.account.json", "ABC_gridformatter.ACCOUNT.JSON", "cr65e_GridFormatter.account.json"])(
+		"accepts %p for account",
+		(name) => {
+			expect(isConfigName(name, "account")).toBe(true);
+		},
+	);
+
+	it.each([
+		["the old name", "wb_/GridFormatter/account.json"],
+		["another table", "abc_GridFormatter.contact.json"],
+		["a table that only ends the same", "abc_GridFormatter.x_account.json"],
+		["no prefix", "_GridFormatter.account.json"],
+		["a prefix with an underscore", "abc_x_GridFormatter.account.json"],
+		["a folder", "abc_/x/abc_GridFormatter.account.json"],
+		["another extension", "abc_GridFormatter.account.js"],
+		["a wildcard match", "abcXGridFormatter.account.json"],
+		["not a string", 42],
+	])("rejects %s", (_label, name) => {
+		expect(isConfigName(name, "account")).toBe(false);
+	});
+
+	it("matches the table's underscores literally", () => {
+		expect(isConfigName("abc_GridFormatter.abc_project.json", "abc_project")).toBe(true);
+		expect(isConfigName("abc_GridFormatter.abcXproject.json", "abc_project")).toBe(false);
 	});
 });
 
 describe("configQuery", () => {
-	it("selects the content of the one web resource with that name", () => {
-		expect(configQuery("wb_/GridFormatter/wb_gridspike.json")).toBe(
-			"?$select=name,content&$filter=name eq 'wb_/GridFormatter/wb_gridspike.json'&$top=1",
+	it("finds the table's files under any prefix, with each _ escaped as [_]", () => {
+		expect(configQuery("wb_gridspike")).toBe(
+			"?$select=name,content&$filter=endswith(name,'[_]GridFormatter.wb[_]gridspike.json')&$orderby=name&$top=10",
 		);
-	});
-
-	it("escapes quotes in the name", () => {
-		expect(configQuery("it's")).toContain("name eq 'it''s'");
 	});
 });
 
 describe("readConfigRecord", () => {
-	it("returns the Base64 content of the first row", () => {
-		expect(readConfigRecord({ entities: [{ name: "x", content: "eyJ9" }] })).toEqual({ kind: "content", base64: "eyJ9" });
+	const row = (name: string, content: unknown = "eyJ9") => ({ name, content });
+
+	it("returns the Base64 content of the matching row", () => {
+		expect(readConfigRecord({ entities: [row("abc_GridFormatter.t.json")] }, "t")).toEqual({
+			kind: "content",
+			name: "abc_GridFormatter.t.json",
+			base64: "eyJ9",
+			others: [],
+		});
 	});
 
-	it.each([undefined, null, "text", {}, { entities: null }, { entities: [] }, { entities: [null] }, { entities: ["row"] }])(
-		"is missing for %p",
-		(response) => {
-			expect(readConfigRecord(response)).toEqual({ kind: "missing" });
-		},
-	);
+	it("uses the first matching name in alphabetical order, ignoring case, and lists the others", () => {
+		const response = { entities: [row("xyz_GridFormatter.t.json", "eA=="), row("Abc_GridFormatter.t.json", "YQ=="), row("lc_GridFormatter.t.json")] };
+		expect(readConfigRecord(response, "t")).toEqual({
+			kind: "content",
+			name: "Abc_GridFormatter.t.json",
+			base64: "YQ==",
+			others: ["lc_GridFormatter.t.json", "xyz_GridFormatter.t.json"],
+		});
+	});
 
-	it.each([{}, { content: null }, { content: "" }, { content: "  " }, { content: 42 }])("is empty for a row %p", (row) => {
-		expect(readConfigRecord({ entities: [row] })).toEqual({ kind: "empty" });
+	it("ignores rows whose name only matched the wildcard query", () => {
+		const response = { entities: [row("a_x_GridFormatter.t.json"), row("b_GridFormatter.t.json", "Yg=="), row("c_/GridFormatter.t.json")] };
+		expect(readConfigRecord(response, "t")).toMatchObject({ kind: "content", name: "b_GridFormatter.t.json", others: [] });
+	});
+
+	it.each([
+		undefined,
+		null,
+		"text",
+		{},
+		{ entities: null },
+		{ entities: [] },
+		{ entities: [null] },
+		{ entities: ["row"] },
+		{ entities: [{ content: "eyJ9" }] },
+		{ entities: [{ name: "x_GridFormatter.other.json", content: "eyJ9" }] },
+	])("is missing for %p", (response) => {
+		expect(readConfigRecord(response, "t")).toEqual({ kind: "missing" });
+	});
+
+	it.each([{}, { content: null }, { content: "" }, { content: "  " }, { content: 42 }])("is empty for a row %p", (fields) => {
+		expect(readConfigRecord({ entities: [{ name: "abc_GridFormatter.t.json", ...fields }] }, "t")).toEqual({
+			kind: "empty",
+			name: "abc_GridFormatter.t.json",
+			others: [],
+		});
 	});
 });
 

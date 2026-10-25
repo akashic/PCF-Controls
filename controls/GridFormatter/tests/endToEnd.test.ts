@@ -7,7 +7,7 @@ import { createWarnOnce } from "../GridFormatter/engine/warnings";
 import { createConfigStore } from "../GridFormatter/stores/configStore";
 import { createMetadataStore } from "../GridFormatter/stores/metadataStore";
 import { loadFormatting } from "../GridFormatter/stores/startup";
-import { AMBER, GREEN, RAG_OPTIONS, UNKNOWN, exampleBase64, rowDataFixture, spikeMetadata } from "./engineHelpers";
+import { AMBER, GREEN, RAG_OPTIONS, RED, UNKNOWN, exampleBase64, rowDataFixture, spikeMetadata } from "./engineHelpers";
 
 const fixture = rowDataFixture();
 const { colDefs } = fixture;
@@ -18,6 +18,7 @@ const NOON_22_OCT = Date.parse("2026-10-22T02:00:00Z"); // the capture date, at 
 const layer = (css: string): string => `linear-gradient(${css}, ${css})`;
 const AMBER_TINT = layer("rgba(255, 185, 0, 0.18)");
 const GREEN_TINT = layer("rgba(16, 124, 16, 0.18)");
+const RED_TINT = layer("rgba(209, 52, 56, 0.18)");
 const OVER_BUDGET_TINT = layer("rgba(197, 15, 31, 0.12)");
 const GREY_TINT = layer("color-mix(in srgb, var(--colorNeutralForeground3, #616161) 18%, transparent)");
 const GREY_TEXT = "var(--colorNeutralForeground3, #616161)";
@@ -26,7 +27,10 @@ const OVERDUE_TEXT = "var(--colorPaletteRedForeground1, #bc2f32)";
 const tinted = (backgroundImage: string, extra: Partial<ContainerStyle> = {}): ContainerStyle => ({ ...CLEAR_CONTAINER, backgroundImage, ...extra });
 const GRID = { kind: "grid" } as const;
 
-/** A page with `wb_/GridFormatter/<table>.json` holding the named example. */
+/** The `endswith` suffix the control queries for a table's file, with `_` escaped as `[_]`. */
+const configQuerySuffix = (table: string): string => `_GridFormatter.${table}.json`.replace(/_/g, "[_]");
+
+/** A page with `abc_GridFormatter.<table>.json` holding the named example. */
 async function page(example: string | null, table = "wb_gridspike") {
 	const warnings: string[] = [];
 	const infos: string[] = [];
@@ -35,7 +39,10 @@ async function page(example: string | null, table = "wb_gridspike") {
 	const webAPI = {
 		retrieveMultipleRecords: (_entity: string, options?: string) =>
 			Promise.resolve({
-				entities: example && options?.includes(`'wb_/GridFormatter/${table}.json'`) ? [{ name: "x", content: exampleBase64(example) }] : [],
+				entities:
+					example && options?.includes(`endswith(name,'${configQuerySuffix(table)}')`)
+						? [{ name: `abc_GridFormatter.${table}.json`, content: exampleBase64(example) }]
+						: [],
 			}),
 	};
 	const metadataCalls: unknown[] = [];
@@ -91,16 +98,24 @@ describe("wb_gridspike.json on the captured wb_gridspike rows", () => {
 		expect(debug).toEqual(["row 4c2ddcfb-c2cd-f111-a05b-70a8a59b69e5: matched rag-row, rag-pill, overdue"]);
 	});
 
-	it("row 02 (Green, over budget): green tint, a Green pill, and the over-budget cell wins its own background", async () => {
-		const { formatter } = await page("wb_gridspike");
+	it("row 02 (Green, over budget): a Green pill but no tint, as Green needs no attention; the over-budget cell keeps its background", async () => {
+		const { formatter, debug } = await page("wb_gridspike");
 		const cells = formatRow(formatter, row02);
-		for (const column of allColumns.filter((c) => c !== "wb_actualcost")) expect(cells[column].container).toEqual(tinted(GREEN_TINT));
+		for (const column of allColumns.filter((c) => c !== "wb_actualcost")) expect(cells[column].container).toEqual(CLEAR_CONTAINER);
 		expect(cells.wb_actualcost).toEqual({
 			container: tinted(OVER_BUDGET_TINT),
 			content: { kind: "text", color: "var(--colorPaletteRedForeground1, #bc2f32)", fontWeight: 600 },
 		});
 		expect(cells.wb_ragstatus.content).toEqual({ kind: "pill", pill: { backgroundColor: "#107C10", color: WHITE } });
 		expect(cells.wb_duedate.content).toEqual(GRID); // Green is never overdue
+		expect(debug).toEqual([expect.stringMatching(/: matched over-budget, rag-pill$/)]);
+	});
+
+	it("a Red row: red tint everywhere and a Red pill", async () => {
+		const { formatter } = await page("wb_gridspike");
+		const cells = formatRow(formatter, { ...row02, wb_ragstatus: String(RED), wb_actualcost: null });
+		for (const column of allColumns) expect(cells[column].container).toEqual(tinted(RED_TINT));
+		expect(cells.wb_ragstatus.content).toEqual({ kind: "pill", pill: { backgroundColor: "#D13438", color: WHITE } });
 	});
 
 	it("an inactive row: grey and italic, grey text only where the control may draw, and no other rule (stop)", async () => {
@@ -120,7 +135,7 @@ describe("wb_gridspike.json on the captured wb_gridspike rows", () => {
 	it("a flagged row: the primary name is underlined on the container, and still drawn by the grid", async () => {
 		const { formatter } = await page("wb_gridspike");
 		const cells = formatRow(formatter, { ...row02, wb_flagged: true });
-		expect(cells.wb_name).toEqual({ container: tinted(GREEN_TINT, { textDecoration: "underline" }), content: GRID });
+		expect(cells.wb_name).toEqual({ container: { ...CLEAR_CONTAINER, textDecoration: "underline" }, content: GRID });
 	});
 
 	it("an option with no colour, or no RAG value, leaves the row plain apart from the overdue date", async () => {
@@ -145,14 +160,14 @@ describe("wb_gridspike.json on the captured wb_gridspike rows", () => {
 	it("always sets or clears the container, which the grid reuses between rows", async () => {
 		const { formatter } = await page("wb_gridspike");
 		const container = { style: { backgroundImage: "", fontStyle: "", textDecoration: "", color: "untouched" } };
-		const rows = [{ ...row01, statecode: "1" }, row02, { ...row01, wb_ragstatus: null }];
+		const rows = [{ ...row01, statecode: "1" }, { ...row02, wb_ragstatus: String(RED) }, row02];
 		const seen = rows.map((row) => {
 			applyContainerStyle(container, formatRow(formatter, row).wb_name.container);
 			return { ...container.style };
 		});
 		expect(seen).toEqual([
 			{ backgroundImage: GREY_TINT, fontStyle: "italic", textDecoration: "", color: "untouched" },
-			{ backgroundImage: GREEN_TINT, fontStyle: "", textDecoration: "", color: "untouched" },
+			{ backgroundImage: RED_TINT, fontStyle: "", textDecoration: "", color: "untouched" },
 			{ backgroundImage: "", fontStyle: "", textDecoration: "", color: "untouched" },
 		]);
 	});
@@ -191,7 +206,7 @@ describe("other example configs on the captured rows", () => {
 		const cells = formatRow(formatter, row01);
 		for (const column of allColumns) expect(cells[column]).toEqual({ container: CLEAR_CONTAINER, content: GRID });
 		expect(warnings).toEqual([]);
-		expect(infos).toEqual(["no config web resource wb_/GridFormatter/wb_gridspike.json; the grid is shown without formatting."]);
+		expect(infos).toEqual(["no config web resource <prefix>_GridFormatter.wb_gridspike.json; the grid is shown without formatting."]);
 		expect(metadataCalls).toEqual([]);
 	});
 });

@@ -155,6 +155,25 @@ No documented API gives a subgrid's table. Decision (0.2.0, `engine/gridTable.ts
 
 This is the same trade-off as V3's option colours: an undocumented property, read defensively, with a documented fallback. Verified in `LowCode` on 0.2.0: the Users subgrid used `systemuser.json`; the Child rows subgrid (135 cells) and the main grid (405 cells) had no mismatches.
 
+## V10: Rules under any publisher prefix (#35)
+
+[ADR-0005](../../../docs/adr/0005-prefix-agnostic-controls.md) renames the rules file to `<prefix>_GridFormatter.<table>.json`, under any publisher prefix. Spikes in `LowCode`, 25 Oct 2026:
+
+| Question | Result | So |
+|---|---|---|
+| Can a Basic User read `publisher`? | **No.** The Basic User role (`RetrieveRolePrivilegesRole`) has no Publisher or Solution privileges; it has `prvReadWebResource` at Global depth. | Looking up the prefixes first would fail for ordinary users, so the control uses `endswith` only. |
+| What does `endswith` cost? | `LowCode` has 20,782 web resources. `endswith` took 0.74–1.02 s and an exact `name eq` 0.62–0.72 s from a laptop (mostly network): about 0.1–0.2 s more, once per table per page. | Acceptable. |
+| Is `_` literal in `endswith`? | **No**, it's a one-character wildcard: `endswith(name,'_ridFormatter/wb_gridspike.json')` matched `wb_/GridFormatter/…`. `[_]` matches only `_`. | The query escapes every `_` as `[_]`, and the control also checks each returned name against `^[A-Za-z][A-Za-z0-9]*_GridFormatter\.<table>\.json$`. |
+| Does the maker portal's file picker take `.json`? | **No.** The New web resource panel's file input accepts `.html,.htm,.css,.jscript,.xml,.js,.xsl,.xslt,.resx,.png,.jpg,.jpeg,.gif,.ico,.svg`. Pasting into its **Code** box with file type **JavaScript (JS)** works (stored as `webresourcetype` 3). | The configuration guide says to paste. |
+| Does the name field take `_` after the prefix? | **Yes.** `wb_GridFormatter.spike_probe.json` saved from the panel (then deleted). | Table names with underscores work. |
+| Does Solution Checker flag JSON in a JScript web resource? | **No.** `pac solution check` on `WBGridSpikeTest` (with the JSON rules file) reported only two Medium `meta-include-missingunmanageddependencies` findings, about RagChoice. | Nothing to do. |
+
+**Verified on 0.3.0 in `LowCode`:**
+- Rules uploaded only as `lc_GridFormatter.wb_gridspike.json` (the `LowCode` publisher's prefix), with the old `wb_/GridFormatter/wb_gridspike.json` still present: the main grid was formatted, 255 cells, no mismatches. The page loaded the new 50,551-byte bundle.
+- With a purple probe added as `wb_GridFormatter.wb_gridspike.json`: the console showed `2 configs found for table wb_gridspike: lc_GridFormatter.wb_gridspike.json, wb_GridFormatter.wb_gridspike.json. Using lc_GridFormatter.wb_gridspike.json; keep one per table.`, and no row was purple.
+- With the `lc_` file deleted: all 272 cells were purple, so the `wb_` file was used.
+- The final rules as `wb_GridFormatter.wb_gridspike.json`: the main grid (255 cells) and the Child rows subgrid on Spike row 01 matched, Green rows with a pill and no tint. The old slash-named file was then deleted.
+
 ## Theme
 
 - `context.fluentDesignLanguage` is present with `tokenTheme`, `brand` and `isDarkTheme` (false in this run).
