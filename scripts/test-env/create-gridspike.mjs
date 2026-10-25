@@ -1,12 +1,14 @@
 // Creates the wb_gridspike test table that GridFormatter is tested against: one column of every
 // type the brief needs, coloured choice options, two views and 30 rows. Idempotent: anything that
 // already exists is left alone, so it's safe to re-run.
-// Usage: node scripts/test-env/create-gridspike.mjs [--solution WBGridSpikeTest] [--publisher WilliamBuck]
+// Usage: node scripts/test-env/create-gridspike.mjs [--solution WBGridSpikeTest] [--publisher WilliamBuck] [--tz Australia/Sydney]
 // See docs/testing/gridformatter-test-environment.md.
 import { fileURLToPath } from "node:url";
 import { arg, call, get, label, publish } from "./lib.mjs";
 
 const SOLUTION = arg("solution", "WBGridSpikeTest");
+// The test user's time zone, so User Local date-only values are stored as an app user would store them (#39).
+const TZ = arg("tz", "Australia/Sydney");
 const PUBLISHER = arg("publisher", "WilliamBuck");
 const TABLE = "wb_gridspike";
 const SET = "wb_gridspikes";
@@ -50,6 +52,10 @@ const columns = [
   { "@odata.type": "Microsoft.Dynamics.CRM.MoneyAttributeMetadata", SchemaName: "wb_ActualCost", DisplayName: label("Actual cost"), RequiredLevel: none, Precision: 2, PrecisionSource: 2, MinValue: 0, MaxValue: 1000000000 },
   { "@odata.type": "Microsoft.Dynamics.CRM.DateTimeAttributeMetadata", SchemaName: "wb_DueDate", DisplayName: label("Due date"), RequiredLevel: none, Format: "DateOnly", DateTimeBehavior: { Value: "DateOnly" } },
   { "@odata.type": "Microsoft.Dynamics.CRM.DateTimeAttributeMetadata", SchemaName: "wb_ReviewedOn", DisplayName: label("Reviewed on"), RequiredLevel: none, Format: "DateAndTime", DateTimeBehavior: { Value: "UserLocal" } },
+  // The other two date behaviours (#39): date-only with User Local behaviour (stored as the UTC instant of the
+  // user's local midnight) and date-and-time with Time Zone Independent behaviour (stored and shown as entered).
+  { "@odata.type": "Microsoft.Dynamics.CRM.DateTimeAttributeMetadata", SchemaName: "wb_StartDate", DisplayName: label("Start date"), RequiredLevel: none, Format: "DateOnly", DateTimeBehavior: { Value: "UserLocal" } },
+  { "@odata.type": "Microsoft.Dynamics.CRM.DateTimeAttributeMetadata", SchemaName: "wb_MeetingAt", DisplayName: label("Meeting at"), RequiredLevel: none, Format: "DateAndTime", DateTimeBehavior: { Value: "TimeZoneIndependent" } },
   { "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata", SchemaName: "wb_Notes", DisplayName: label("Notes"), RequiredLevel: none, MaxLength: 200, FormatName: { Value: "Text" } },
 ];
 
@@ -81,7 +87,7 @@ async function ensureTable() {
   console.log(`created table ${TABLE}`);
 }
 
-async function ensureColumns() {
+export async function ensureColumns() {
   const existing = await get(`EntityDefinitions(LogicalName='${TABLE}')/Attributes?$select=LogicalName`);
   const names = new Set(existing.value.map((a) => a.LogicalName));
   for (const column of columns) {
@@ -100,25 +106,42 @@ async function ensureColumns() {
   }
 }
 
-const ALL = ["wb_name", "statecode", "statuscode", "wb_ragstatus", "wb_tags", "wb_flagged", "wb_parentid", "ownerid", "wb_count", "wb_score", "wb_budget", "wb_actualcost", "wb_duedate", "wb_reviewedon", "wb_notes", "createdon"];
+export const ALL = ["wb_name", "statecode", "statuscode", "wb_ragstatus", "wb_tags", "wb_flagged", "wb_parentid", "ownerid", "wb_count", "wb_score", "wb_budget", "wb_actualcost", "wb_duedate", "wb_reviewedon", "wb_startdate", "wb_meetingat", "wb_notes", "createdon"];
 // Leaves out wb_ragstatus and statecode, to test rules whose columns aren't in the view (V2).
 const NARROW = ["wb_name", "wb_duedate", "wb_count", "wb_budget"];
+
+/** A view's fetchxml and layoutxml showing `cols`, sorted by name. No statecode filter, so inactive rows show too. */
+export function viewXml(cols) {
+  const fetchxml = `<fetch version="1.0" mapping="logical"><entity name="${TABLE}">${cols.map((c) => `<attribute name="${c}"/>`).join("")}<attribute name="wb_gridspikeid"/><order attribute="wb_name" descending="false"/></entity></fetch>`;
+  const layoutxml = `<grid name="resultset" object="1" jump="wb_name" select="1" icon="1" preview="1"><row name="result" id="wb_gridspikeid">${cols.map((c) => `<cell name="${c}" width="${c === "wb_name" ? 200 : 130}"/>`).join("")}</row></grid>`;
+  return { fetchxml, layoutxml };
+}
 
 async function ensureView(name, cols, isDefault) {
   const existing = await get(`savedqueries?$select=savedqueryid&$filter=name eq '${name}' and returnedtypecode eq '${TABLE}'`);
   if (existing?.value?.length) return console.log(`view "${name}" exists`);
-  // No statecode filter, so inactive rows show too.
-  const fetchxml = `<fetch version="1.0" mapping="logical"><entity name="${TABLE}">${cols.map((c) => `<attribute name="${c}"/>`).join("")}<attribute name="wb_gridspikeid"/><order attribute="wb_name" descending="false"/></entity></fetch>`;
-  const layoutxml = `<grid name="resultset" object="1" jump="wb_name" select="1" icon="1" preview="1"><row name="result" id="wb_gridspikeid">${cols.map((c) => `<cell name="${c}" width="${c === "wb_name" ? 200 : 130}"/>`).join("")}</row></grid>`;
-  await call("POST", "savedqueries", { name, returnedtypecode: TABLE, querytype: 0, fetchxml, layoutxml, isdefault: isDefault }, { solution: SOLUTION });
+  await call("POST", "savedqueries", { name, returnedtypecode: TABLE, querytype: 0, ...viewXml(cols), isdefault: isDefault }, { solution: SOLUTION });
   console.log(`created view "${name}"`);
 }
 
-const day = (offset) => {
+export const day = (offset) => {
   const d = new Date();
   d.setDate(d.getDate() + offset);
   return d.toISOString().slice(0, 10);
 };
+
+/** Minutes `timeZone` is ahead of UTC at `instant`, from how Intl writes the instant in the zone. */
+function zoneOffsetMinutes(instant, timeZone) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(instant).map((p) => [p.type, p.value]));
+  return (Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute) - instant.getTime()) / 60_000;
+}
+
+/** The UTC instant of local midnight on `date` (YYYY-MM-DD) in `timeZone`. Two passes, so a day when daylight saving changes is right. */
+export function localMidnight(date, timeZone = TZ) {
+  const wallClock = Date.parse(`${date}T00:00:00Z`);
+  const guess = wallClock - zoneOffsetMinutes(new Date(wallClock), timeZone) * 60_000;
+  return new Date(wallClock - zoneOffsetMinutes(new Date(guess), timeZone) * 60_000).toISOString();
+}
 
 /** One row's values; the same pattern is used by add-gridspike-rows.mjs. */
 export function rowValues(i, width = 2) {
@@ -135,6 +158,9 @@ export function rowValues(i, width = 2) {
     wb_actualcost: i * 1000 + (i % 2 === 0 ? 250 : -250), // even rows over budget (column-to-column tests)
     wb_duedate: i % 8 === 0 ? null : day((i % 10) - 5), // -5..+4 days from today: overdue, today and future
     wb_reviewedon: i % 9 === 0 ? null : new Date(Date.now() - i * 3600_000 * 7).toISOString(),
+    // Same dates as wb_duedate; 21:00 so a UTC reading of a time-zone-independent value lands on the next day east of UTC.
+    wb_startdate: i % 8 === 0 ? null : localMidnight(day((i % 10) - 5)),
+    wb_meetingat: i % 8 === 0 ? null : `${day((i % 10) - 5)}T21:00:00Z`,
     wb_notes: i % 4 === 0 ? null : `Note ${i}`,
   };
 }

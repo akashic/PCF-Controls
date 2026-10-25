@@ -52,6 +52,16 @@ Results of the brief's VERIFY items for RagChoice (`docs/briefs/2026-10-21-grid-
 - **Empty text:** the platform's dropdown shows `---` when empty and `--Select--` on hover, focus and as the blank list option. RagChoice shows `--Select--` when editable and `---` when read-only.
 - **Option colours in dark mode:** the colours come from metadata and don't adapt (brief §3.4). On the dark fill, Red `#D13438` is the least prominent, but every dot is visible thanks to its border.
 
+## Script resets the value (#39)
+
+The portability review asked whether RagChoice could keep showing a user's pick after an `OnChange` script sets the field back, because `syncSelection` only re-reads the column when its value differs from the last one seen. Tested in `LowCode` on 0.1.3, 26 Oct 2026:
+
+- A temporary `OnChange` handler on `wb_ragstatus` on the "RagChoice test" form set the value back to Red (948790000) whenever it changed.
+- On Spike row 05 (Red), picking **Amber** in the RagChoice dot control: the handler logged `onchange: value 948790001`, then `after setValue: 948790000`.
+- All three controls on the column (RagChoice dot, RagChoice bar, the platform's dropdown) then showed **Red**, `getValue()` was 948790000, and the column wasn't dirty.
+
+So the platform passes the user's pick to `updateView` before the script's reset, `lastRaw` moves to Amber, and the reset to Red is picked up. No fix needed. The configuration guide's "edge case" (a reset being overridden by the user's choice) was reasoned from the code, not observed, and is corrected. Only a synchronous `OnChange` handler was tested; a reset made later from a timer wasn't.
+
 ## Screenshots
 
 | | Light | Dark |
