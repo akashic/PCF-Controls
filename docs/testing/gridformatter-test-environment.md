@@ -42,6 +42,14 @@ export DATAVERSE_TOKEN=$(az account get-access-token --resource $DATAVERSE_URL -
 
 Tokens last about an hour; re-run the second line when calls start returning 401.
 
+**The scripts only write to listed test environments.** Every script prints the target (`Target environment: …`) and then refuses to run unless `DATAVERSE_URL` is in the allow-list `DATAVERSE_TEST_ENVS`: comma-separated environment URLs, ignoring case and a trailing `/`. It defaults to `https://lowcode.crm.dynamics.com`. To use another **test** environment, add it for that shell only, and ask the developer first (see the note at the top):
+
+```sh
+export DATAVERSE_TEST_ENVS=https://lowcode.crm.dynamics.com,https://<other-test-org>.crm6.dynamics.com
+```
+
+The guard runs when a script imports [`lib.mjs`](../../scripts/test-env/lib.mjs) (the logic is in [`guard.mjs`](../../scripts/test-env/guard.mjs), tested by `npm run test:scripts`). Every current script writes, so every one imports it. A new script that only reads may skip `lib.mjs`, but then it must never write.
+
 ## 3. What the table contains (and why)
 
 `wb_gridspike` has **one column of every type GridFormatter has to handle**, so a single view exercises every renderer path, condition type and the V7 support matrix.

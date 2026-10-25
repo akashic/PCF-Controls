@@ -53,11 +53,13 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      # Always install: the conventions check uses the root `typescript` package.
+      - name: Install
+        run: npm ci
       - name: Check controls match repo conventions
         run: npm run check:controls
-      - name: Install
-        if: needs.detect.outputs.has-workspaces == 'true'
-        run: npm ci
+      - name: Test the repo scripts
+        run: npm run test:scripts
       - name: Lint
         if: needs.detect.outputs.has-workspaces == 'true'
         run: npm run lint
