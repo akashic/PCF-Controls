@@ -111,7 +111,7 @@ Every logical name in configuration is project-supplied and can use any prefix (
 </fetch>
 ```
 
-- **Parsing the fragment:** parse `filterXml` with `DOMParser` inside a wrapper element.
+- **Parsing the fragment:** parse `filterXml` with the control's own strict parser (`logic/filterXml.ts`), not `DOMParser`. It rejects anything outside the allow-list as it reads, and it runs in Jest's node environment without adding jsdom, which would need sign-off.
   - Accept only `filter`, `condition`, `value` and `link-entity` elements.
   - Accept only the attributes FetchXML defines for those elements.
   - Re-serialise the parsed tree, so the control never splices the raw string into the query.
