@@ -15,8 +15,9 @@ A business rule or formula column can't do this: the values come from referenced
 | Item | Value |
 |---|---|
 | Folder | `plugins/WBCodeFYName/` |
-| C# namespace and class | `Plugins.WBCodeFYName`, `WBCodeFYName` (the namespace comes from the folder; no hyphens) |
-| Assembly | classic, strong-name signed, `net462`, **`AssemblyVersion` fixed at `1.0.0.0`** |
+| Project | `plugins/WBCodeFYName/WBCodeFYName/WBCodeFYName.csproj` (ADR-0006: the project sits in a subfolder so it doesn't compile `tests/`) |
+| C# namespace and class | namespace `WBCodeFYName` (`pac plugin init` takes it from the folder), class `SetPrimaryName`. A class shouldn't share its namespace's name. |
+| Assembly | classic, strong-name signed, `net48` (Microsoft's recommended plug-in target), **`AssemblyVersion` fixed at `1.0.0.0`** |
 | Solution | `WBWBCodeFYName`, WilliamBuck publisher (ADR-0003), contains the assembly, its two steps, the pre-image and the step configuration |
 | Release tag | `WBCodeFYName-v<x.y.z>`; start version `0.1.0` |
 
@@ -41,7 +42,7 @@ A business rule or formula column can't do this: the values come from referenced
 | Package type | **Classic signed assembly**, not a NuGet plug-in package. It has no dependent assemblies. |
 | Versioning | `AssemblyVersion` stays `1.0.0.0` forever. The semver goes in `FileVersion` / `Version` in the csproj and in `Solution.xml` (`x.y.z.0`), and the check script enforces that they match. |
 | Registration (macOS) | Register the assembly, steps and image **once in dev with a Web API script** in `plugins/WBCodeFYName/scripts/`. Then add them to the solution, run `pac solution sync` to bring the registration XML into source, and build with `dotnet build` from then on. |
-| Unit tests | **MSTest** in a `net8.0` test project with **hand-written fakes** of the `Microsoft.Xrm.Sdk` interfaces. No FakeXrmEasy. MSTest and `Microsoft.NET.Test.Sdk` need sign-off in the PR (managed environment rule). |
+| Unit tests | **MSTest** in a `net10.0` test project (`plugins/WBCodeFYName/tests/`; net10.0 so only the README's .NET 10 SDK is needed) with **hand-written fakes** of the `Microsoft.Xrm.Sdk` interfaces. No FakeXrmEasy. MSTest and `Microsoft.NET.Test.Sdk` need sign-off in the PR (managed environment rule). |
 
 ---
 
@@ -49,7 +50,7 @@ A business rule or formula column can't do this: the values come from referenced
 
 Each fact is marked as documented on Microsoft Learn **[D]**, seen in a local probe on 31 Oct **[O]**, inferred **[I]**, or **VERIFY**.
 
-- **Building on macOS** **[O]**: `pac plugin init` creates an SDK-style `net462` project with a `.snk`. Its package references are `Microsoft.CrmSdk.CoreAssemblies`, `Microsoft.PowerApps.MSBuild.Plugin` and `Microsoft.NETFramework.ReferenceAssemblies`. `dotnet build -c Release` works on macOS and produces a strong-name-signed DLL. The template's Visual Studio imports are guarded by `Exists()`.
+- **Building on macOS** **[O]**: `pac plugin init` creates an SDK-style .NET Framework project with a `.snk` (`net462` from `pac` 2.10.1, `net48` from 2.14.1; Microsoft supports 4.6.2 to 4.8 and recommends 4.8). Its package references are `Microsoft.CrmSdk.CoreAssemblies`, `Microsoft.PowerApps.MSBuild.Plugin` and `Microsoft.NETFramework.ReferenceAssemblies`. `dotnet build -c Release` works on macOS and produces a strong-name-signed DLL. The template's Visual Studio imports are guarded by `Exists()`.
 - **Classic assemblies must be signed** **[D]** ([build and package](https://learn.microsoft.com/power-apps/developer/data-platform/build-and-package)).
 - **Registration tools are Windows-only** **[D]**: the Plug-in Registration Tool and `pac tool` are Windows-only. **[D/O]** `pac plugin push` needs `--pluginId`, so it only updates an assembly that's already registered.
 - **Solution build needs registration XML first** **[O]**: `pac solution add-reference` to the plug-in project works, but `dotnet build` of the cdsproj fails until the registration XML (`PluginAssemblies/…`, `SdkMessageProcessingSteps/…`) is in source. That's why registration happens first and is followed by a sync.
@@ -57,7 +58,7 @@ Each fact is marked as documented on Microsoft Learn **[D]**, seen in a local pr
 - **Unsecure configuration** **[D]**: it arrives through the `(string unsecure, string secure)` constructor ([write a plug-in](https://learn.microsoft.com/power-apps/developer/data-platform/write-plug-in#iplugin-interface)). Secure configuration isn't exported with solutions. **[I]** Unsecure configuration travels with the step in the solution, and it's the same in every environment, which is fine here because the logical names don't vary between environments. **VERIFY W-2**.
 - **Assembly identity** **[I]**: Dataverse identifies a registered classic assembly by its name plus the major and minor of `AssemblyVersion`. Changing those creates a separate registration, and the existing steps stay on the old one. **VERIFY W-3**: a `FileVersion`-only bump updates in place on import.
 - **Solution dependencies** **[D]**: import fails when required components are missing. A managed solution can depend only on managed components ([dependency tracking](https://learn.microsoft.com/power-platform/alm/dependency-tracking-solution-components#solution-component-dependencies)). So the project solution that owns the table must be imported first, and managed downstream. **VERIFY W-4**: the dependencies the steps, filtering attributes and image create.
-- **Testing** **[D]**: Microsoft provides no plug-in test framework ([testing tools](https://learn.microsoft.com/power-apps/developer/data-platform/testing-tools-server)). FakeXrmEasy v2 and later is RPL-1.5, noncommercial or paid; v1 is archived. **[O]** A `net8.0` project referencing the `net462` plug-in builds and runs on macOS, with warning NU1701.
+- **Testing** **[D]**: Microsoft provides no plug-in test framework ([testing tools](https://learn.microsoft.com/power-apps/developer/data-platform/testing-tools-server)). FakeXrmEasy v2 and later is RPL-1.5, noncommercial or paid; v1 is archived. **[O]** A modern .NET project (`net8.0` in the probe; the repo uses `net10.0`, ADR-0006) referencing the .NET Framework plug-in builds and runs on macOS, with warning NU1701.
 
 ---
 
@@ -85,7 +86,7 @@ Keep the logic pure and the platform edge thin:
 
 - **`NameRules`** (static, pure): `ValidateWBCode`, `ValidateFY`, `Compose(wbCode, fy) → "00224570-26"`. Every rule and message is here.
 - **`StepConfig`** (pure): parses and validates the unsecure JSON with `System.Runtime.Serialization.Json` or a hand-written reader (no new package).
-- **`WBCodeFYName : IPlugin`**, in this order:
+- **`SetPrimaryName : IPlugin`**, in this order:
   1. Check the message (Create/Update), the table and that `Target` is an `Entity`.
   2. Resolve each lookup from `Target`, or else from the `PreImage`. A lookup cleared in `Target` stays null.
   3. Reject the save if either lookup is null.
@@ -138,6 +139,8 @@ The image name `PreImage` is case-sensitive. Both steps carry the same unsecure 
 ---
 
 ## 6. Repo changes this needs (do these first)
+
+> Done in #57: [ADR-0006](../adr/0006-plugins-folder.md), the `plugins/*` checks in `check:controls`, CI and release, the README's Plug-ins section and `GLOSSARY.md`. The step-configuration schema check is still to do, in #58.
 
 1. **ADR-0006, `plugins/` for Dataverse plug-ins.** It covers:
    - The layout: `plugins/<Name>/` with the plug-in project, `tests/`, `config/`, `scripts/`, `docs/decisions.md`, `solution/` and `README.md`.

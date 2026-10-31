@@ -4,7 +4,11 @@
 //   - manifest, package.json and Solution.xml versions agree
 //   - manifest *-key attributes have no apostrophes (Dataverse rejects them on import)
 //   - runtime source (controls/<X>/<X>/ and packages/*/src/) doesn't hard-code the wb_ prefix outside comments (ADR-0005)
-// Usage: node scripts/check-controls.mjs [--tag <ControlName>-v<x.y.z>]
+// and every plug-in under plugins/ (ADR-0006):
+//   - plugins/<X>/<X>/<X>.csproj signs the assembly, keeps AssemblyVersion at 1.0.0.0 and has a test project
+//   - FileVersion and Solution.xml versions agree, and the solution (once it exists) declares the canonical publisher
+//   - C# string literals in plugins/<X>/<X>/ contain no custom logical names (<prefix>_<name>); they come from step configuration
+// Usage: node scripts/check-controls.mjs [--tag <Name>-v<x.y.z>]   (a control or a plug-in name)
 // Tests: npm run test:scripts
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -128,8 +132,6 @@ export function checkControls(root, tag = null) {
     ? readdirSync(controlsDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)
     : [];
 
-  if (tagMatch && !controls.includes(tagMatch[1])) errors.push(`Tag names unknown control "${tagMatch[1]}"`);
-
   for (const name of controls) {
     const dir = join(controlsDir, name);
     const versions = {};
@@ -185,14 +187,166 @@ export function checkControls(root, tag = null) {
   return { errors, controls };
 }
 
+// A Dataverse custom logical or schema name: a publisher prefix (a letter, then 1-7 letters or digits), "_", then the name.
+const LOGICAL_NAME = /\b[a-z][a-z0-9]{1,7}_[a-z0-9_]*[a-z0-9]/i;
+
+/**
+ * Returns the string literals in a C# file as `{ line, text }` (line numbers are 1-based, at the opening quote).
+ * Handles `//` and `/* *\/` comments, regular, verbatim (`@"..."`) and interpolated (`$"..."`, `$@"..."`) strings,
+ * and char literals such as `'"'`. An interpolated string's `{...}` holes are returned as part of its text.
+ * Raw string literals (`"""`, C# 11) aren't handled: plug-ins target .NET Framework (net48), whose default language version is C# 7.3.
+ */
+export function csharpStringLiterals(code) {
+  const literals = [];
+  let line = 1;
+  let i = 0;
+  const advance = (to) => {
+    for (; i < to; i++) if (code[i] === "\n") line++;
+  };
+  while (i < code.length) {
+    const c = code[i];
+    const next = code[i + 1];
+    if (c === "/" && next === "/") {
+      const end = code.indexOf("\n", i);
+      advance(end === -1 ? code.length : end);
+    } else if (c === "/" && next === "*") {
+      const end = code.indexOf("*/", i + 2);
+      advance(end === -1 ? code.length : end + 2);
+    } else if (c === "'") {
+      // A char literal: '"', '\'', '\\' or 'x'.
+      const end = code.indexOf("'", code[i + 1] === "\\" ? i + 3 : i + 2);
+      advance(end === -1 ? code.length : end + 1);
+    } else if (c === '"' || ((c === "@" || c === "$") && (next === '"' || ((next === "@" || next === "$") && code[i + 2] === '"')))) {
+      const prefix = c === '"' ? "" : next === '"' ? c : c + next;
+      const verbatim = prefix.includes("@");
+      const startLine = line;
+      let j = i + prefix.length + 1;
+      let text = "";
+      while (j < code.length) {
+        if (verbatim && code[j] === '"' && code[j + 1] === '"') {
+          text += '"';
+          j += 2;
+        } else if (!verbatim && code[j] === "\\") {
+          text += code.slice(j, j + 2);
+          j += 2;
+        } else if (code[j] === '"' || (!verbatim && code[j] === "\n")) {
+          break;
+        } else {
+          text += code[j++];
+        }
+      }
+      literals.push({ line: startLine, text });
+      advance(Math.min(j + 1, code.length));
+    } else {
+      advance(i + 1);
+    }
+  }
+  return literals;
+}
+
+/** Finds C# string literals that contain a custom logical name such as `abc_wbcode` (ADR-0005, ADR-0006). */
+export function findLogicalNameHardCoding(code) {
+  return csharpStringLiterals(code).filter(({ text }) => LOGICAL_NAME.test(text));
+}
+
+const csFiles = (dir) =>
+  readdirSync(dir, { recursive: true }).filter((file) => {
+    const parts = file.split(/[\\/]/);
+    return file.endsWith(".cs") && !parts.includes("bin") && !parts.includes("obj");
+  });
+
+const readdirOrEmpty = (dir) =>
+  existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name) : [];
+
+/** Checks every plug-in under plugins/ (ADR-0006). A folder without its project yet only gets a warning. */
+export function checkPlugins(root, tag = null) {
+  const pluginsDir = join(root, "plugins");
+  const errors = [];
+  const warnings = [];
+  const tagMatch = tag?.match(/^(.+)-v(\d+\.\d+\.\d+)$/);
+  const folders = readdirOrEmpty(pluginsDir);
+  const plugins = [];
+
+  for (const name of folders) {
+    const dir = join(pluginsDir, name);
+    const projectDir = join(dir, name);
+    const csprojPath = join(projectDir, `${name}.csproj`);
+    if (!existsSync(csprojPath)) {
+      warnings.push(`${name}: no ${name}/${name}.csproj yet, so it isn't checked until the plug-in is scaffolded`);
+      if (tagMatch?.[1] === name) errors.push(`${name}: can't release a plug-in that hasn't been scaffolded`);
+      continue;
+    }
+    plugins.push(name);
+
+    // `pac plugin init` uses the folder name as the C# namespace.
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) errors.push(`${name}: the folder name must be a valid C# identifier (it becomes the namespace)`);
+
+    const csproj = readFileSync(csprojPath, "utf8");
+    if (!/<SignAssembly>true<\/SignAssembly>/.test(csproj)) {
+      errors.push(`${name}: ${name}.csproj must set <SignAssembly>true</SignAssembly> (classic plug-in assemblies must be strong-name signed)`);
+    }
+    const assemblyVersion = xmlValue(csproj, "AssemblyVersion");
+    if (assemblyVersion !== "1.0.0.0") {
+      errors.push(`${name}: AssemblyVersion is "${assemblyVersion}", expected "1.0.0.0" (changing it re-registers the assembly; version with FileVersion)`);
+    }
+    const fileVersion = xmlValue(csproj, "FileVersion");
+    const versions = {};
+    if (/^\d+\.\d+\.\d+\.0$/.test(fileVersion ?? "")) versions.FileVersion = fileVersion.replace(/\.0$/, "");
+    else errors.push(`${name}: FileVersion is "${fileVersion}", expected <x.y.z>.0`);
+
+    const tests = join(dir, "tests");
+    if (!existsSync(tests) || !readdirSync(tests).some((f) => f.endsWith(".csproj"))) {
+      errors.push(`${name}: missing a test project in tests/`);
+    }
+
+    // The solution builds only once the registration has been synced into source (ADR-0006), so it may come later.
+    const solutionXmlPath = join(dir, "solution", "src", "Other", "Solution.xml");
+    if (existsSync(solutionXmlPath)) {
+      const xml = readFileSync(solutionXmlPath, "utf8");
+      errors.push(...checkPublisher(xml, name));
+      versions["Solution.xml"] = xmlValue(xml.replace(/<Publisher>[\s\S]*?<\/Publisher>/, ""), "Version")?.replace(/\.0$/, "");
+    } else if (tagMatch?.[1] === name) {
+      errors.push(`${name}: can't release without solution/src/Other/Solution.xml`);
+    }
+
+    const distinct = new Set(Object.values(versions));
+    if (distinct.size > 1) {
+      errors.push(`${name}: versions disagree (${Object.entries(versions).map(([k, v]) => `${k}=${v}`).join(", ")})`);
+    }
+    if (tagMatch?.[1] === name && versions.FileVersion !== tagMatch[2]) {
+      errors.push(`${name}: tag version ${tagMatch[2]} does not match FileVersion ${versions.FileVersion}`);
+    }
+
+    for (const file of csFiles(projectDir)) {
+      const path = join(projectDir, file);
+      for (const { line, text } of findLogicalNameHardCoding(readFileSync(path, "utf8"))) {
+        errors.push(`${name}: ${relative(root, path)}:${line} hard-codes a logical name ("${text}"); read it from the step configuration (ADR-0006)`);
+      }
+    }
+  }
+  return { errors, warnings, plugins };
+}
+
+/** Runs every check. A tag must name a known control or plug-in. */
+export function checkRepo(root, tag = null) {
+  const controlResult = checkControls(root, tag);
+  const pluginResult = checkPlugins(root, tag);
+  const errors = [...controlResult.errors, ...pluginResult.errors];
+  const tagName = tag?.match(/^(.+)-v\d+\.\d+\.\d+$/)?.[1];
+  const known = [...controlResult.controls, ...readdirOrEmpty(join(root, "plugins"))];
+  if (tagName && !known.includes(tagName)) errors.push(`Tag names unknown control or plug-in "${tagName}"`);
+  return { errors, warnings: pluginResult.warnings, controls: controlResult.controls, plugins: pluginResult.plugins };
+}
+
 // Run only when executed directly (the tests import the functions above).
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const tagArg = process.argv.indexOf("--tag");
   const tag = tagArg > -1 ? process.argv[tagArg + 1] : null;
-  const { errors, controls } = checkControls(fileURLToPath(new URL("..", import.meta.url)), tag);
+  const { errors, warnings, controls, plugins } = checkRepo(fileURLToPath(new URL("..", import.meta.url)), tag);
+  if (warnings.length) console.warn(warnings.map((w) => `! ${w}`).join("\n"));
   if (errors.length) {
     console.error(errors.map((e) => `✗ ${e}`).join("\n"));
     process.exit(1);
   }
-  console.log(`✓ ${controls.length} control(s) match the repo conventions${tag ? ` (tag ${tag})` : ""}`);
+  console.log(`✓ ${controls.length} control(s) and ${plugins.length} plug-in(s) match the repo conventions${tag ? ` (tag ${tag})` : ""}`);
 }

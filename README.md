@@ -1,8 +1,8 @@
 # William Buck PCF Controls
 
-The long-term home for every Power Apps Component Framework (PCF) control built for William Buck projects. The controls run in Dataverse model-driven apps and are deployed through dev → UAT → prod.
+The long-term home for every Power Apps Component Framework (PCF) control built for William Buck projects, and for the Dataverse plug-ins that go with them. The controls run in Dataverse model-driven apps, and everything is deployed through dev → UAT → prod.
 
-This README is the standard for building and shipping a WB control: conventions, toolchain, the development loop, packaging, versioning and deployment. Each control's own `README.md` covers what that control does and how to configure it.
+This README is the standard for building and shipping a WB control or plug-in: conventions, toolchain, the development loop, packaging, versioning and deployment. Each control's or plug-in's own `README.md` covers what it does and how to configure it.
 
 > **Moving to the enterprise org:** this repo will move from `akashic/PCF-Controls` to the **William-Buck-Australia** enterprise org. Nothing in the code depends on the org name. See [Moving to William-Buck-Australia](#moving-to-william-buck-australia).
 
@@ -15,6 +15,14 @@ This README is the standard for building and shipping a WB control: conventions,
 | ChoiceCounts | Field control (counts of related rows per choice option) | `WBChoiceCounts` | `wb_Controls.ChoiceCounts` | In development | [Brief](docs/briefs/2026-10-31-choice-counts.md) |
 
 Update this table when a control is added, released or retired.
+
+### Plug-in catalogue
+
+| Plug-in | What it does | Solution | Status | Docs |
+|---|---|---|---|---|
+| WBCodeFYName | Sets the WBCodeFY primary name from the WBCode and FY lookups (synchronous PreOperation) | `WBWBCodeFYName` | Briefed | [Brief](docs/briefs/2026-10-31-wbcodefy-name-plugin.md) |
+
+Update this table when a plug-in is added, released or retired. See [Plug-ins](#plug-ins) for how they're built.
 
 ## Repository layout
 
@@ -34,18 +42,27 @@ Update this table when a control is added, released or retired.
 │       ├── tests/                # Jest tests for the control's pure logic
 │       ├── docs/                 # optional: decisions.md (spike outcomes), configuration.md
 │       └── solution/             # WB<ControlName>.cdsproj + src/Other/Solution.xml
+├── plugins/
+│   └── <Name>/                   # one folder per Dataverse plug-in = one solution (ADR-0006)
+│       ├── README.md             # what it does, project prerequisites, step configuration, changelog
+│       ├── <Name>/               # <Name>.csproj (net48, signed), <Name>.snk, plug-in classes
+│       ├── tests/                # MSTest project (net10.0)
+│       ├── config/               # JSON Schema for the step configuration, plus examples
+│       ├── scripts/              # registration script (Web API, dev only)
+│       ├── docs/decisions.md     # spike outcomes
+│       └── solution/             # WB<Name>.cdsproj + src/ (registration synced from dev)
 ├── packages/
 │   └── shared/                   # code shared between controls (bundled into each control)
 ├── docs/
 │   ├── adr/                      # architecture decisions for the whole repo
 │   ├── briefs/                   # build briefs from the product owner, one per piece of work
 │   └── agents/                   # config for the agent skills (issue tracker, labels)
-├── scripts/check-controls.mjs    # conventions check run in CI
+├── scripts/check-controls.mjs    # conventions check for controls and plug-ins, run in CI
 ├── tools/Sync-FromUpstream.ps1   # merges this repo's updates into a copy of it (PowerShell 7)
 └── .github/workflows/            # ci.yml (every PR), release.yml (tags)
 ```
 
-Why this layout: [ADR-0001](docs/adr/0001-one-solution-per-control.md) (one solution per control), [ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md) (npm workspaces and shared code), [ADR-0003](docs/adr/0003-wb-publisher.md) (publisher).
+Why this layout: [ADR-0001](docs/adr/0001-one-solution-per-control.md) (one solution per control), [ADR-0002](docs/adr/0002-npm-workspaces-monorepo.md) (npm workspaces and shared code), [ADR-0003](docs/adr/0003-wb-publisher.md) (publisher), [ADR-0006](docs/adr/0006-plugins-folder.md) (plug-ins).
 
 ## Conventions
 
@@ -60,6 +77,7 @@ Why this layout: [ADR-0001](docs/adr/0001-one-solution-per-control.md) (one solu
 | npm workspace name | `@wb-pcf/<kebab-case-name>` | `@wb-pcf/rag-choice` |
 | Environment variables | `wb_<ControlName><Purpose>`, inside the control's solution | `wb_GridFormatterApiUrl` (hypothetical) |
 | Release tag | `<ControlName>-v<major.minor.patch>` | `GridFormatter-v1.0.0` |
+| Plug-in folder, solution, tag | `plugins/<Name>/`, `WB<Name>`, `<Name>-v<x.y.z>` (a plug-in can't share a control's name) | `plugins/WBCodeFYName/`, `WBWBCodeFYName` |
 
 Controls are built to be reusable across projects: **no hard-coded table names, column names, option values or colours**. Anything that varies goes in manifest input properties (set per form or view) or in an environment variable (set per environment).
 
@@ -180,9 +198,47 @@ All commands below run from the repo root unless noted.
 - This is a managed corporate environment: **any npm package beyond what the Microsoft templates use needs approval.** List it in the PR description with its purpose and bundle cost.
 - **Prove platform unknowns with a spike before building on them.** Record what was tested, the result and the chosen approach in `controls/<ControlName>/docs/decisions.md`, with screenshots in light and dark mode where it's visual.
 
+## Plug-ins
+
+Dataverse plug-ins live in `plugins/<Name>/` with their own `WB<Name>` solution ([ADR-0006](docs/adr/0006-plugins-folder.md)). They share the controls' publisher, naming, release tags and "configuration, not code" rule. Only the .NET SDK is needed on macOS: no Visual Studio, no Windows.
+
+### Adding a plug-in
+
+1. **Write a brief** in `docs/briefs/`, as for a control. Use `docs/briefs/2026-10-31-wbcodefy-name-plugin.md` as the model.
+2. **Create the project** in a subfolder, so the tests aren't compiled into the assembly:
+   ```sh
+   mkdir -p plugins/<Name>/<Name> && cd plugins/<Name>/<Name>
+   pac plugin init        # SDK-style net48, signed with a generated <Name>.snk (commit it)
+   ```
+   - `<Name>` becomes the namespace, so it must be a valid C# identifier (no hyphens).
+   - Delete the template's `Plugin1.cs`, and name classes after the step (e.g. `SetPrimaryName`), never after the namespace.
+   - Set `<AssemblyVersion>1.0.0.0</AssemblyVersion>` permanently, and `<FileVersion>0.1.0.0</FileVersion>`.
+   - Pin the template's floating package versions, as the controls do.
+3. **Add a test project** in `plugins/<Name>/tests/`: MSTest, `net10.0`, referencing `../<Name>/<Name>.csproj`, with hand-written fakes of the `Microsoft.Xrm.Sdk` interfaces. The test packages need sign-off in the PR.
+4. **Put logical names in step configuration**, never in code. Add `config/step-config.schema.json` with an example, and validate the configuration again in the plug-in's constructor.
+5. **Register in dev** with a Web API script in `scripts/`, then create the solution and bring the registration into source:
+   ```sh
+   cd plugins/<Name> && mkdir solution && cd solution
+   pac solution init --publisher-name WilliamBuck --publisher-prefix wb   # then fix the publisher as for a control
+   # in dev: add the assembly and its steps to WB<Name>, then
+   pac solution sync
+   pac solution add-reference --path ../<Name>
+   ```
+   From then on, `dotnet build plugins/<Name>/solution -c Release` builds both zips on macOS and in CI.
+6. **Write `plugins/<Name>/README.md`:** what it does, its steps, the step configuration, project prerequisites (alternate keys, form settings, security roles), known limitations and a changelog. Add a row to the [plug-in catalogue](#plug-in-catalogue), then run `npm run check:controls`.
+
+### Plug-in standards
+
+- **Keep logic in pure static classes** (rules, configuration parsing). `Execute` stays thin and is tested through fakes.
+- **PreOperation sets `Target` directly.** Never call `Update` on the row being saved, and don't add a blanket `context.Depth` guard.
+- **Fail closed:** a plug-in that guards data integrity blocks the save with an `InvalidPluginExecutionException`, unlike a control, which fails soft. User-facing messages say what to fix. Details go to the trace log, never client data such as TFNs, dates of birth or tokens.
+- **Run as the calling user** unless the brief says otherwise. Elevated execution needs a security review.
+- **Versions:** `FileVersion` (`x.y.z.0`) and `Solution.xml` `<Version>` must match. `AssemblyVersion` never changes.
+- **Import order:** the project solution that owns the table first, then `WB<Name>`.
+
 ## Versioning and releases
 
-Each control has its own [semantic version](https://semver.org/), and it must match in three places (CI enforces this):
+Each control has its own [semantic version](https://semver.org/), and it must match in three places (CI enforces this). For plug-ins it's two places: `<FileVersion>` in the csproj (`x.y.z.0`) and `Solution.xml` ([Plug-ins](#plug-ins)):
 
 1. `version` on the `<control>` element in `ControlManifest.Input.xml` (`x.y.z`)
 2. `version` in the control's `package.json` (`x.y.z`)
@@ -194,7 +250,7 @@ To release:
 
 1. Merge to `main` with all three versions bumped and the control's changelog updated.
 2. Tag the merge commit: `git tag GridFormatter-v1.2.0 && git push origin GridFormatter-v1.2.0`.
-3. `release.yml` fails unless the tagged commit is on `main`. It checks that the tag matches the versions, lints, tests, validates the config files, builds the solution, and publishes a GitHub Release with the managed and unmanaged zips attached. The release notes start from the same control's previous tag, so they list only changes since that control's last release.
+3. `release.yml` fails unless the tagged commit is on `main`. It checks that the tag matches the versions, lints, tests, validates the config files, builds the solution, and publishes a GitHub Release with the managed and unmanaged zips attached. For a plug-in tag it also builds and tests the plug-in. The release notes start from the same control's (or plug-in's) previous tag, so they list only changes since its last release.
 
 The build and the publish are separate jobs: the build job has read-only access to the repo and uploads the zips, and only the publish job (which just runs `gh release create`) can write.
 
@@ -207,16 +263,17 @@ The build and the publish are separate jobs: the build job has read-only access 
 
 - **Environment variables:** `WBGridFormatter` and `WBRagChoice` have none, so their imports need no settings file. If a control adds one, its values differ per client and environment, so they belong in the deploying project's pipeline or repo, not here ([ADR-0005](docs/adr/0005-prefix-agnostic-controls.md)). That project generates a settings file with `pac solution create-settings` and passes it to `pac solution import --settings-file`. Never edit configuration directly in UAT or prod.
 - **Using a control:** adding a control to a form field, view or subgrid is a customisation of that *table*, so it belongs to the project solution that owns the table, not to the control's solution. Document the exact steps in the control's README.
-- **Order:** import the control's solution before any project solution that references it.
+- **Order:** import the control's solution before any project solution that references it. Plug-ins are the reverse: import the project solution that owns the table, then the plug-in's solution.
 - **Deployment is manual for now.** CI builds and tests; it doesn't deploy. Pipeline automation can be added later (see [CI](#ci)).
 
 ## CI
 
 `.github/workflows/ci.yml` runs on every PR and every push to `main`:
 
-1. Checks the conventions (`scripts/check-controls.mjs`: publisher, version alignment, no hard-coded `wb_` in runtime source) and runs the scripts' own tests (`npm run test:scripts`).
+1. Checks the conventions (`scripts/check-controls.mjs`: publisher, version alignment, no hard-coded `wb_` in control source, no logical names in plug-in C#) and runs the scripts' own tests (`npm run test:scripts`).
 2. Runs `npm ci`, lint and test across all workspaces, then `npm run validate:config` (each control's config files against its JSON Schema).
 3. Builds the solution for each **changed** control, and uploads the zips as workflow artifacts. Changes to `packages/`, root tooling or workflows rebuild every control.
+4. Builds and tests each **changed** plug-in (`plugins/<Name>/<Name>/<Name>.csproj` and `tests/`), and builds its solution once the registration is in `solution/src/PluginAssemblies`. Changes to root tooling or workflows rebuild every plug-in.
 
 ## Moving to William-Buck-Australia
 
