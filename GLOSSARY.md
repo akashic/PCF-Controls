@@ -5,8 +5,12 @@ Controls and plug-ins that William Buck projects use in Dataverse model-driven a
 ## Language
 
 **WBCode**:
-A William Buck code held as reference data, written as eight digits ending in `70` (for example `00224570`).
+The unique identifier of a client, written as the six-digit **Client ID** followed by a two-digit suffix. The suffix `70` marks a super fund, so `00224570` is client `002245`'s super fund.
 _Avoid_: WB code, code
+
+**Client ID**:
+The first six digits of a WBCode, identifying the client.
+_Avoid_: client number
 
 **FY**:
 A financial year held as reference data, written `FY` followed by two digits (for example `FY26`).

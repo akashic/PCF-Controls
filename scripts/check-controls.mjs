@@ -194,7 +194,7 @@ const LOGICAL_NAME = /\b[a-z][a-z0-9]{1,7}_[a-z0-9_]*[a-z0-9]/i;
  * Returns the string literals in a C# file as `{ line, text }` (line numbers are 1-based, at the opening quote).
  * Handles `//` and `/* *\/` comments, regular, verbatim (`@"..."`) and interpolated (`$"..."`, `$@"..."`) strings,
  * and char literals such as `'"'`. An interpolated string's `{...}` holes are returned as part of its text.
- * Raw string literals (`"""`, C# 11) aren't handled: plug-ins target net462, whose default language version is 7.3.
+ * Raw string literals (`"""`, C# 11) aren't handled: plug-ins target .NET Framework (net48), whose default language version is C# 7.3.
  */
 export function csharpStringLiterals(code) {
   const literals = [];

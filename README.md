@@ -45,7 +45,7 @@ Update this table when a plug-in is added, released or retired. See [Plug-ins](#
 ├── plugins/
 │   └── <Name>/                   # one folder per Dataverse plug-in = one solution (ADR-0006)
 │       ├── README.md             # what it does, project prerequisites, step configuration, changelog
-│       ├── <Name>/               # <Name>.csproj (net462, signed), <Name>.snk, plug-in classes
+│       ├── <Name>/               # <Name>.csproj (net48, signed), <Name>.snk, plug-in classes
 │       ├── tests/                # MSTest project (net10.0)
 │       ├── config/               # JSON Schema for the step configuration, plus examples
 │       ├── scripts/              # registration script (Web API, dev only)
@@ -208,7 +208,7 @@ Dataverse plug-ins live in `plugins/<Name>/` with their own `WB<Name>` solution 
 2. **Create the project** in a subfolder, so the tests aren't compiled into the assembly:
    ```sh
    mkdir -p plugins/<Name>/<Name> && cd plugins/<Name>/<Name>
-   pac plugin init        # SDK-style net462, signed with a generated <Name>.snk (commit it)
+   pac plugin init        # SDK-style net48, signed with a generated <Name>.snk (commit it)
    ```
    - `<Name>` becomes the namespace, so it must be a valid C# identifier (no hyphens).
    - Delete the template's `Plugin1.cs`, and name classes after the step (e.g. `SetPrimaryName`), never after the namespace.
