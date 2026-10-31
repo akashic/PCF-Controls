@@ -1,6 +1,6 @@
 # ADR-0001: One Dataverse solution per control
 
-- **Status:** Accepted, example amended by ADR-0004 (see below)
+- **Status:** Accepted, example amended by ADR-0004, extended to plug-ins by ADR-0006 (see below)
 - **Date:** 2026-10-22
 
 ## Context
@@ -21,3 +21,7 @@ Each control lives in `controls/<ControlName>/` and owns exactly one solution, `
 ## Amendment (25 Oct 2026): `wb_GridFormatConfig` dropped
 
 [ADR-0004](0004-gridformatter-config-per-table-web-resource.md) dropped the `wb_GridFormatConfig` environment variable given as the example above: GridFormatter's rules live in a web resource per table in the project's solution. The decision itself stands.
+
+## Amendment (31 Oct 2026): plug-ins
+
+[ADR-0006](0006-plugins-folder.md) applies the same rule to Dataverse plug-ins in `plugins/`: one plug-in, one `WB<Name>` solution. There's one exception: a plug-in's solution carries its steps, so it depends on the project's table. Controls are unchanged.

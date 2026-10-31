@@ -4,7 +4,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, test } from "node:test";
-import { checkPrefixHardCoding, checkPublisher, findPrefixHardCoding } from "./check-controls.mjs";
+import {
+  checkPlugins,
+  checkPrefixHardCoding,
+  checkPublisher,
+  checkRepo,
+  csharpStringLiterals,
+  findLogicalNameHardCoding,
+  findPrefixHardCoding,
+} from "./check-controls.mjs";
 
 const lines = (code, fileName) => findPrefixHardCoding(code, fileName).map((hit) => hit.line);
 
@@ -128,5 +136,145 @@ describe("checkPublisher", () => {
   test("rejects a random option value prefix", () => {
     const xml = solutionXml("William Buck").replace("94879", "12345");
     assert.deepEqual(checkPublisher(xml, "Demo"), ['Demo: publisher CustomizationOptionValuePrefix is "12345", expected "94879"']);
+  });
+});
+
+describe("csharpStringLiterals", () => {
+  const texts = (code) => csharpStringLiterals(code).map((l) => l.text);
+
+  test("finds regular, verbatim and interpolated strings", () => {
+    assert.deepEqual(texts('var a = "x"; var b = @"c:\\dir"; var c = $"n={n}"; var d = $@"p{x}"; var e = @$"q";'), [
+      "x",
+      "c:\\dir",
+      "n={n}",
+      "p{x}",
+      "q",
+    ]);
+  });
+
+  test("handles escapes, doubled quotes in verbatim strings and char literals", () => {
+    assert.deepEqual(texts('var a = "say \\"hi\\""; var b = @"say ""hi"""; var q = \'"\'; var s = \'\\\'\'; var c = "after";'), [
+      'say \\"hi\\"',
+      'say "hi"',
+      "after",
+    ]);
+  });
+
+  test("ignores comments, including quotes inside them", () => {
+    assert.deepEqual(texts('// "abc_x"\n/* "abc_y"\n */ var a = "z"; // it\'s'), ["z"]);
+  });
+
+  test("reports the line of the opening quote", () => {
+    const literals = csharpStringLiterals('/*\n*/\nvar a =\n  @"one\ntwo";');
+    assert.deepEqual(literals, [{ line: 4, text: "one\ntwo" }]);
+  });
+});
+
+describe("findLogicalNameHardCoding", () => {
+  const hits = (code) => findLogicalNameHardCoding(code).map((l) => l.text);
+
+  test("flags custom logical and schema names under any prefix", () => {
+    assert.deepEqual(hits('const string A = "wbsuper_wbcode"; var b = "abc_Project"; var c = $"{x}.cr8a2_fy";'), [
+      "wbsuper_wbcode",
+      "abc_Project",
+      "{x}.cr8a2_fy",
+    ]);
+  });
+
+  test("doesn't flag system names, plain text or names only in comments and identifiers", () => {
+    const code = [
+      "// wbsuper_wbcode comes from the step configuration",
+      'var a = "statecode"; var b = "PreImage"; var c = "WBCode must end in 70";',
+      "var wbsuper_x = config.NameColumn; var d = \"_leading\"; var e = \"trailing_\";",
+    ].join("\n");
+    assert.deepEqual(hits(code), []);
+  });
+});
+
+describe("checkPlugins", () => {
+  const root = mkdtempSync(join(tmpdir(), "check-plugins-"));
+  after(() => rmSync(root, { recursive: true, force: true }));
+  const write = (path, content) => {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), content);
+  };
+  const csproj = ({ sign = true, assemblyVersion = "1.0.0.0", fileVersion = "0.1.0.0" } = {}) =>
+    `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><SignAssembly>${sign}</SignAssembly>` +
+    `<AssemblyVersion>${assemblyVersion}</AssemblyVersion><FileVersion>${fileVersion}</FileVersion></PropertyGroup></Project>`;
+  const solutionXml = (version) => `<ImportExportXml><SolutionManifest><Version>${version}</Version><Publisher>
+      <UniqueName>WilliamBuck</UniqueName>
+      <Descriptions><Description description="William Buck" languagecode="1033" /></Descriptions>
+      <CustomizationPrefix>wb</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>94879</CustomizationOptionValuePrefix>
+    </Publisher></SolutionManifest></ImportExportXml>`;
+
+  // Good: everything in place, including the solution.
+  write("plugins/Good/Good/Good.csproj", csproj());
+  write("plugins/Good/Good/SetName.cs", '// abc_name in a comment is fine\nclass SetName { string m = "WBCode must end in 70"; }\n');
+  write("plugins/Good/Good/obj/Generated.cs", 'class G { string s = "abc_skipped"; }\n');
+  write("plugins/Good/tests/Good.Tests.csproj", "<Project />");
+  write("plugins/Good/tests/Fixtures.cs", 'class F { string s = "abc_fixture"; }\n');
+  write("plugins/Good/solution/src/Other/Solution.xml", solutionXml("0.1.0.0"));
+  // Bad: unsigned, wrong AssemblyVersion, versions disagree, no tests, a hard-coded name.
+  write("plugins/Bad/Bad/Bad.csproj", csproj({ sign: false, assemblyVersion: "0.2.0.0", fileVersion: "0.2.0.0" }));
+  write("plugins/Bad/Bad/SetName.cs", 'class SetName {\n  const string Lookup = "abc_wbcode";\n}\n');
+  write("plugins/Bad/solution/src/Other/Solution.xml", solutionXml("0.1.0.0"));
+  // Early: no solution yet, which is allowed until the registration is synced.
+  write("plugins/Early/Early/Early.csproj", csproj());
+  write("plugins/Early/tests/Early.Tests.csproj", "<Project />");
+  // Unscaffolded: only the requirements file.
+  write("plugins/Later/requirements.md", "# Later\n");
+
+  const { errors, warnings, plugins } = checkPlugins(root);
+  const errorsFor = (name) => errors.filter((e) => e.startsWith(`${name}: `));
+
+  test("passes a complete plug-in, ignoring comments, obj/ and tests/", () => {
+    assert.deepEqual(errorsFor("Good"), []);
+  });
+
+  test("allows a plug-in whose solution doesn't exist yet", () => {
+    assert.deepEqual(errorsFor("Early"), []);
+  });
+
+  test("flags signing, AssemblyVersion, version mismatch, missing tests and hard-coded names", () => {
+    const bad = errorsFor("Bad");
+    assert.equal(bad.length, 5, bad.join("\n"));
+    assert.ok(bad.some((e) => e.includes("<SignAssembly>true</SignAssembly>")));
+    assert.ok(bad.some((e) => e.includes('AssemblyVersion is "0.2.0.0"')));
+    assert.ok(bad.some((e) => e.includes("versions disagree (FileVersion=0.2.0, Solution.xml=0.1.0)")));
+    assert.ok(bad.some((e) => e.includes("missing a test project")));
+    assert.ok(bad.some((e) => e.startsWith("Bad: plugins/Bad/Bad/SetName.cs:2 hard-codes a logical name")));
+  });
+
+  test("warns about, but doesn't check, a folder that isn't scaffolded", () => {
+    assert.deepEqual(errorsFor("Later"), []);
+    assert.equal(warnings.length, 1);
+    assert.ok(warnings[0].startsWith("Later: "));
+    assert.deepEqual(plugins.sort(), ["Bad", "Early", "Good"]);
+  });
+
+  test("checks a release tag against FileVersion and needs a solution", () => {
+    assert.deepEqual(checkPlugins(root, "Good-v0.1.0").errors.filter((e) => e.startsWith("Good: ")), []);
+    assert.ok(checkPlugins(root, "Good-v0.2.0").errors.includes("Good: tag version 0.2.0 does not match FileVersion 0.1.0"));
+    assert.ok(checkPlugins(root, "Early-v0.1.0").errors.includes("Early: can't release without solution/src/Other/Solution.xml"));
+    assert.ok(checkPlugins(root, "Later-v0.1.0").errors.includes("Later: can't release a plug-in that hasn't been scaffolded"));
+  });
+
+  test("rejects a folder name that isn't a C# identifier", () => {
+    write("plugins/Bad-Name/Bad-Name/Bad-Name.csproj", csproj());
+    write("plugins/Bad-Name/tests/T.csproj", "<Project />");
+    assert.ok(checkPlugins(root).errors.some((e) => e.startsWith("Bad-Name: the folder name must be a valid C# identifier")));
+    rmSync(join(root, "plugins/Bad-Name"), { recursive: true });
+  });
+});
+
+describe("checkRepo", () => {
+  const root = mkdtempSync(join(tmpdir(), "check-repo-"));
+  after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "plugins", "Later"), { recursive: true });
+
+  test("accepts a tag for a plug-in folder and rejects an unknown name", () => {
+    assert.ok(!checkRepo(root, "Later-v0.1.0").errors.some((e) => e.startsWith("Tag names unknown")));
+    assert.ok(checkRepo(root, "Missing-v0.1.0").errors.includes('Tag names unknown control or plug-in "Missing"'));
   });
 });

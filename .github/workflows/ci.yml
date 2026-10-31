@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       controls: ${{ steps.list.outputs.controls }}
+      plugins: ${{ steps.list.outputs.plugins }}
       has-workspaces: ${{ steps.list.outputs.has-workspaces }}
     steps:
       - uses: actions/checkout@v7
@@ -23,25 +24,33 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           all=$(find controls -mindepth 2 -maxdepth 2 -name '*.pcfproj' -printf '%h\n' 2>/dev/null | xargs -r -n1 basename | sort -u)
+          # A plug-in is plugins/<X>/<X>/<X>.csproj (ADR-0006). Folders without one yet aren't built.
+          all_plugins=$(for d in plugins/*/; do n=$(basename "$d"); if [ -f "plugins/$n/$n/$n.csproj" ]; then echo "$n"; fi; done | sort -u)
           if [ -n "$(find packages controls -mindepth 2 -maxdepth 2 -name package.json 2>/dev/null)" ]; then
             echo "has-workspaces=true" >> "$GITHUB_OUTPUT"
           else
             echo "has-workspaces=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # Manual runs, first pushes, and changes to shared code or tooling build every control.
+          # Manual runs, first pushes, and changes to shared code or tooling build every control and plug-in.
           selected="$all"
+          selected_plugins="$all_plugins"
           if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -n "$BASE_SHA" ] && ! [[ "$BASE_SHA" =~ ^0+$ ]]; then
             changed=$(git diff --name-only "$BASE_SHA" HEAD)
             if ! echo "$changed" | grep -qE '^(packages/|package(-lock)?\.json$|scripts/|\.github/|\.nvmrc$)'; then
               touched=$(echo "$changed" | sed -nE 's#^controls/([^/]+)/.*#\1#p' | sort -u)
               selected=$(comm -12 <(echo "$all") <(echo "$touched"))
+              touched_plugins=$(echo "$changed" | sed -nE 's#^plugins/([^/]+)/.*#\1#p' | sort -u)
+              selected_plugins=$(comm -12 <(echo "$all_plugins") <(echo "$touched_plugins"))
             fi
           fi
 
           json=$(printf '%s\n' $selected | jq -R . | jq -sc 'map(select(length > 0))')
           echo "Controls to build: $json"
           echo "controls=$json" >> "$GITHUB_OUTPUT"
+          plugins_json=$(printf '%s\n' $selected_plugins | jq -R . | jq -sc 'map(select(length > 0))')
+          echo "Plug-ins to build: $plugins_json"
+          echo "plugins=$plugins_json" >> "$GITHUB_OUTPUT"
 
   checks:
     name: Conventions, lint and test
@@ -96,4 +105,41 @@ jobs:
         with:
           name: ${{ matrix.control }}-solution
           path: controls/${{ matrix.control }}/solution/bin/Release/*.zip
+          if-no-files-found: error
+
+  plugin:
+    name: Build and test plug-in ${{ matrix.plugin }}
+    needs: [detect, checks]
+    if: needs.detect.outputs.plugins != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin: ${{ fromJson(needs.detect.outputs.plugins) }}
+    env:
+      PLUGIN: ${{ matrix.plugin }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Build plug-in
+        run: dotnet build "plugins/$PLUGIN/$PLUGIN/$PLUGIN.csproj" -c Release
+      - name: Test plug-in
+        run: dotnet test "plugins/$PLUGIN/tests" -c Release
+      # The solution can only build once the plug-in's registration has been synced into src/ (ADR-0006).
+      - id: solution
+        name: Build solution (managed + unmanaged)
+        run: |
+          if [ -d "plugins/$PLUGIN/solution/src/PluginAssemblies" ]; then
+            dotnet build "plugins/$PLUGIN/solution" -c Release
+            echo "built=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$PLUGIN has no registration in solution/src yet, so its solution isn't built."
+          fi
+      - uses: actions/upload-artifact@v7
+        if: steps.solution.outputs.built == 'true'
+        with:
+          name: ${{ matrix.plugin }}-solution
+          path: plugins/${{ matrix.plugin }}/solution/bin/Release/*.zip
           if-no-files-found: error

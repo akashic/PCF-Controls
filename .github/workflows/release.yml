@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag named <ControlName>-v<x.y.z>, e.g. GridFormatter-v1.0.0, on a commit that's on main.
+# Push a tag named <Name>-v<x.y.z> for a control or a plug-in, e.g. GridFormatter-v1.0.0, on a commit that's on main.
 on:
   push:
     tags: ["*-v*.*.*"]
@@ -38,17 +38,27 @@ jobs:
           dotnet-version: 10.0.x
       - name: Install
         run: npm ci
-      - name: Check tag matches the control's versions
+      - name: Check tag matches the control's or plug-in's versions
         run: node scripts/check-controls.mjs --tag "$GITHUB_REF_NAME"
       - id: control
-        name: Resolve control from tag
-        run: echo "name=${GITHUB_REF_NAME%-v*}" >> "$GITHUB_OUTPUT"
+        name: Resolve control or plug-in from tag
+        run: |
+          name="${GITHUB_REF_NAME%-v*}"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          # The tag check above has already failed unless the name is a control or a plug-in (ADR-0006).
+          if [ -d "controls/$name" ]; then
+            echo "kind=control" >> "$GITHUB_OUTPUT"
+            echo "dir=controls/$name" >> "$GITHUB_OUTPUT"
+          else
+            echo "kind=plugin" >> "$GITHUB_OUTPUT"
+            echo "dir=plugins/$name" >> "$GITHUB_OUTPUT"
+          fi
       - id: previous
         name: Find the control's previous release tag
         env:
           CONTROL: ${{ steps.control.outputs.name }}
         run: |
-          # The highest version below this one, so the notes cover only this control's changes since its last release.
+          # The highest version below this one, so the notes cover only this control's or plug-in's changes since its last release.
           previous=""
           for t in $(git tag --list "${CONTROL}-v*" --sort=-v:refname); do
             if [ "$t" != "$GITHUB_REF_NAME" ] && [ "$(printf '%s\n' "$t" "$GITHUB_REF_NAME" | sort -V | head -n1)" = "$t" ]; then
@@ -65,12 +75,19 @@ jobs:
           npm run test:scripts
       - name: Validate control config files against their JSON Schemas
         run: npm run validate:config
+      - name: Build and test the plug-in
+        if: steps.control.outputs.kind == 'plugin'
+        env:
+          PLUGIN: ${{ steps.control.outputs.name }}
+        run: |
+          dotnet build "plugins/$PLUGIN/$PLUGIN/$PLUGIN.csproj" -c Release
+          dotnet test "plugins/$PLUGIN/tests" -c Release
       - name: Build solution (managed + unmanaged)
-        run: dotnet build "controls/${{ steps.control.outputs.name }}/solution" -c Release
+        run: dotnet build "${{ steps.control.outputs.dir }}/solution" -c Release
       - uses: actions/upload-artifact@v7
         with:
           name: solution
-          path: controls/${{ steps.control.outputs.name }}/solution/bin/Release/*.zip
+          path: ${{ steps.control.outputs.dir }}/solution/bin/Release/*.zip
           if-no-files-found: error
 
   publish:
