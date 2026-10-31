@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Microsoft recommends .NET Framework 4.8 for plug-ins (ADR-0006). -->
+    <TargetFramework>net48</TargetFramework>
+    <PowerAppsTargetsPath>$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\PowerApps</PowerAppsTargetsPath>
+    <!-- Classic plug-in assemblies must be strong-name signed. -->
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>WBCodeFYName.snk</AssemblyOriginatorKeyFile>
+    <!-- Never change AssemblyVersion: Dataverse would register a new assembly and leave the steps on the old one.
+         Release versions go in FileVersion (x.y.z.0), which must match solution/src/Other/Solution.xml. -->
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <ProjectTypeGuids>{4C25E9B5-9FA6-436c-8E19-B395D2A65FAF};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+  </PropertyGroup>
+
+  <Import Project="$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Plugin.props" Condition="Exists('$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Plugin.props')" />
+
+  <PropertyGroup>
+    <PackageId>WBCodeFYName</PackageId>
+    <Version>$(FileVersion)</Version>
+    <Authors>William Buck</Authors>
+    <Company>William Buck</Company>
+    <Description>Sets the WBCodeFY primary name from the WBCode and FY lookups.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned like the controls' build tools. CoreAssemblies aren't uploaded: Dataverse's sandbox provides them. -->
+    <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.PowerApps.MSBuild.Plugin" Version="1.52.1" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+  </ItemGroup>
+
+  <Import Project="$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Plugin.targets" Condition="Exists('$(PowerAppsTargetsPath)\Microsoft.PowerApps.VisualStudio.Plugin.targets')" />
+</Project>

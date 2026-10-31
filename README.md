@@ -20,7 +20,7 @@ Update this table when a control is added, released or retired.
 
 | Plug-in | What it does | Solution | Status | Docs |
 |---|---|---|---|---|
-| WBCodeFYName | Sets the WBCodeFY primary name from the WBCode and FY lookups (synchronous PreOperation) | `WBWBCodeFYName` | Briefed | [Brief](docs/briefs/2026-10-31-wbcodefy-name-plugin.md) |
+| WBCodeFYName | Sets the WBCodeFY primary name from the WBCode and FY lookups (synchronous PreOperation) | `WBWBCodeFYName` | In development | [README](plugins/WBCodeFYName/README.md) |
 
 Update this table when a plug-in is added, released or retired. See [Plug-ins](#plug-ins) for how they're built.
 
