@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "step-config.schema.json",
+  "title": "WBCodeFYName step configuration",
+  "description": "Unsecure configuration for both WBCodeFYName steps (Create and Update): the logical names of the project's table and columns. The plug-in enforces the same rules at runtime (StepConfig.cs) and the tests keep the two in step.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targetTable", "nameColumn", "wbCodeLookup", "wbCodeValueColumn", "fyLookup", "fyValueColumn"],
+  "properties": {
+    "targetTable": { "$ref": "#/$defs/logicalName", "description": "The table the steps are registered on." },
+    "nameColumn": { "$ref": "#/$defs/logicalName", "description": "The text primary name column that receives WBCodeFY." },
+    "wbCodeLookup": { "$ref": "#/$defs/logicalName", "description": "The lookup column on the target table that references the WBCode." },
+    "wbCodeValueColumn": { "$ref": "#/$defs/logicalName", "description": "The text column on the WBCode's table that holds the WBCode, e.g. 00224570." },
+    "fyLookup": { "$ref": "#/$defs/logicalName", "description": "The lookup column on the target table that references the FY." },
+    "fyValueColumn": { "$ref": "#/$defs/logicalName", "description": "The text column on the FY's table that holds the FY, e.g. FY26." }
+  },
+  "$defs": {
+    "logicalName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+  }
+}

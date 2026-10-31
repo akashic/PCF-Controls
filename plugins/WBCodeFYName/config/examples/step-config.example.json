@@ -1,0 +1,8 @@
+{
+  "targetTable": "abc_clientyear",
+  "nameColumn": "abc_wbcodefy",
+  "wbCodeLookup": "abc_wbcode",
+  "wbCodeValueColumn": "abc_name",
+  "fyLookup": "abc_fy",
+  "fyValueColumn": "abc_name"
+}

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net10.0 so only the .NET 10 SDK from the README is needed (ADR-0006). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- The plug-in and CoreAssemblies target .NET Framework; they load fine on .NET 10 for these tests. -->
+    <NoWarn>$(NoWarn);NU1701;NU1702</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needs sign-off (managed environment): Microsoft's MSTest metapackage, which includes Microsoft.NET.Test.Sdk. -->
+    <PackageReference Include="MSTest" Version="4.0.2" />
+    <!-- Already used by the plug-in; it's PrivateAssets there, so the tests reference it too. -->
+    <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.60" />
+    <!-- Needs sign-off: on .NET 10, CoreAssemblies pulls System.ServiceModel 4.10.3, which brings Pkcs 6.0.1
+         (GHSA-555c-2p6r-68mm, fixed in 6.0.3). Test-only: the net48 plug-in doesn't get this chain. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="6.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../WBCodeFYName/WBCodeFYName.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+    <!-- The schema and examples, so the tests can check them against StepConfig. -->
+    <None Include="../config/**/*.json" LinkBase="config" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
