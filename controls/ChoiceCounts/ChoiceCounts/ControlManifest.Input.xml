@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Controls" constructor="ChoiceCounts" version="0.1.0"
+           display-name-key="Choice counts" description-key="Counts of related rows for each option of a choice column"
+           control-type="virtual">
+    <!-- No external services: declaring one would make the control premium-licensed. -->
+    <external-service-usage enabled="false">
+    </external-service-usage>
+    <!-- Brief docs/briefs/2026-10-31-choice-counts.md §4. Status and Status Reason can't be in a type-group. -->
+    <type-group name="hostColumn">
+      <type>SingleLine.Text</type>
+      <type>Whole.None</type>
+      <type>Decimal</type>
+      <type>FP</type>
+      <type>Currency</type>
+      <type>DateAndTime.DateOnly</type>
+      <type>DateAndTime.DateAndTime</type>
+      <type>TwoOptions</type>
+      <type>OptionSet</type>
+      <type>Lookup.Simple</type>
+    </type-group>
+    <property name="host" display-name-key="Host column"
+              description-key="Any column, used only to place the control on the form. The control never reads or changes it."
+              of-type-group="hostColumn" usage="bound" required="true" />
+    <property name="recordId" display-name-key="Record ID"
+              description-key="Bind to the primary key column of the form table. Needed only when Relationship column is set."
+              of-type="SingleLine.Text" usage="input" />
+    <property name="tableName" display-name-key="Table to count"
+              description-key="Logical name of the table whose rows are counted"
+              of-type="SingleLine.Text" usage="input" required="true" />
+    <property name="groupColumn" display-name-key="Group by column"
+              description-key="Logical name of a Choice, Status Reason, Status or Yes/No column on the counted table"
+              of-type="SingleLine.Text" usage="input" required="true" />
+    <property name="relationshipColumn" display-name-key="Relationship column"
+              description-key="Logical name of a lookup on the counted table that points at this record. Blank counts every row."
+              of-type="SingleLine.Text" usage="input" />
+    <property name="filterXml" display-name-key="Filter (FetchXML)"
+              description-key="Optional condition, filter and link-entity elements that restrict the rows counted"
+              of-type="Multiple" usage="input" />
+    <property name="optionValues" display-name-key="Options to show"
+              description-key="Comma-separated option values to show, in this order. Blank shows every option."
+              of-type="SingleLine.Text" usage="input" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <platform-library name="React" version="16.14.0" />
+      <!-- Declared Fluent 9 range is >=9.4.0 <=9.46.2: docs/research/fluent-platform-library-version.md. -->
+      <platform-library name="Fluent" version="9.46.2" />
+    </resources>
+    <feature-usage>
+      <uses-feature name="Utility" required="true" />
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>
