@@ -1,10 +1,11 @@
 // Builds the ChoiceCounts test setup on top of the SMSF tables (create-smsf-tables.mjs runs first):
 //   - a global choice wbsuper_ragstatus "RAG Status": Red, Amber, Green, with colours, as William Buck's RAG choice
 //   - table wbsuper_smsftask "SMSF Task": lookup wbsuper_smsfmatter to SMSF Matter, and RAG Status on the global choice
-//   - views "Red tasks" and "Amber tasks" (active tasks of that colour), for the drill-through
+//   - views "Red tasks" and "Amber tasks" (active tasks of that colour), and "Status: Active" and "Status: Inactive"
+//     (tasks with that Status Reason), for the drill-through
 //   - wbsuper_taskrag "Task RAG", a text column on SMSF Matter that hosts the control (it's never written)
 //   - on SMSF Matter's "Information" form: the host column on the first tab, and a "Tasks" tab with a subgrid of the
-//     matter's tasks whose view picker offers the colour views (setCurrentView needs the view picker)
+//     matter's tasks whose view picker offers the colour and status views (setCurrentView needs the view picker)
 //   - sample tasks on three matters
 // Idempotent. Usage: node scripts/test-env/create-smsf-tasks.mjs
 // See docs/testing/choicecounts-test-environment.md.
@@ -84,19 +85,26 @@ async function ensureTaskTable() {
   }
 }
 
-const VIEW_COLUMNS = ["wbsuper_name", "wbsuper_ragstatus", "wbsuper_smsfmatter", "createdon"];
-function viewXml(ragValue) {
-  const conditions = `<condition attribute="statecode" operator="eq" value="0"/>${ragValue === undefined ? "" : `<condition attribute="wbsuper_ragstatus" operator="eq" value="${ragValue}"/>`}`;
+const VIEW_COLUMNS = ["wbsuper_name", "wbsuper_ragstatus", "statuscode", "wbsuper_smsfmatter", "createdon"];
+// Active tasks of one RAG colour (or every colour), as the Task RAG instance counts them.
+const ragFilter = (ragValue) =>
+  `<condition attribute="statecode" operator="eq" value="0"/>${ragValue === undefined ? "" : `<condition attribute="wbsuper_ragstatus" operator="eq" value="${ragValue}"/>`}`;
+// Tasks with one Status Reason, active or not, as the Task status instance counts them (it has no filter).
+const statusFilter = (statusReason) => `<condition attribute="statuscode" operator="eq" value="${statusReason}"/>`;
+// Status Reason values of a custom table: Active 1 (statecode 0), Inactive 2 (statecode 1).
+const STATUS = { active: 1, inactive: 2 };
+
+function viewXml(conditions) {
   return {
     fetchxml: `<fetch version="1.0" mapping="logical"><entity name="${TASK}">${VIEW_COLUMNS.map((c) => `<attribute name="${c}"/>`).join("")}<attribute name="wbsuper_smsftaskid"/><filter type="and">${conditions}</filter><order attribute="wbsuper_name" descending="false"/></entity></fetch>`,
     layoutxml: `<grid name="resultset" object="1" jump="wbsuper_name" select="1" icon="1" preview="1"><row name="result" id="wbsuper_smsftaskid">${VIEW_COLUMNS.map((c) => `<cell name="${c}" width="${c === "wbsuper_name" ? 250 : 150}"/>`).join("")}</row></grid>`,
   };
 }
 
-async function ensureView(name, ragValue) {
+async function ensureView(name, conditions) {
   const existing = await get(`savedqueries?$select=savedqueryid&$filter=name eq '${name}' and returnedtypecode eq '${TASK}'`);
   if (existing?.value?.length) return existing.value[0].savedqueryid;
-  const { id } = await call("POST", "savedqueries", { name, returnedtypecode: TASK, querytype: 0, ...viewXml(ragValue) }, { solution: SOLUTION });
+  const { id } = await call("POST", "savedqueries", { name, returnedtypecode: TASK, querytype: 0, ...viewXml(conditions) }, { solution: SOLUTION });
   console.log(`created view "${name}"`);
   return id;
 }
@@ -116,14 +124,23 @@ async function ensureForm(viewIds) {
     console.log("added Task RAG to the form");
   }
 
-  // A Tasks tab with a subgrid of the matter's tasks. Its view picker lists the default and colour views.
+  // A Tasks tab with a subgrid of the matter's tasks. Its view picker lists the default, colour and status views.
+  const ids = [viewIds.all, viewIds.red, viewIds.amber, viewIds.active, viewIds.inactive].map((v) => `{${v}}`).join(",");
   if (!formxml.includes(`id="${SUBGRID_ID}"`)) {
-    const ids = [viewIds.all, viewIds.red, viewIds.amber].map((v) => `{${v}}`).join(",");
     const subgrid = `<control id="${SUBGRID_ID}" classid="${SUBGRID_CLASS}" indicationOfSubgrid="true"><parameters><TargetEntityType>${TASK}</TargetEntityType><RelationshipName>${RELATIONSHIP}</RelationshipName><ViewId>{${viewIds.all}}</ViewId><IsUserView>false</IsUserView><AutoExpand>Fixed</AutoExpand><RecordsPerPage>10</RecordsPerPage><EnableQuickFind>false</EnableQuickFind><EnableViewPicker>true</EnableViewPicker><ViewIds>${ids}</ViewIds><EnableJumpBar>false</EnableJumpBar><ChartGridMode>Grid</ChartGridMode><VisualizationId /><IsUserChart>false</IsUserChart><EnableChartPicker>false</EnableChartPicker></parameters></control>`;
     const tab = `<tab name="tab_tasks" id="${guid()}" IsUserDefined="1" verticallayout="true" expanded="true" showlabel="true"><labels><label description="Tasks" languagecode="1033" /></labels><columns><column width="100%"><sections><section name="section_tasks" showlabel="false" showbar="false" IsUserDefined="1" id="${guid()}" columns="1"><labels><label description="Tasks" languagecode="1033" /></labels><rows><row><cell id="${guid()}" rowspan="10" colspan="1" showlabel="false"><labels><label description="Tasks" languagecode="1033" /></labels>${subgrid}</cell></row></rows></section></sections></column></columns></tab>`;
     formxml = formxml.replace("</tabs>", `${tab}</tabs>`);
     if (!formxml.includes(`id="${SUBGRID_ID}"`)) throw new Error("couldn't find </tabs> in the form XML");
     console.log("added the Tasks tab and its subgrid");
+  } else {
+    // An existing subgrid: make sure its view picker offers every view (views added since it was created).
+    const subgrid = new RegExp(`(<control id="${SUBGRID_ID}"[\\s\\S]*?<ViewIds>)([^<]*)(</ViewIds>)`);
+    const current = formxml.match(subgrid);
+    if (!current) throw new Error(`couldn't find ${SUBGRID_ID}'s ViewIds in the form XML`);
+    if (current[2].toLowerCase() !== ids.toLowerCase()) {
+      formxml = formxml.replace(subgrid, `$1${ids}$3`);
+      console.log("updated the subgrid's view picker");
+    }
   }
 
   if (formxml === form.formxml) return console.log("form has Task RAG and the Tasks tab");
@@ -164,9 +181,11 @@ await ensureGlobalChoice();
 await ensureTaskTable();
 await publish({ entities: [TASK, MATTER] });
 const viewIds = {
-  all: await ensureView("Active SMSF Tasks (all colours)", undefined),
-  red: await ensureView("Red tasks", RAG.red),
-  amber: await ensureView("Amber tasks", RAG.amber),
+  all: await ensureView("Active SMSF Tasks (all colours)", ragFilter(undefined)),
+  red: await ensureView("Red tasks", ragFilter(RAG.red)),
+  amber: await ensureView("Amber tasks", ragFilter(RAG.amber)),
+  active: await ensureView("Status: Active", statusFilter(STATUS.active)),
+  inactive: await ensureView("Status: Inactive", statusFilter(STATUS.inactive)),
 };
 console.log(`views: ${JSON.stringify(viewIds)}`);
 await ensureForm(viewIds);
