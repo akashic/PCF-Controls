@@ -1,4 +1,4 @@
-import { normalizeRecordId, parseConfig, parseOptionValues, MAX_FILTER_LENGTH } from "../ChoiceCounts/logic/config";
+import { normalizeRecordId, parseConfig, parseOptionColors, parseOptionValues, MAX_FILTER_LENGTH } from "../ChoiceCounts/logic/config";
 
 const valid = { tableName: "abc_task", groupColumn: "abc_ragstatus" };
 
@@ -6,7 +6,15 @@ describe("parseConfig", () => {
   test("accepts the minimum and defaults the rest", () => {
     expect(parseConfig(valid)).toEqual({
       ok: true,
-      config: { tableName: "abc_task", groupColumn: "abc_ragstatus", relationshipColumn: null, filter: [], optionValues: null },
+      config: {
+        tableName: "abc_task",
+        groupColumn: "abc_ragstatus",
+        relationshipColumn: null,
+        filter: [],
+        optionValues: null,
+        optionColors: new Map(),
+        neutralZeroCounts: true,
+      },
       warnings: [],
     });
   });
@@ -129,5 +137,44 @@ describe("parseConfig review fixes (1 Nov 2026)", () => {
     const result = parseConfig({ tableName: "t", groupColumn: "c", filterXml: long });
     expect(result.ok).toBe(false);
     expect(!result.ok && result.errors[0]).toMatch(/keep it under 4000/);
+  });
+});
+
+describe("colours and zero counts (brief amendment, 1 Nov 2026)", () => {
+  test("parses value:colour pairs, normalising the colours", () => {
+    expect(parseOptionColors(" 512340000:#c50f1f, 512340001 : #F7630C ,-1:#000 ")).toEqual({
+      colors: new Map([
+        [512340000, "#C50F1F"],
+        [512340001, "#F7630C"],
+        [-1, "#000000"],
+      ]),
+      warnings: [],
+    });
+  });
+
+  test("skips entries that aren't value:colour, and keeps the first of a repeat, with warnings", () => {
+    const { colors, warnings } = parseOptionColors("1:red, x:#000000, 2, 3:#12345, 1:#FFFFFF, 99999999999999999999:#000000,");
+    // "1:red" is skipped, so "1:#FFFFFF" is the first valid colour for 1 and is kept.
+    expect(colors).toEqual(new Map([[1, "#FFFFFF"]]));
+    expect(warnings).toEqual([
+      `Colours: "1:red" isn't "value:#colour", so it's skipped`,
+      `Colours: "x:#000000" isn't "value:#colour", so it's skipped`,
+      `Colours: "2" isn't "value:#colour", so it's skipped`,
+      `Colours: "3:#12345" isn't "value:#colour", so it's skipped`,
+      `Colours: "99999999999999999999:#000000" isn't "value:#colour", so it's skipped`,
+    ]);
+    expect(parseOptionColors("1:#000000, 1:#FFFFFF")).toEqual({
+      colors: new Map([[1, "#000000"]]),
+      warnings: ["Colours: 1 is listed more than once; the first colour is used"],
+    });
+    expect(parseOptionColors("  ")).toEqual({ colors: new Map(), warnings: [] });
+  });
+
+  test("parseConfig reads the colours and zero-count setting, and passes colour warnings through", () => {
+    const result = parseConfig({ ...valid, optionColors: "1:#C50F1F, bad", zeroCounts: "1" });
+    expect(result.ok && result.config.optionColors).toEqual(new Map([[1, "#C50F1F"]]));
+    expect(result.ok && result.config.neutralZeroCounts).toBe(false);
+    expect(result.ok && result.warnings).toEqual([`Colours: "bad" isn't "value:#colour", so it's skipped`]);
+    expect(parseConfig({ ...valid, zeroCounts: "0" }).ok && (parseConfig({ ...valid, zeroCounts: "0" }) as { config: { neutralZeroCounts: boolean } }).config.neutralZeroCounts).toBe(true);
   });
 });

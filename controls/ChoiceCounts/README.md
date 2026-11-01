@@ -21,6 +21,8 @@ A virtual (React, Fluent 9) **field control** that shows how many related rows h
 | Group by column | text | A Choice, Status Reason, Status or Yes/No column on that table (not multi-select) |
 | Relationship column | text, optional | The lookup on the counted table that points at the open record |
 | Filter (FetchXML) | multiple lines, optional | `<condition>`, `<filter>` and `<link-entity>` elements only, for example `<condition attribute="statecode" operator="eq" value="0" />`. Under 4,000 characters |
+| Colours | text, optional | `value:#colour` pairs, e.g. `512340000:#C50F1F, 512340001:#F7630C`, that replace the choice's colours. Options not listed keep the choice's colour, or neutral if it has none. Invalid entries are skipped with a warning |
+| Zero counts | Neutral / Option colour | **Neutral** (default): a zero count is a grey badge, so only non-zero counts are coloured. **Option colour**: every badge uses its option's colour |
 | Options to show | text, optional | Comma-separated option values, shown in this order. Blank shows every option. If none of the values match, every option is shown and a warning is logged |
 | When a count is selected | Nothing / Raise OnOptionSelect | With "Raise OnOptionSelect", each count is a button raising **OnOptionSelect** with `{ value, label, count, tableName, groupColumn }` |
 
@@ -47,6 +49,10 @@ dotnet build controls/ChoiceCounts/solution -c Release
 The pure logic is in `ChoiceCounts/logic/` (config, filter parser, query builder, results, metadata, display state). `ChoiceCountsControl.tsx` wires it to Dataverse through `data.ts`, and `ChoiceCountsView.tsx` renders it. The `LowCode` test setup is in [docs/testing/choicecounts-test-environment.md](../../docs/testing/choicecounts-test-environment.md).
 
 ## Changelog
+
+### 0.1.2 (unreleased)
+
+- Configurable colours: **Colours** overrides the choice's colours per option value, and **Zero counts** shows zero counts in grey by default (brief amendment, 1 Nov 2026).
 
 ### 0.1.1 (unreleased)
 

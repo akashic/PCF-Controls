@@ -1,4 +1,4 @@
-import { normalizeHex } from "@wb-pcf/shared";
+import { normalizeHex, type HexColor } from "@wb-pcf/shared";
 import { COUNT_ALIAS, GROUP_ALIAS } from "../ChoiceCounts/logic/fetchXml";
 import { accessibleName, groupColumnKind, mergeCounts, readGroupCounts, type ChoiceOption } from "../ChoiceCounts/logic/results";
 
@@ -172,5 +172,42 @@ describe("readGroupCounts with a real Dataverse response (decisions.md C-3)", ()
         [512340000, 2],
       ]),
     );
+  });
+});
+
+describe("mergeCounts colouring (brief amendment, 1 Nov 2026)", () => {
+  const hex = (color: string): HexColor => normalizeHex(color) as HexColor;
+  const options = [
+    { value: 1, label: "Red", color: "#D13438", hidden: false },
+    { value: 2, label: "Amber", color: "#FFB900", hidden: false },
+    { value: 3, label: "Green", color: null, hidden: false },
+  ];
+  const colours = (badges: readonly { label: string; color: string | null }[]) => badges.map((b) => [b.label, b.color]);
+
+  test("neutral zero counts: only non-zero counts get a colour", () => {
+    const merged = mergeCounts(options, new Map([[2, 3]]), null, { overrides: new Map(), neutralZeroCounts: true });
+    expect(colours(merged.badges)).toEqual([
+      ["Red", null],
+      ["Amber", "#FFB900"],
+      ["Green", null],
+    ]);
+  });
+
+  test("overrides replace the choice colour, and give an option with none a colour", () => {
+    const overrides = new Map([
+      [1, hex("#C50F1F")],
+      [3, hex("#0B6A0B")],
+    ]);
+    const merged = mergeCounts(options, new Map([[1, 1], [3, 1]]), null, { overrides, neutralZeroCounts: false });
+    expect(colours(merged.badges)).toEqual([
+      ["Red", "#C50F1F"],
+      ["Amber", "#FFB900"],
+      ["Green", "#0B6A0B"],
+    ]);
+  });
+
+  test("an override doesn't colour a zero count when zero counts are neutral", () => {
+    const merged = mergeCounts(options, new Map(), [1], { overrides: new Map([[1, hex("#C50F1F")]]), neutralZeroCounts: true });
+    expect(colours(merged.badges)).toEqual([["Red", null]]);
   });
 });

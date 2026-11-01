@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Controls" constructor="ChoiceCounts" version="0.1.1"
+  <control namespace="Controls" constructor="ChoiceCounts" version="0.1.2"
            display-name-key="Choice counts" description-key="Counts of related rows for each option of a choice column"
            control-type="virtual">
     <!-- No external services: declaring one would make the control premium-licensed. -->
@@ -40,6 +40,16 @@
     <property name="optionValues" display-name-key="Options to show"
               description-key="Comma-separated option values to show, in this order. Blank shows every option."
               of-type="SingleLine.Text" usage="input" />
+    <!-- Colours (brief amendment, 1 Nov 2026): per-option overrides, and grey badges for zero counts. -->
+    <property name="optionColors" display-name-key="Colours"
+              description-key="Optional colours per option value, e.g. 1:#C50F1F, 2:#F7630C. Options not listed use the choice colour."
+              of-type="SingleLine.Text" usage="input" />
+    <property name="zeroCounts" display-name-key="Zero counts"
+              description-key="Neutral shows a zero count in grey, so only non-zero counts are coloured"
+              of-type="Enum" usage="input" default-value="0">
+      <value name="neutral" display-name-key="Neutral">0</value>
+      <value name="optionColor" display-name-key="Option colour">1</value>
+    </property>
     <!-- Drill-through (brief amendment, 1 Nov 2026): a selected badge raises OnOptionSelect, and a form script
          decides what to do, for example open a tab and switch a subgrid to a view. Off by default. -->
     <property name="badgeAction" display-name-key="When a count is selected"

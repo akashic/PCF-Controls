@@ -32,7 +32,7 @@ Forms need to show at a glance how many related rows are in each status, for exa
 | Grouped column types | Choice, Status Reason, Status and Yes/No. Multi-select choice is rejected with a warning. |
 | Which options show | **Every option in metadata order, including zero counts**, with an optional property that limits the display to a subset of option values, in the order given. |
 | Blank values | Rows with no value in the grouped column are **left out**. |
-| Look | A row of **coloured badges** (option label + count), tinted with the option's metadata colour using `@wb-pcf/shared` (the same approach as RagChoice). Text is always visible. |
+| Look | A row of **coloured badges** (option label + count), tinted with the option's metadata colour using `@wb-pcf/shared` (the same approach as RagChoice). Text is always visible. **Amended 1 Nov 2026 (product owner):** colours are configurable. Two optional properties: **Colours** (`value:#hex` pairs that override the choice's colours per option) and **Zero counts** (*Neutral*, the default, shows a zero count as a grey badge, so only non-zero counts are coloured; *Option colour* colours every badge). Both are plain configuration, so the control works on any choice with any values. |
 | Label | **No label property.** The form draws the host column's label, and makers can rename it on each form. |
 | Hosting | The bound property is a **type-group of common column types**, so makers can host the control on an existing column. The control **never writes** to the bound column. |
 | Filter | An optional **FetchXML fragment**, parsed and checked against an allow-list of `<filter>`, `<condition>`, `<value>` and **`<link-entity>`**. Anything else is rejected with a warning. |

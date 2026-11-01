@@ -84,6 +84,8 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
    | Relationship column | the task to SMSF Matter lookup's logical name | static |
    | Filter (FetchXML) | `<condition attribute="statecode" operator="eq" value="0" />` (active tasks only) | static |
    | Options to show | `<Red value>,<Amber value>`, for example `512340000,512340001`. This shows Red then Amber and leaves Green out | static |
+   | Zero counts | **Neutral**, the default. A matter with no Red tasks shows a grey "Red 0", so only real issues are coloured | static |
+   | Colours | leave **blank** to use the RAG choice's own colours. To use other colours, list them as `<value>:#hex`, for example `512340000:#C50F1F, 512340001:#F7630C` | static |
    | When a count is selected | **Raise OnOptionSelect** | static |
 
 4. Show the component on **Web**, **Phone** and **Tablet**.
@@ -131,7 +133,7 @@ Notes:
 Run these in dev and **UAT**. In prod, check only that the counts and the drill-through appear on an existing matter.
 
 1. Open a matter that has tasks. Task RAG shows **Red n · Amber n**, matching that matter's active tasks: compare with the Tasks tab's default view. Green tasks, inactive tasks and other matters' tasks aren't counted.
-2. Open a matter with no Red tasks. It shows **Red 0**, because zero counts still show.
+2. Open a matter with no Red tasks. It shows **Red 0** in grey, while non-zero counts keep their colour (Zero counts = Neutral).
 3. Select **Red**. The Tasks tab opens and the subgrid switches to **Red tasks**, showing only that matter's red tasks. Then do the same with **Amber**.
 4. Add or change a task in the subgrid, then press the **refresh** button next to the counts. The counts update. They don't update by themselves (§9).
 5. Create a new matter. Before the first save, Task RAG should show **"Available after save"**, and after saving the counts should appear without a reload. **This hasn't been tested yet** (decisions.md C-1). Record what happens. If the counts need a reload after the first save, note it: it's a known gap, not a failure of the deployment.
@@ -150,6 +152,7 @@ Open the browser's developer tools (F12), go to Console, and reload the form. Th
 | "—" with tooltip "Too many rows to count" | More than 50,000 tasks match. Dataverse refuses to count above that | Narrow the filter. The limit is Dataverse's |
 | Counts include other matters' tasks | Relationship column or Record ID isn't set | §5 step 3. Record ID must be bound, not static |
 | Green appears, or the order is wrong | Options to show is blank or has wrong values | Use the Red and Amber values from §2, in display order |
+| A count has the wrong colour, or none | Colours has a typo (the console says which entry was skipped), or the RAG choice has no colour for that option | Fix the `value:#hex` entry, or set the option colour on the global choice |
 | Selecting a count does nothing | When a count is selected isn't "Raise OnOptionSelect"; the script isn't registered, or `CONFIG.control` doesn't match the host column; or the form is cached | Check §5 and §6, then **hard-reload** the form (Ctrl+Shift+R) |
 | The tab opens but the view doesn't change | The view selector is off, or doesn't offer that view, or the view name in `CONFIG.views` differs | §3 step 3 and §6 step 1. The console says which |
 

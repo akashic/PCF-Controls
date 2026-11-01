@@ -98,18 +98,28 @@ export function readGroupCounts(entities: unknown): Map<number, number> | null {
  * hidden options that have no rows (RagChoice's rule). With `optionValues`: exactly
  * those options, in that order, hidden or not.
  */
+/** How badges are coloured (brief amendment, 1 Nov 2026). */
+export interface BadgeColoring {
+  /** Colours that replace the choice's own, by option value. */
+  readonly overrides: ReadonlyMap<number, HexColor>;
+  /** Zero counts get no colour (the neutral badge), so only non-zero counts stand out. */
+  readonly neutralZeroCounts: boolean;
+}
+
+const OPTION_COLOURS: BadgeColoring = { overrides: new Map(), neutralZeroCounts: false };
+
 export function mergeCounts(
   options: readonly ChoiceOption[],
   counts: ReadonlyMap<number, number>,
   optionValues: readonly number[] | null,
+  coloring: BadgeColoring = OPTION_COLOURS,
 ): MergedCounts {
   const byValue = new Map(options.map((option) => [option.value, option]));
-  const badge = (option: ChoiceOption): Badge => ({
-    value: option.value,
-    label: option.label,
-    count: counts.get(option.value) ?? 0,
-    color: normalizeHex(option.color),
-  });
+  const badge = (option: ChoiceOption): Badge => {
+    const count = counts.get(option.value) ?? 0;
+    const color = count === 0 && coloring.neutralZeroCounts ? null : (coloring.overrides.get(option.value) ?? normalizeHex(option.color));
+    return { value: option.value, label: option.label, count, color };
+  };
 
   const unknownOptionValues: number[] = [];
   const everyOption = (): ChoiceOption[] => options.filter((option) => !option.hidden || (counts.get(option.value) ?? 0) > 0);

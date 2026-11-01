@@ -25,6 +25,8 @@ export class ChoiceCounts implements ComponentFramework.ReactControl<IInputs, IO
         relationshipColumn: p.relationshipColumn.raw,
         filterXml: p.filterXml.raw,
         optionValues: p.optionValues.raw,
+        optionColors: p.optionColors.raw,
+        zeroCounts: p.zeroCounts.raw,
       },
       recordId: p.recordId.raw,
       utils: context.utils,

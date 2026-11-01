@@ -45,10 +45,10 @@ function useWarnOnce(): (message: string) => void {
  */
 export function ChoiceCountsControl({ inputs, recordId, utils, webAPI, theme, raiseSelect }: ChoiceCountsControlProps): React.ReactElement {
   const warn = useWarnOnce();
-  const { tableName, groupColumn, relationshipColumn, filterXml, optionValues } = inputs;
+  const { tableName, groupColumn, relationshipColumn, filterXml, optionValues, optionColors, zeroCounts } = inputs;
   const configResult = React.useMemo(
-    () => parseConfig({ tableName, groupColumn, relationshipColumn, filterXml, optionValues }),
-    [tableName, groupColumn, relationshipColumn, filterXml, optionValues],
+    () => parseConfig({ tableName, groupColumn, relationshipColumn, filterXml, optionValues, optionColors, zeroCounts }),
+    [tableName, groupColumn, relationshipColumn, filterXml, optionValues, optionColors, zeroCounts],
   );
   const record = React.useMemo(() => normalizeRecordId(recordId), [recordId]);
   const config = configResult.ok ? configResult.config : null;
@@ -116,7 +116,10 @@ export function ChoiceCountsControl({ inputs, recordId, utils, webAPI, theme, ra
         setLoad({ status: "failed", error: new Error("unexpected response") });
         return;
       }
-      const merged = mergeCounts(metadata.metadata.options, counts, config.optionValues);
+      const merged = mergeCounts(metadata.metadata.options, counts, config.optionValues, {
+        overrides: config.optionColors,
+        neutralZeroCounts: config.neutralZeroCounts,
+      });
       if (merged.unknownOptionValues.length > 0) warn(`Options to show: ${merged.unknownOptionValues.join(", ")} aren't options of ${config.groupColumn}`);
       if (merged.unlistedValues.length > 0) warn(`rows have values that aren't options of ${config.groupColumn}: ${merged.unlistedValues.join(", ")}`);
       shown.current = merged.badges;

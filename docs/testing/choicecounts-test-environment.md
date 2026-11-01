@@ -23,7 +23,7 @@ node scripts/test-env/add-choicecounts-to-smsf-form.mjs  # the control on Task R
 | Views | "Active SMSF Tasks (all colours)", "Red tasks", "Amber tasks" (active tasks only) |
 | Host column | `wbsuper_smsfmatter.wbsuper_taskrag` "Task RAG", text, never written |
 | Form | SMSF Matter "Information": Task RAG under FY, showing ChoiceCounts; a **Tasks** tab with subgrid `tasks_subgrid` (related tasks, view selector offering the three views) |
-| Control settings | Table `wbsuper_smsftask`, group by `wbsuper_ragstatus`, relationship `wbsuper_smsfmatter`, filter `<condition attribute="statecode" operator="eq" value="0" />`, options `512340000,512340001`, "Raise OnOptionSelect" |
+| Control settings | Table `wbsuper_smsftask`, group by `wbsuper_ragstatus`, relationship `wbsuper_smsfmatter`, filter `<condition attribute="statecode" operator="eq" value="0" />`, options `512340000,512340001`, Zero counts *Neutral*, no colour overrides, "Raise OnOptionSelect" |
 | Form script | Web resource `wbsuper_/choicecounts/drillthrough.js` (from `controls/ChoiceCounts/examples/drill-through.js`), on load: `WBChoiceCounts.DrillThrough.onLoad` |
 | Solution | All in the unmanaged `WBSuperTest`, apart from the control (`WBChoiceCounts`) |
 
@@ -32,7 +32,7 @@ node scripts/test-env/add-choicecounts-to-smsf-form.mjs  # the control on Task R
 | Matter | Tasks | Expected |
 |---|---|---|
 | `00224570-27` | 2 Red, 3 Amber, 3 Green, 1 inactive Red, 1 with no RAG | **Red 2 · Amber 3** |
-| `00100170-25` | 1 Red, 2 Green | **Red 1 · Amber 0** |
+| `00100170-25` | 1 Red, 2 Green | **Red 1 · Amber 0**, with Amber 0 in grey |
 | Others | none | **Red 0 · Amber 0** |
 
 Select **Red 2** on `00224570-27`: the Tasks tab opens with the "Red tasks" view, showing "Chase bank statements" and "Lodge annual return".

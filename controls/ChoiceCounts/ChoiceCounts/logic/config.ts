@@ -2,6 +2,7 @@
  * Reads and validates the manifest's input properties (brief §4). Every name is
  * project-supplied and may use any prefix (ADR-0005), so nothing here assumes one.
  */
+import { normalizeHex, type HexColor } from "@wb-pcf/shared";
 import { parseFilterXml, type XmlElement } from "./filterXml";
 
 /** A logical name as Dataverse writes it. Anything else could inject into the query. */
@@ -22,6 +23,10 @@ export interface CountsConfig {
   readonly filter: readonly XmlElement[];
   /** The option values to show, in this order, or `null` for every option. */
   readonly optionValues: readonly number[] | null;
+  /** Colours that replace the choice's own, by option value. */
+  readonly optionColors: ReadonlyMap<number, HexColor>;
+  /** Zero counts use the neutral badge, so only non-zero counts are coloured. */
+  readonly neutralZeroCounts: boolean;
 }
 
 export interface RawInputs {
@@ -30,6 +35,9 @@ export interface RawInputs {
   readonly relationshipColumn?: string | null;
   readonly filterXml?: string | null;
   readonly optionValues?: string | null;
+  readonly optionColors?: string | null;
+  /** The "Zero counts" enum: "0" (or unset) is Neutral, "1" is Option colour. */
+  readonly zeroCounts?: string | null;
 }
 
 export type ConfigResult =
@@ -75,9 +83,16 @@ export function parseConfig(raw: RawInputs): ConfigResult {
   }
 
   const { values: optionValues, warnings } = parseOptionValues(raw.optionValues);
+  const colors = parseOptionColors(raw.optionColors);
+  warnings.push(...colors.warnings);
+  const neutralZeroCounts = raw.zeroCounts !== "1";
 
   if (errors.length > 0 || tableName === null || groupColumn === null) return { ok: false, errors };
-  return { ok: true, config: { tableName, groupColumn, relationshipColumn, filter, optionValues }, warnings };
+  return {
+    ok: true,
+    config: { tableName, groupColumn, relationshipColumn, filter, optionValues, optionColors: colors.colors, neutralZeroCounts },
+    warnings,
+  };
 }
 
 /**
@@ -99,6 +114,31 @@ export function parseOptionValues(raw: string | null | undefined): { values: num
     else values.push(value);
   }
   return { values: values.length > 0 ? values : null, warnings };
+}
+
+/**
+ * Parses "1:#C50F1F, 2: #f7630c" into option value → colour. Entries that aren't
+ * `value:colour` with a whole-number value and a valid hex colour are skipped with a
+ * warning; a value listed twice keeps its first colour. Blank means no overrides.
+ */
+export function parseOptionColors(raw: string | null | undefined): { colors: Map<number, HexColor>; warnings: string[] } {
+  const colors = new Map<number, HexColor>();
+  const warnings: string[] = [];
+  const text = blankToNull(raw);
+  if (text === null) return { colors, warnings };
+  for (const entry of text.split(",").map((part) => part.trim()).filter((part) => part !== "")) {
+    const match = /^(-?[0-9]+)\s*:\s*(\S+)$/.exec(entry);
+    const value = match ? Number(match[1]) : NaN;
+    const color = match ? normalizeHex(match[2]) : null;
+    if (!match || !Number.isSafeInteger(value) || color === null) {
+      warnings.push(`Colours: "${entry}" isn't "value:#colour", so it's skipped`);
+    } else if (colors.has(value)) {
+      warnings.push(`Colours: ${value} is listed more than once; the first colour is used`);
+    } else {
+      colors.set(value, color);
+    }
+  }
+  return { colors, warnings };
 }
 
 export type RecordId =

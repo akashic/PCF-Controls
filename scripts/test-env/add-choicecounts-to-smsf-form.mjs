@@ -33,6 +33,8 @@ const PARAMETERS = {
   relationshipColumn: "wbsuper_smsfmatter",
   filterXml: '<condition attribute="statecode" operator="eq" value="0" />',
   optionValues: `${RAG.red},${RAG.amber}`,
+  // Zero counts in grey, so only Red or Amber tasks that exist are coloured. No colour overrides: the choice's own.
+  zeroCounts: "0",
   badgeAction: "1",
 };
 
@@ -51,7 +53,7 @@ async function ensureWebResource() {
 function controlDescription(uniqueId) {
   const statics = Object.entries(PARAMETERS)
     .map(([name, value]) => {
-      const type = name === "filterXml" ? "Multiple" : name === "badgeAction" ? "Enum" : "SingleLine.Text";
+      const type = name === "filterXml" ? "Multiple" : name === "badgeAction" || name === "zeroCounts" ? "Enum" : "SingleLine.Text";
       return `<${name} static="true" type="${type}">${xmlEscape(value)}</${name}>`;
     })
     .join("");
