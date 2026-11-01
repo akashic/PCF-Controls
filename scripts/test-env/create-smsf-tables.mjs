@@ -148,6 +148,8 @@ async function ensureTable(t) {
 
 async function ensureColumns(t) {
   const existing = await get(`EntityDefinitions(LogicalName='${t.logical}')/Attributes?$select=LogicalName`);
+  // Null while a just-created table's metadata is still provisioning, or on a throttled (429) read.
+  if (!existing) throw new Error(`couldn't read ${t.logical}'s columns; wait a minute and re-run (it skips what exists)`);
   const names = new Set(existing.value.map((a) => a.LogicalName));
   for (const column of t.columns) {
     if (names.has(column.SchemaName.toLowerCase())) continue;

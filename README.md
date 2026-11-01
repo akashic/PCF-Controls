@@ -216,7 +216,7 @@ Dataverse plug-ins live in `plugins/<Name>/` with their own `WB<Name>` solution 
    - Pin the template's floating package versions, as the controls do.
 3. **Add a test project** in `plugins/<Name>/tests/`: MSTest, `net10.0`, referencing `../<Name>/<Name>.csproj`, with hand-written fakes of the `Microsoft.Xrm.Sdk` interfaces. The test packages need sign-off in the PR.
 4. **Put logical names in step configuration**, never in code. Add `config/step-config.schema.json` with an example, and validate the configuration again in the plug-in's constructor.
-5. **Register in dev** with a Web API script in `scripts/`, then create the solution and bring the registration into source:
+5. **Register once**, in dev or a test environment, with a Web API script in `scripts/` built on `scripts/lib/dataverse.mjs`. Then create the solution and bring the registration into source. This is the only time the script runs against a shared environment. Afterwards every environment, including dev, gets the plug-in by importing the solution with `--activate-plugins`. A script registration plus an import in the same environment duplicates the steps ([ADR-0006](docs/adr/0006-plugins-folder.md) §6).
    ```sh
    node plugins/<Name>/scripts/register.mjs --env $DATAVERSE_URL   # creates WB<Name> and registers into it (see WBCodeFYName's)
    cd plugins/<Name> && mkdir WB<Name> && cd WB<Name>

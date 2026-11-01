@@ -35,7 +35,10 @@ The user sees one of these messages when a save is rejected:
 
 ## Steps
 
-Register both steps with the same unsecure configuration (below). The first registration in an environment is done by [`scripts/register.mjs`](scripts/register.mjs) (usage at its top). It is safe to re-run, and it also adds the assembly and steps to `WBWBCodeFYName`. After that, the steps travel in the solution. **Always import the solution with `--activate-plugins`**, or the steps arrive disabled ([W-3](docs/decisions.md#w-3-a-fileversion-only-bump-updates-in-place)).
+Both steps share the same unsecure configuration (below). They travel in the `WBWBCodeFYName` solution, whose source in [`solution/`](solution/) was synced from the `LowCode` test environment.
+
+- **Deploying (dev, UAT, prod):** import the solution, always with `--activate-plugins`. Without it, the steps arrive disabled and rows save without a name ([W-3](docs/decisions.md#w-3-a-fileversion-only-bump-updates-in-place)).
+- **[`scripts/register.mjs`](scripts/register.mjs)** registers the plug-in through the Web API (usage at its top). It validates the configuration against the schema, it's safe to re-run, and it turns disabled steps back on. Use it only in a scratch environment, or to rebuild `solution/src` from scratch. **Never run it in an environment that will also import the solution.** Its components get different IDs from the solution's, so the import fails or adds a second pair of steps, and the plug-in runs twice on every save.
 
 | Step | Message | Stage, mode | Filtering attributes | Pre-image | Rank |
 |---|---|---|---|---|---|
