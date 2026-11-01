@@ -71,7 +71,7 @@ The brief's §5.2 matrix, run in `LowCode` on 1 Nov 2026. `LowCode` is the dev e
 | Data import (both lookups set; one missing) | Generated; the row missing a lookup is rejected | **Pass.** See note 1 |
 | Web API PATCH of the name only | Recomputed and the write overwritten | **Pass** (W-1) |
 | Duplicate WBCode and FY | Rejected by the alternate key | **Pass.** See note 2 |
-| User without Read on the FY table | The save fails with a clear message | *Pending: LowCode has one user* |
+| User without Read on the FY table | The save fails with a clear message | **Deferred to William Buck UAT.** `LowCode` has a single user (a System Administrator). The developer chose to test it in UAT, and it's [runbook](runbook.md) §6 check 6 |
 | Step configuration removed or broken | Blocked with the admin message; details in the trace log | **Pass.** See note 3 |
 | Reimport after a `FileVersion` bump | Steps stay registered, new code runs | **Pass** (W-3), when imported with `--activate-plugins` |
 
