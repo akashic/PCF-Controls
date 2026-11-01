@@ -57,6 +57,7 @@ Update this table when a plug-in is added, released or retired. See [Plug-ins](#
 │   ├── adr/                      # architecture decisions for the whole repo
 │   ├── briefs/                   # build briefs from the product owner, one per piece of work
 │   └── agents/                   # config for the agent skills (issue tracker, labels)
+├── releases/<Name>/<x.y.z>/      # managed + unmanaged zips copied from each GitHub Release
 ├── scripts/check-controls.mjs    # conventions check for controls and plug-ins, run in CI
 ├── tools/Sync-FromUpstream.ps1   # merges this repo's updates into a copy of it (PowerShell 7)
 └── .github/workflows/            # ci.yml (every PR), release.yml (tags)
@@ -259,6 +260,8 @@ To release:
 1. Merge to `main` with all three versions bumped and the control's changelog updated.
 2. Tag the merge commit: `git tag GridFormatter-v1.2.0 && git push origin GridFormatter-v1.2.0`.
 3. `release.yml` fails unless the tagged commit is on `main`. It checks that the tag matches the versions, lints, tests, validates the config files, builds the solution, and publishes a GitHub Release with the managed and unmanaged zips attached. For a plug-in tag it also builds and tests the plug-in. The release notes start from the same control's (or plug-in's) previous tag, so they list only changes since its last release.
+
+4. Copy the released zips into the repo, under `releases/<Name>/<x.y.z>/`, and merge them to `main`: `gh release download <Name>-v<x.y.z> -D releases/<Name>/<x.y.z>`. Take them from the GitHub Release, not your local `bin/`, so they're the ones built from the tagged commit.
 
 The build and the publish are separate jobs: the build job has read-only access to the repo and uploads the zips, and only the publish job (which just runs `gh release create`) can write.
 
