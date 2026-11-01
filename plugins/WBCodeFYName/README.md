@@ -4,7 +4,8 @@ A synchronous PreOperation Dataverse plug-in that sets a table's **WBCodeFY** pr
 
 | | |
 |---|---|
-| Solution | `WBWBCodeFYName` (WilliamBuck publisher), from #59 |
+| Solution | `WBWBCodeFYName` (WilliamBuck publisher) in [`solution/`](solution/) |
+| VERIFY outcomes | [docs/decisions.md](docs/decisions.md) |
 | Assembly | `WBCodeFYName`, classic, signed, .NET Framework 4.8, `AssemblyVersion` 1.0.0.0 |
 | Plug-in type | `WBCodeFYName.SetPrimaryName` |
 | Brief | [docs/briefs/2026-10-31-wbcodefy-name-plugin.md](../../docs/briefs/2026-10-31-wbcodefy-name-plugin.md) |
@@ -34,7 +35,10 @@ The user sees one of these messages when a save is rejected:
 
 ## Steps
 
-Register both steps with the same unsecure configuration (below). The registration happens in dev, through `scripts/` (#59). After that, the steps travel in the solution.
+Both steps share the same unsecure configuration (below). They travel in the `WBWBCodeFYName` solution, whose source in [`solution/`](solution/) was synced from the `LowCode` test environment.
+
+- **Deploying (dev, UAT, prod):** import the solution, always with `--activate-plugins`. Without it, the steps arrive disabled and rows save without a name ([W-3](docs/decisions.md#w-3-a-fileversion-only-bump-updates-in-place)).
+- **[`scripts/register.mjs`](scripts/register.mjs)** registers the plug-in through the Web API (usage at its top). It validates the configuration against the schema, it's safe to re-run, and it turns disabled steps back on. Use it only in a scratch environment, or to rebuild `solution/src` from scratch. **Never run it in an environment that will also import the solution.** Its components get different IDs from the solution's, so the import fails or adds a second pair of steps, and the plug-in runs twice on every save.
 
 | Step | Message | Stage, mode | Filtering attributes | Pre-image | Rank |
 |---|---|---|---|---|---|
@@ -82,10 +86,16 @@ npm run check:controls                                      # repo conventions, 
 
 The logic is in pure classes: `NameRules` (the naming rules) and `StepConfig` (the configuration). `SetPrimaryName.Execute` is a thin layer around them, tested through fakes in `tests/Fakes.cs`. The tests also check that `StepConfig` and the JSON Schema agree, and that every example parses.
 
-Version: `<FileVersion>` in the csproj (`x.y.z.0`), which must match `solution/src/Other/Solution.xml` once the solution exists. Never change `AssemblyVersion`.
+```sh
+dotnet build plugins/WBCodeFYName/solution -c Release     # both zips, in solution/bin/Release
+pac solution import --path plugins/WBCodeFYName/solution/bin/Release/WBWBCodeFYName.zip --activate-plugins --publish-changes   # dev
+```
+
+Version: `<FileVersion>` in the csproj (`x.y.z.0`), which must match `solution/src/Other/Solution.xml`. Never change `AssemblyVersion`.
 
 ## Changelog
 
 ### 0.1.0 (unreleased)
 
-- First version: the plug-in, its step-configuration schema and its tests. Registration and the solution come in #59.
+- First version: the plug-in, its step-configuration schema and its tests.
+- The registration script, the `WBWBCodeFYName` solution and the VERIFY outcomes (#59).

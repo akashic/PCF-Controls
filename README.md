@@ -216,15 +216,23 @@ Dataverse plug-ins live in `plugins/<Name>/` with their own `WB<Name>` solution 
    - Pin the template's floating package versions, as the controls do.
 3. **Add a test project** in `plugins/<Name>/tests/`: MSTest, `net10.0`, referencing `../<Name>/<Name>.csproj`, with hand-written fakes of the `Microsoft.Xrm.Sdk` interfaces. The test packages need sign-off in the PR.
 4. **Put logical names in step configuration**, never in code. Add `config/step-config.schema.json` with an example, and validate the configuration again in the plug-in's constructor.
-5. **Register in dev** with a Web API script in `scripts/`, then create the solution and bring the registration into source:
+5. **Register once**, in dev or a test environment, with a Web API script in `scripts/` built on `scripts/lib/dataverse.mjs`. Then create the solution and bring the registration into source. This is the only time the script runs against a shared environment. Afterwards every environment, including dev, gets the plug-in by importing the solution with `--activate-plugins`. A script registration plus an import in the same environment duplicates the steps ([ADR-0006](docs/adr/0006-plugins-folder.md) §6).
    ```sh
-   cd plugins/<Name> && mkdir solution && cd solution
-   pac solution init --publisher-name WilliamBuck --publisher-prefix wb   # then fix the publisher as for a control
-   # in dev: add the assembly and its steps to WB<Name>, then
+   node plugins/<Name>/scripts/register.mjs --env $DATAVERSE_URL   # creates WB<Name> and registers into it (see WBCodeFYName's)
+   cd plugins/<Name> && mkdir WB<Name> && cd WB<Name>
+   pac solution init --publisher-name WilliamBuck --publisher-prefix wb   # the folder name becomes the solution name
+   cd .. && mv WB<Name> solution && cd solution
+   # Fix the .cdsproj and Solution.xml (below), then:
    pac solution sync
    pac solution add-reference --path ../<Name>
    ```
-   From then on, `dotnet build plugins/<Name>/solution -c Release` builds both zips on macOS and in CI.
+   `pac`'s template needs these fixes, or the build fails or produces the wrong zips:
+   - **Publisher:** as for a control, replace the random `CustomizationOptionValuePrefix` with `94879` and use "William Buck" as the display name. Set `<Version>` to the `FileVersion`.
+   - **Target framework:** change `net462`/`v4.6.2` to `net48`/`v4.8`. Otherwise NU1201: a net462 project can't reference the net48 plug-in.
+   - **`SolutionPackageType` `Both`:** the template has this property group *commented out*. Uncomment it **before** the first `pac solution sync`, so sync extracts both the managed and unmanaged variants. Otherwise the build makes only one zip.
+   - **Pin** `Microsoft.PowerApps.MSBuild.Solution` (the template has `1.*`), and change the backslashes in the `ProjectReference` path that `add-reference` writes to `/`.
+
+   From then on, `dotnet build plugins/<Name>/solution -c Release` builds both zips on macOS and in CI. The assembly in them is the one built from the project, not the copy synced from dev.
 6. **Write `plugins/<Name>/README.md`:** what it does, its steps, the step configuration, project prerequisites (alternate keys, form settings, security roles), known limitations and a changelog. Add a row to the [plug-in catalogue](#plug-in-catalogue), then run `npm run check:controls`.
 
 ### Plug-in standards
@@ -264,6 +272,7 @@ The build and the publish are separate jobs: the build job has read-only access 
 - **Environment variables:** `WBGridFormatter` and `WBRagChoice` have none, so their imports need no settings file. If a control adds one, its values differ per client and environment, so they belong in the deploying project's pipeline or repo, not here ([ADR-0005](docs/adr/0005-prefix-agnostic-controls.md)). That project generates a settings file with `pac solution create-settings` and passes it to `pac solution import --settings-file`. Never edit configuration directly in UAT or prod.
 - **Using a control:** adding a control to a form field, view or subgrid is a customisation of that *table*, so it belongs to the project solution that owns the table, not to the control's solution. Document the exact steps in the control's README.
 - **Order:** import the control's solution before any project solution that references it. Plug-ins are the reverse: import the project solution that owns the table, then the plug-in's solution.
+- **Plug-in solutions need `--activate-plugins`** on every import (`pac solution import --path WB<Name>_managed.zip --activate-plugins`). Without it the import leaves the steps disabled, and the plug-in silently stops running ([WBCodeFYName W-3](plugins/WBCodeFYName/docs/decisions.md#w-3-a-fileversion-only-bump-updates-in-place)).
 - **Deployment is manual for now.** CI builds and tests; it doesn't deploy. Pipeline automation can be added later (see [CI](#ci)).
 
 ## CI

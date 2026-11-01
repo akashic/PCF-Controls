@@ -6,7 +6,11 @@
 // imports this file writes, so importing it refuses to run unless DATAVERSE_URL is in the allow-list:
 //   DATAVERSE_TEST_ENVS  comma-separated test environment URLs (default https://lowcode.crm.dynamics.com)
 // A script that only reads may skip this file, but must never write.
+// The Web API helpers themselves are in ../lib/dataverse.mjs, shared with plug-in registration.
+import { dataverseClient } from "../lib/dataverse.mjs";
 import { isTestEnvironment, testEnvironments } from "./guard.mjs";
+
+export { arg, label } from "../lib/dataverse.mjs";
 
 const ORG = process.env.DATAVERSE_URL?.replace(/\/+$/, "");
 const TOKEN = process.env.DATAVERSE_TOKEN;
@@ -25,59 +29,20 @@ if (!isTestEnvironment(ORG, allowed)) {
   process.exit(1);
 }
 
-export const API = `${ORG}/api/data/v9.2`;
-export const ORG_URL = ORG;
+const client = dataverseClient({ url: ORG, token: TOKEN });
 
-const headers = {
-  Authorization: `Bearer ${TOKEN}`,
-  Accept: "application/json",
-  "Content-Type": "application/json; charset=utf-8",
-  "OData-MaxVersion": "4.0",
-  "OData-Version": "4.0",
-};
+export const API = client.api;
+export const ORG_URL = ORG;
 
 /**
  * Calls the Web API and throws with the response body on failure.
  * Pass `solution` to add the MSCRM.SolutionUniqueName header, so new metadata components
  * (tables, columns, views, web resources) land in that unmanaged solution.
  */
-export async function call(method, path, body, { solution, extraHeaders = {} } = {}) {
-  const solutionHeader = solution ? { "MSCRM.SolutionUniqueName": solution } : {};
-  const res = await fetch(`${API}/${path}`, {
-    method,
-    headers: { ...headers, ...solutionHeader, ...extraHeaders },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${method} ${path} → ${res.status}: ${text.slice(0, 600)}`);
-  const entityId = res.headers.get("OData-EntityId");
-  return { json: text ? JSON.parse(text) : null, id: entityId?.match(/\(([^)]+)\)$/)?.[1] ?? null };
-}
+export const call = client.call;
 
 /** GET that returns null instead of throwing (e.g. "does this table exist?"). */
-export async function get(path) {
-  const res = await fetch(`${API}/${path}`, { headers });
-  return res.ok ? res.json() : null;
-}
+export const get = client.get;
 
 /** Publishes the given components so changes reach the app. */
-export async function publish({ entities = [], webresources = [] }) {
-  const xml =
-    "<importexportxml>" +
-    (entities.length ? `<entities>${entities.map((e) => `<entity>${e}</entity>`).join("")}</entities>` : "") +
-    (webresources.length ? `<webresources>${webresources.map((w) => `<webresource>{${w}}</webresource>`).join("")}</webresources>` : "") +
-    "</importexportxml>";
-  await call("POST", "PublishXml", { ParameterXml: xml });
-}
-
-/** A Dataverse Label in English (1033). */
-export const label = (text) => ({
-  "@odata.type": "Microsoft.Dynamics.CRM.Label",
-  LocalizedLabels: [{ "@odata.type": "Microsoft.Dynamics.CRM.LocalizedLabel", Label: text, LanguageCode: 1033 }],
-});
-
-/** Reads `--name value` style arguments. */
-export function arg(name, fallback = undefined) {
-  const i = process.argv.indexOf(`--${name}`);
-  return i > -1 && process.argv[i + 1] !== undefined ? process.argv[i + 1] : fallback;
-}
+export const publish = client.publish;
