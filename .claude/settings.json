@@ -1,5 +1,8 @@
 {
   "enabledPlugins": {
-    "question-panel@aiso-skills": true
+    "question-panel@aiso-skills": true,
+    "aiso-skills@aiso-skills": true,
+    "usage-band@aiso-skills": true,
+    "supabase@anthropic-plugin-directory": true
   }
 }
