@@ -12,6 +12,7 @@ import {
   csharpStringLiterals,
   findLogicalNameHardCoding,
   findPrefixHardCoding,
+  repoPath,
 } from "./check-controls.mjs";
 
 const lines = (code, fileName) => findPrefixHardCoding(code, fileName).map((hit) => hit.line);
@@ -276,5 +277,13 @@ describe("checkRepo", () => {
   test("accepts a tag for a plug-in folder and rejects an unknown name", () => {
     assert.ok(!checkRepo(root, "Later-v0.1.0").errors.some((e) => e.startsWith("Tag names unknown")));
     assert.ok(checkRepo(root, "Missing-v0.1.0").errors.includes('Tag names unknown control or plug-in "Missing"'));
+  });
+});
+
+describe("repoPath", () => {
+  test("is relative to the root and uses / on every platform (#67)", () => {
+    const root = join(tmpdir(), "repo");
+    assert.equal(repoPath(root, join(root, "packages", "shared", "src", "util.ts")), "packages/shared/src/util.ts");
+    assert.ok(!repoPath(root, join(root, "a", "b.ts")).includes("\\"));
   });
 });
