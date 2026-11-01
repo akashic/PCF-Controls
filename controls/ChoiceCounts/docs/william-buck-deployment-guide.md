@@ -91,13 +91,9 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
 4. Show the component on **Web**, **Phone** and **Tablet**.
 5. Save and publish.
 
-**If the designer won't bind Record ID to the primary key** (decisions.md C-1, not yet tested in the designer): the control needs the record ID to filter by the current matter. Without it, the counts include **every** matter's tasks. As a fallback, the binding can be set in the form XML (see `scripts/test-env/add-choicecounts-to-smsf-form.mjs`):
+**Binding Record ID:** tick "Bind to table column" and choose the entry named after the table, **"SMSF Matter (Text)"**. That's the primary key. This was confirmed in the designer (decisions.md C-1). Without it, the counts include **every** matter's tasks.
 
-```xml
-<recordId type="SingleLine.Text">wbsuper_smsfmatterid</recordId>
-```
-
-That's a solution-file edit, so agree it with whoever owns the project's solution before using it.
+**Known issue:** the designer's preview canvas shows **"Error loading control"** for Choice counts. The properties panel and the running form are unaffected (decisions.md C-2). Check the result on the form itself, not in the designer preview.
 
 ## 6. Add the drill-through script
 
@@ -136,7 +132,7 @@ Run these in dev and **UAT**. In prod, check only that the counts and the drill-
 2. Open a matter with no Red tasks. It shows **Red 0** in grey, while non-zero counts keep their colour (Zero counts = Neutral).
 3. Select **Red**. The Tasks tab opens and the subgrid switches to **Red tasks**, showing only that matter's red tasks. Then do the same with **Amber**.
 4. Add or change a task in the subgrid, then press the **refresh** button next to the counts. The counts update. They don't update by themselves (§9).
-5. Create a new matter. Before the first save, Task RAG should show **"Available after save"**, and after saving the counts should appear without a reload. **This hasn't been tested yet** (decisions.md C-1). Record what happens. If the counts need a reload after the first save, note it: it's a known gap, not a failure of the deployment.
+5. Create a new matter. Before the first save, Task RAG shows **"Available after save"**. After saving, the counts appear without a reload (confirmed in `LowCode`, decisions.md C-1).
 6. Sign in as a user with the least privileged role that uses SMSF Matter. The counts show (they need Read on tasks, §3) and match what that user can see.
 7. Check the form in **dark mode**, if William Buck uses it, and in the **mobile app**. The counts are readable, and the mobile app doesn't crash. Offline, the counts show "—", which is expected.
 
@@ -174,7 +170,7 @@ Open the browser's developer tools (F12), go to Console, and reload the form. Th
 
 ## Sign-off
 
-| Environment | Release | Done by / date | §7 checks | Notes (C-1 designer binding, mobile, dark mode) |
+| Environment | Release | Done by / date | §7 checks | Notes (mobile, least-privileged user, dark mode) |
 |---|---|---|---|---|
 | William Buck dev | | | | |
 | UAT | | | 1 to 7 | |

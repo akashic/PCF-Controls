@@ -93,7 +93,8 @@ export function readEntityMetadata(
   const primaryId = attempt(() => (isRecord(metadata) ? metadata.PrimaryIdAttribute : undefined));
   const attribute = attributeOf(metadata, column);
   const descriptor = attempt(() => (isRecord(attribute) ? attribute.attributeDescriptor : undefined));
-  const type = attempt(() => (isRecord(descriptor) ? (descriptor.AttributeType ?? descriptor.AttributeTypeName) : undefined));
+  // getEntityMetadata's descriptor has Type ("picklist", "boolean", "status", "state"; decisions.md C-4).
+  const type = attempt(() => (isRecord(descriptor) ? (descriptor.Type ?? descriptor.AttributeType ?? descriptor.AttributeTypeName) : undefined));
   const kind = type === undefined ? undefined : groupColumnKind(isRecord(type) ? type.Value : type);
   const optionSet = attempt(() => (isRecord(descriptor) ? descriptor.OptionSet : undefined));
   const options = kind === "yesNo" ? readBooleanOptions(optionSet) ?? readOptions(optionSet) : readOptions(optionSet);
