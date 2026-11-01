@@ -96,7 +96,7 @@ Version: `<FileVersion>` in the csproj (`x.y.z.0`), which must match `solution/s
 
 ## Changelog
 
-### 0.1.0 (unreleased)
+### 0.1.0 (2026-11-01)
 
 - First version: the plug-in, its step-configuration schema and its tests.
 - The registration script, the `WBWBCodeFYName` solution and the VERIFY outcomes (#59).
