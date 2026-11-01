@@ -88,6 +88,7 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
    | Colours | leave **blank** to use the RAG choice's own colours. To use other colours, list them as `<value>:#hex`, for example `512340000:#C50F1F, 512340001:#F7630C` | static |
    | When a count is selected | **Raise OnOptionSelect** | static |
 
+   "When a count is selected" is set **per instance**. "Nothing" (the default) leaves the counts display-only, and the default suits a summary nobody needs to click through. "Raise OnOptionSelect" makes each count a button, but a click only does something once the form script in §6 has an entry for that instance.
 4. Show the component on **Web**, **Phone** and **Tablet**.
 5. Save and publish.
 
@@ -97,19 +98,24 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
 
 ## 6. Add the drill-through script
 
-1. Take [`examples/drill-through.js`](../examples/drill-through.js) and edit its `CONFIG` to match William Buck's names:
+1. Take [`examples/drill-through.js`](../examples/drill-through.js) and edit its `CONFIG` to match William Buck's names. It has one entry per clickable instance:
    ```js
    var CONFIG = {
-     control: "<host column logical name>", // e.g. the Task RAG column
-     tab: "tab_tasks",                       // the tab's Name from §3
-     subgrid: "tasks_subgrid",               // the subgrid's Name from §3
-     table: "<task table logical name>",
-     views: {
-       <Red value>: "Red tasks",
-       <Amber value>: "Amber tasks",
-     },
+     controls: [
+       {
+         control: "<host column logical name>", // e.g. the Task RAG column
+         tab: "tab_tasks",                       // the tab's Name from §3
+         subgrid: "tasks_subgrid",               // the subgrid's Name from §3
+         table: "<task table logical name>",
+         views: {
+           <Red value>: "Red tasks",
+           <Amber value>: "Amber tasks",
+         },
+       },
+     ],
    };
    ```
+   An option with no view in `views` does nothing when selected, so you can make some counts drill through and not others.
 2. Add it to the **project's** solution as a web resource of type JavaScript, named with the project's prefix, `<prefix>_ChoiceCounts.<table logical name>.js`, for example `wb_ChoiceCounts.wb_smsfmatter.js`. Don't put `/` in the name: it follows GridFormatter's `<prefix>_GridFormatter.<table>.json` ([ADR-0005](../../../docs/adr/0005-prefix-agnostic-controls.md)).
 3. Register it on the form:
    1. Form designer → **Form libraries → + Add library**, then choose the web resource.
@@ -123,6 +129,30 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
 Notes:
 - Selecting a count raises the control's **OnOptionSelect** event, and the script opens the tab and switches the subgrid. The control itself never navigates.
 - Custom control events are documented by Microsoft as **preview**. They work in `LowCode` (decisions.md C-5). Recheck them after major platform updates.
+
+### Making another instance clickable
+
+A form can have several ChoiceCounts instances, for example Task RAG and a second one counting tasks by Status Reason. One script handles all of them, and each instance's drill-through is set up separately:
+
+1. **Views.** Create a public view on the counted table for each option that should drill through, as in §3 step 2. For example, for Status Reason: "Active tasks" and "Completed tasks". Each view's filter must match its option and the instance's Filter (FetchXML), or the count and the rows shown will disagree.
+2. **Subgrid.** Tick the new views in the subgrid's view selector (§3 step 3). Instances can share a subgrid, or use their own tab and subgrid.
+3. **Control.** Set that instance's "When a count is selected" to **Raise OnOptionSelect** (§5).
+4. **Script.** Add an entry to `CONFIG.controls`:
+   ```js
+   {
+     control: "<second host column logical name>",
+     tab: "tab_tasks",
+     subgrid: "tasks_subgrid",
+     table: "<task table logical name>",
+     views: {
+       <Active value>: "Active tasks",
+       <Completed value>: "Completed tasks",
+     },
+   },
+   ```
+   Then update the web resource, publish it, and hard-reload the form. Don't add a second On Load handler: the one from §6 step 3 handles every entry.
+
+   If the counts still aren't buttons after a hard reload, the browser is still using the cached form. Open the record again from its URL or from the list. In `LowCode`, a hard reload wasn't always enough.
 
 ## 7. Check it
 
@@ -149,8 +179,9 @@ Open the browser's developer tools (F12), go to Console, and reload the form. Th
 | Counts include other matters' tasks | Relationship column or Record ID isn't set | §5 step 3. Record ID must be bound, not static |
 | Green appears, or the order is wrong | Options to show is blank or has wrong values | Use the Red and Amber values from §2, in display order |
 | A count has the wrong colour, or none | Colours has a typo (the console says which entry was skipped), or the RAG choice has no colour for that option | Fix the `value:#hex` entry, or set the option colour on the global choice |
-| Selecting a count does nothing | When a count is selected isn't "Raise OnOptionSelect"; the script isn't registered, or `CONFIG.control` doesn't match the host column; or the form is cached | Check §5 and §6, then **hard-reload** the form (Ctrl+Shift+R) |
-| The tab opens but the view doesn't change | The view selector is off, or doesn't offer that view, or the view name in `CONFIG.views` differs | §3 step 3 and §6 step 1. The console says which |
+| Counts aren't buttons | That instance's "When a count is selected" is "Nothing", which is display-only by design | §5, or "Making another instance clickable" in §6 |
+| Selecting a count does nothing | The script isn't registered; no `CONFIG.controls` entry has that instance's host column as `control`; that option has no view in the entry's `views`; or the form is cached | Check §6, then **hard-reload** the form (Ctrl+Shift+R) |
+| The tab opens but the view doesn't change | The view selector is off, or doesn't offer that view, or the view name in the entry's `views` differs | §3 step 3 and §6 step 1. The console says which |
 
 ## 9. Limits
 

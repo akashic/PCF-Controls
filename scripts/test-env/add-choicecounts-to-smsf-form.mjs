@@ -3,7 +3,8 @@
 //     (named like GridFormatter's rules, <prefix>_ChoiceCounts.<table>.js, with no "/"; ADR-0005)
 //   - registers its onLoad on the form
 //   - puts wb_Controls.ChoiceCounts (web, tablet, phone) on each field in INSTANCES: Task RAG counts the matter's
-//     active tasks by RAG Status (Red and Amber, raising OnOptionSelect); Stage counts them by Status Reason
+//     active tasks by RAG Status (Red and Amber); Stage counts them by Status Reason. Both raise OnOptionSelect,
+//     and the uploaded script gets a CONFIG entry for Stage on top of the example's Task RAG entry
 // Run create-smsf-tables.mjs and create-smsf-tasks.mjs first, and import the WBChoiceCounts solution.
 // Idempotent: re-running updates the web resource and the control's parameters.
 // Usage: node scripts/test-env/add-choicecounts-to-smsf-form.mjs
@@ -26,9 +27,13 @@ const TEXT_CLASS = "{4273EDBD-AC1D-40d3-9FB2-095C621B552D}";
 const guid = () => `{${randomUUID().toUpperCase()}}`;
 const xmlEscape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+// Status Reason values of a custom table (create-smsf-tasks.mjs makes a "Status: <label>" view for each).
+const STATUS = { active: 1, inactive: 2 };
+
 // The control's instances. Task RAG: Red and Amber active tasks, zero counts in grey, drill-through on.
 // Stage: a second instance (several instances on one form) grouping the same tasks by Status Reason, every option,
-// coloured or not, display-only. It checks Status Reason grouping and that instances don't interfere.
+// coloured or not, with its own drill-through. It checks Status Reason grouping, that instances don't interfere,
+// and that one script handles drill-through for several instances.
 const INSTANCES = [
   {
     host: "wbsuper_taskrag",
@@ -51,13 +56,26 @@ const INSTANCES = [
       groupColumn: "statuscode",
       relationshipColumn: "wbsuper_smsfmatter",
       zeroCounts: "1",
-      badgeAction: "0",
+      badgeAction: "1",
     },
   },
 ];
 
+// The drill-through entries the example script doesn't have: its CONFIG has only Task RAG, as a project would
+// start. Appended to the uploaded copy, so the example stays a clean template.
+const EXTRA_DRILL_THROUGH = [
+  {
+    control: "wbsuper_stage",
+    tab: "tab_tasks",
+    subgrid: "tasks_subgrid",
+    table: "wbsuper_smsftask",
+    views: { [STATUS.active]: "Status: Active", [STATUS.inactive]: "Status: Inactive" },
+  },
+];
+
 async function ensureWebResource() {
-  const script = readFileSync(fileURLToPath(new URL("../../controls/ChoiceCounts/examples/drill-through.js", import.meta.url)), "utf8");
+  const example = readFileSync(fileURLToPath(new URL("../../controls/ChoiceCounts/examples/drill-through.js", import.meta.url)), "utf8");
+  const script = `${example}\n// Added by scripts/test-env/add-choicecounts-to-smsf-form.mjs: the test form's other clickable instances.\n${EXTRA_DRILL_THROUGH.map((entry) => `WBChoiceCounts.DrillThrough.config.controls.push(${JSON.stringify(entry)});`).join("\n")}\n`;
   const content = Buffer.from(script, "utf8").toString("base64");
   const existing = (await get(`webresourceset?$select=webresourceid&$filter=name eq '${LIBRARY}'`))?.value?.[0];
   let id = existing?.webresourceid;
