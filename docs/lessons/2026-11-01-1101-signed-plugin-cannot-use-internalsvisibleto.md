@@ -10,7 +10,7 @@ rule: >
   build rejects a friend declaration that names an unsigned test assembly without a public key.
 lesson_type: pitfall
 phase: implementation
-domain: [testing]
+domain: [plugins, testing]
 tech: []
 scope: this-stack
 cost_if_ignored: minor
@@ -25,7 +25,7 @@ provenance:
   evidence: "PR #63 (commit f2fd1de): plugins/WBCodeFYName/WBCodeFYName.csproj has SignAssembly true and no InternalsVisibleTo; NameRules and StepConfig are public"
   author:
 related: []
-proposed_tags: [plugins, csharp, mstest]
+proposed_tags: [csharp, mstest]
 ---
 
 When a Dataverse plug-in's tests need to call its internal helper classes, `InternalsVisibleTo` fails the build, because plug-in assemblies must be strong-name signed and the MSTest project isn't.

@@ -10,7 +10,7 @@ rule: >
   messagepropertyname fails with 0x80040216 "An unexpected error occurred".
 lesson_type: pitfall
 phase: implementation
-domain: [solutions-alm]
+domain: [plugins, solutions-alm]
 tech: [dataverse-web-api]
 scope: this-stack
 cost_if_ignored: minor
@@ -25,7 +25,7 @@ provenance:
   evidence: "PR #66 (commit 24d8783); plugins/WBCodeFYName/docs/decisions.md W-1 findings; register.mjs ensurePreImage"
   author:
 related: []
-proposed_tags: [plugins]
+proposed_tags: []
 ---
 
 When an existing step image is updated through the Web API with the full set of fields it was created with, the PATCH fails with `0x80040216` "An unexpected error occurred".

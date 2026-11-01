@@ -23,6 +23,7 @@ phase:
 domain:
   - pcf-controls        # building PCF controls: manifest, lifecycle, bundling
   - grid-customizer     # Power Apps grid customizers (GridFormatter)
+  - plugins             # Dataverse plug-ins: assemblies, registration, steps, images, trace log
   - model-driven-forms  # forms, form XML, field controls
   - dataverse-metadata  # tables, columns, choices, web resources, solutions' metadata
   - solutions-alm       # solution packaging, import, versions, dev -> UAT -> prod

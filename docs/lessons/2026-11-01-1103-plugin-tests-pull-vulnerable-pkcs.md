@@ -11,7 +11,7 @@ rule: >
   which has a high-severity advisory (NU1903).
 lesson_type: pitfall
 phase: implementation
-domain: [testing]
+domain: [plugins, testing]
 tech: []
 scope: this-stack
 cost_if_ignored: minor
@@ -26,7 +26,7 @@ provenance:
   evidence: "PR #63 (commit f2fd1de): NU1903 on GHSA-555c-2p6r-68mm, pin in plugins/WBCodeFYName/tests/WBCodeFYName.Tests.csproj, sign-off recorded as a PR comment"
   author:
 related: []
-proposed_tags: [plugins, nuget, csharp]
+proposed_tags: [nuget, csharp]
 ---
 
 When a net10.0 MSTest project references `Microsoft.CrmSdk.CoreAssemblies` to test a net48 plug-in, restore warns `NU1903: Package 'System.Security.Cryptography.Pkcs' 6.0.1 has a known high severity vulnerability` (GHSA-555c-2p6r-68mm).

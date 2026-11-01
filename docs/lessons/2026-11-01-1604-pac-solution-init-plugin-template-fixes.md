@@ -11,7 +11,7 @@ rule: >
   fails (NU1201) or produces only one zip.
 lesson_type: pitfall
 phase: implementation
-domain: [solutions-alm, ci]
+domain: [plugins, solutions-alm, ci]
 tech: [pac-cli]
 scope: this-stack
 cost_if_ignored: rework
@@ -26,7 +26,7 @@ provenance:
   evidence: "PR #66 (commit 24d8783), plugins/WBCodeFYName/solution/WBWBCodeFYName.cdsproj; README 'Adding a plug-in' step 5"
   author:
 related: []
-proposed_tags: [plugins]
+proposed_tags: []
 ---
 
 When `pac solution init` creates the solution project for a net48 plug-in, its template has four defects that only show up later, at build time or in the release output.

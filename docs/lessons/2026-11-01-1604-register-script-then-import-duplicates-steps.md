@@ -11,7 +11,7 @@ rule: >
   with new IDs and the import then fails on the assembly or adds a second pair of steps.
 lesson_type: pitfall
 phase: deployment
-domain: [solutions-alm]
+domain: [plugins, solutions-alm]
 tech: [dataverse, dataverse-web-api, pac-cli]
 scope: this-project
 cost_if_ignored: rework
@@ -26,7 +26,7 @@ provenance:
   evidence: "Code review of PR #66; fix in commit 5de661f (README, CLAUDE.md, ADR-0006 amendment, register.mjs header)"
   author:
 related: [2026-11-01-1604-plugin-import-needs-activate-plugins]
-proposed_tags: [plugins]
+proposed_tags: []
 ---
 
 When a plug-in's registration XML is already in `solution/src` and someone also runs the registration script in an environment that will import that solution, they get two sets of components with different IDs.

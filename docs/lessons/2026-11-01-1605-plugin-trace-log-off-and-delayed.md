@@ -10,7 +10,7 @@ rule: >
   setting is Off by default and entries appear late, so an immediate empty result proves nothing.
 lesson_type: pitfall
 phase: testing
-domain: [testing]
+domain: [plugins, testing]
 tech: [dataverse, dataverse-web-api]
 scope: this-stack
 cost_if_ignored: minor
@@ -25,7 +25,7 @@ provenance:
   evidence: "PR #69 (commit c6f8355); plugins/WBCodeFYName/docs/decisions.md 'Dev test matrix' note 3"
   author:
 related: []
-proposed_tags: [plugins]
+proposed_tags: []
 ---
 
 When a plug-in's broken-configuration case was tested in `LowCode`, `plugintracelogs` was empty twice: once because tracing was off, and once because the entries hadn't arrived yet.
