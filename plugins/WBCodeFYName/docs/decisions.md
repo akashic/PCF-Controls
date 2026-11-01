@@ -56,3 +56,36 @@ The bump was only for the test. The repo and LowCode's solution are back at 0.1.
 There are none on the reference tables (SuperFundClient, Financial Year), because the plug-in only reads them at run time.
 
 So the project's solution with the table must be imported first, and managed downstream, as ADR-0006 says. **Not tested:** importing into an environment that lacks the table. Only one test environment exists, so that needs dev or UAT. Expect the import to fail on the missing dependencies above.
+
+## Dev test matrix (#60)
+
+The brief's §5.2 matrix, run in `LowCode` on 1 Nov 2026. `LowCode` is the dev environment: all development happens there, and William Buck's environments are deployed to from the [runbook](runbook.md). Before running it:
+
+- The alternate key `wbsuper_wbcodefykey` on WBCode + FY was added by `scripts/test-env/create-smsf-tables.mjs`, and it's Active.
+- Plug-in trace logging was set to **Exception** (`organization.plugintracelogsetting` = 1; it was Off).
+
+| Channel / case | Expected | Result |
+|---|---|---|
+| Model-driven form: create, then change FY, then change WBCode | Generated and regenerated | **Pass.** Create gave `00100370-26` (W-1). Changing FY to FY25 and saving gave `00100370-25`, then changing WBCode to `00100270` gave `00100270-25` |
+| Power Automate add and update a row | Same as the form | **Pass.** See note 4 |
+| Data import (both lookups set; one missing) | Generated; the row missing a lookup is rejected | **Pass.** See note 1 |
+| Web API PATCH of the name only | Recomputed and the write overwritten | **Pass** (W-1) |
+| Duplicate WBCode and FY | Rejected by the alternate key | **Pass.** See note 2 |
+| User without Read on the FY table | The save fails with a clear message | **Deferred to William Buck UAT.** `LowCode` has a single user (a System Administrator). The developer chose to test it in UAT, and it's [runbook](runbook.md) §6 check 6 |
+| Step configuration removed or broken | Blocked with the admin message; details in the trace log | **Pass.** See note 3 |
+| Reimport after a `FileVersion` bump | Steps stay registered, new code runs | **Pass** (W-3), when imported with `--activate-plugins` |
+
+**Notes:**
+
+1. **Data import.** A CSV went through Dataverse's import engine (`import` + `importfile` with the system map, then `ParseImport`, `TransformImport`, `ImportRecordsImport`), which is the engine behind the Import Data wizard. Of the 2 rows, 1 succeeded and 1 failed:
+   - Line 2, `00100170` with FY27, was created as `00100170-27`.
+   - Line 3, `00224570` with no FY, was rejected. Its import log says `FY must be set before the record can be saved.` (error number -2147220891).
+
+   The app's "Import from Excel" panel only accepts workbooks exported from Dataverse, with their hidden mapping sheets, so a hand-made file can't be used there.
+2. **Duplicate.** Creating `00224570` + FY27, which already exists, failed with `Entity Key WBCode and FY violated. A record with the same value for FY, WBCode already exists.` The key runs after the plug-in names the row, so the user sees the key's message, not the plug-in's.
+3. **Broken configuration.** With the Create step's configuration set to `{"targetTable":"wbsuper_smsfmatter"}`, then removed, both creates failed with `WBCodeFY isn't configured correctly. Contact your administrator.` The trace log has the reason: `the step configuration is invalid: Missing property "nameColumn".` and `The step's unsecure configuration is empty.`. **Trace log entries appear one to two minutes after the failure**, so wait before deciding there aren't any. `register.mjs` then restored the configuration.
+4. **Power Automate.** The instant flow "WBCodeFYName #60 test" in `LowCode` uses the Dataverse connector. Its "Add a new row" sets only the two lookups, to `00100370` and FY27, and its "Update a row" changes the FY to FY26. Run `08584081075335976733533152003CU18` succeeded:
+   - The add returned `00100370-27`.
+   - The update returned `00100370-26` (row `57c45024-9ad5-f111-84e8-7ced8d6ed1fc`).
+
+   In the flow definition, lookups are set as `item/<navigation property>@odata.bind`, for example `item/wbsuper_WBCode@odata.bind` = `/wbsuper_superfundclients(<id>)`. The plain column name is rejected (`WorkflowOperationParametersExtraParameter`). The flow was left in `LowCode` for re-runs. It isn't in a solution.

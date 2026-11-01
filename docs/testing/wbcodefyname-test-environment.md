@@ -65,3 +65,37 @@ On 1 Nov 2026 it was run from the developer's signed-in browser instead, because
 
 - **Table creation is slow:** about a minute for each table and its columns.
 - **One table at a time:** Dataverse refuses a second table creation while one is in progress (`0x8004ed47`, "A table creation operation is already in progress"). Don't start a second run until the first has finished.
+
+## 4. Power Automate test flow
+
+The Power Automate case in #60's [test matrix](../../plugins/WBCodeFYName/docs/decisions.md#dev-test-matrix-60) uses a small flow that's left in `LowCode` so it can be run again.
+
+| Item | Value |
+|---|---|
+| Flow | **WBCodeFYName #60 test**, an instant (manual button) cloud flow, flow ID `6135e4e9-e5b5-73d2-04e3-a1baa4cab189`. It's on, and it isn't in a solution |
+| Owner | Giles@ggregg.onmicrosoft.com |
+| Connection | Microsoft Dataverse, `shared-commondataser-3cd220ae` (created 1 Nov 2026 for this flow) |
+| Definition | [`flows/wbcodefyname-60-test.definition.json`](flows/wbcodefyname-60-test.definition.json) |
+| Created | 1 Nov 2026, with the Power Automate plug-in's FlowAgent tools |
+
+**What it does:**
+
+1. **Add_SMSF_Matter** (Dataverse "Add a new row" on `wbsuper_smsfmatters`) sets only the lookups: WBCode `00100370` and FY27. It doesn't set the name.
+2. **Update_FY_to_FY26** (Dataverse "Update a row" on the new row) changes FY to FY26.
+3. **Names** (Compose) records the name after each step, plus the row ID.
+
+**Expected result:** `afterAdd` is `00100370-27` and `afterUpdate` is `00100370-26`. On 1 Nov 2026, run `08584081075335976733533152003CU18` produced exactly that.
+
+**Running it again:** the alternate key allows each WBCode + FY pair once, so **delete the row from the previous run first**. That's the `00100370-26` row: the add would succeed, but the update to FY26 would hit the key. Then either:
+
+- open the flow in the Power Automate portal (`LowCode` → My flows → WBCodeFYName #60 test) and choose **Run**; or
+- with the FlowAgent tools, call `run_flow` with the flow ID and `wait: true`, then `get_run_action_content` for `Names` outputs.
+
+**Rebuilding it:** create a cloud flow from the definition file, with a Dataverse connection reference named `shared_commondataserviceforapps`. The record IDs in it are specific to `LowCode`. In a rebuilt environment, look them up by name: SuperFundClient `00100370`, Financial Year `FY27` and `FY26`.
+
+**Gotchas:**
+
+- **Lookups in a flow definition are `item/<navigation property>@odata.bind`**, for example `item/wbsuper_WBCode@odata.bind` = `/wbsuper_superfundclients(<id>)`. Two things here look right but fail:
+  - FlowAgent's `validate_flow` rejects the `@odata.bind` form, but Dataverse accepts it.
+  - The plain logical name, `item/wbsuper_wbcode`, passes `validate_flow` but fails on save with `WorkflowOperationParametersExtraParameter`.
+- **The FlowAgent tools sign in by running `az`.** If Claude Code was started from a terminal opened before the Azure CLI was installed, they fail with `'az' is not recognized`, even though `az` works in a new terminal. Fully close the terminal app and start Claude Code again (the `doctor` tool shows this as a failed **token** check).

@@ -47,6 +47,26 @@ test("call adds the solution header only when asked, and returns the new row's i
   assert.equal(requests[1].headers["MSCRM.SolutionUniqueName"], undefined);
 });
 
+test("reads are retried after a network error, up to three attempts; writes aren't", async () => {
+  let calls = 0;
+  const flaky = (failures) => async () => {
+    calls++;
+    if (calls <= failures) throw new TypeError("fetch failed");
+    return { ok: true, status: 200, text: async () => '{"value":[{"n":1}]}', json: async () => ({ value: [{ n: 1 }] }), headers: { get: () => null } };
+  };
+  calls = 0;
+  const twoFailures = dataverseClient({ url: "https://org", token: "t", fetchImpl: flaky(2), retryDelayMs: 0 });
+  assert.deepEqual(await twoFailures.one("things"), { n: 1 });
+  assert.equal(calls, 3);
+  calls = 0;
+  const threeFailures = dataverseClient({ url: "https://org", token: "t", fetchImpl: flaky(3), retryDelayMs: 0 });
+  await assert.rejects(threeFailures.get("things"), /fetch failed/);
+  calls = 0;
+  const write = dataverseClient({ url: "https://org", token: "t", fetchImpl: flaky(1), retryDelayMs: 0 });
+  await assert.rejects(write.call("POST", "things", {}), /fetch failed/);
+  assert.equal(calls, 1);
+});
+
 test("call throws with the response body; get returns null; one returns the first row or null", async () => {
   const failing = dataverseClient({ url: "https://org", token: "t", fetchImpl: fakeFetch(400, { error: "bad" }).impl });
   await assert.rejects(failing.call("GET", "things"), /GET things → 400: \{"error":"bad"\}/);

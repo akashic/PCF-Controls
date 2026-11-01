@@ -218,11 +218,25 @@ async function ensureForm() {
   console.log("added WBCode and FY to the SMSF Matter form; name is read-only");
 }
 
+// The alternate key on WBCode + FY that the plug-in README requires of the project, so each pair appears once.
+// Dataverse builds the key's index in the background: it's Pending, then Active (or Failed if duplicates exist).
+async function ensureAlternateKey() {
+  const keys = await get("EntityDefinitions(LogicalName='wbsuper_smsfmatter')/Keys?$select=LogicalName,EntityKeyIndexStatus");
+  if (!keys) throw new Error("couldn't read SMSF Matter's keys");
+  const existing = keys.value.find((k) => k.LogicalName === "wbsuper_wbcodefykey");
+  if (existing) return console.log(`alternate key wbsuper_wbcodefykey exists (${existing.EntityKeyIndexStatus})`);
+  await call("POST", "EntityDefinitions(LogicalName='wbsuper_smsfmatter')/Keys", {
+    SchemaName: "wbsuper_WBCodeFYKey", DisplayName: label("WBCode and FY"), KeyAttributes: ["wbsuper_wbcode", "wbsuper_fy"],
+  }, { solution: SOLUTION });
+  console.log("created alternate key wbsuper_wbcodefykey (WBCode + FY); its index builds in the background");
+}
+
 const publisherId = await ensurePublisher();
 await ensureSolution(publisherId);
 for (const t of tables) await ensureTable(t);
 for (const t of tables) await ensureColumns(t);
 await ensureForm();
+await ensureAlternateKey();
 await publish({ entities: tables.map((t) => t.logical) });
 await ensureRows("wbsuper_financialyears", "wbsuper_name", financialYears);
 await ensureRows("wbsuper_superfundclients", "wbsuper_wbcode", clients);

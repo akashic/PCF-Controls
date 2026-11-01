@@ -35,7 +35,7 @@ export const odataString = (text) => text.replace(/'/g, "''");
  * - `one` returns the first row of a collection query, or null when there are none; it throws on failure.
  * - `publish` publishes tables and web resources.
  */
-export function dataverseClient({ url, token, fetchImpl = fetch }) {
+export function dataverseClient({ url, token, fetchImpl = fetch, retryDelayMs = 2000 }) {
   const api = `${normalizeUrl(url)}/api/data/v9.2`;
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -45,9 +45,22 @@ export function dataverseClient({ url, token, fetchImpl = fetch }) {
     "OData-Version": "4.0",
   };
 
+  // Connections to Dataverse sometimes time out (ETIMEDOUT) before a request is sent. Reads are retried, up to three
+  // attempts; writes aren't, because a write that did reach the server would be repeated (a second row, say).
+  async function send(method, url, init) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await fetchImpl(url, init);
+      } catch (error) {
+        if (method !== "GET" || attempt === 3) throw error;
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
+      }
+    }
+  }
+
   async function call(method, path, body, { solution, extraHeaders = {} } = {}) {
     const solutionHeader = solution ? { "MSCRM.SolutionUniqueName": solution } : {};
-    const res = await fetchImpl(`${api}/${path}`, {
+    const res = await send(method, `${api}/${path}`, {
       method,
       headers: { ...headers, ...solutionHeader, ...extraHeaders },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -59,7 +72,7 @@ export function dataverseClient({ url, token, fetchImpl = fetch }) {
   }
 
   async function get(path) {
-    const res = await fetchImpl(`${api}/${path}`, { headers });
+    const res = await send("GET", `${api}/${path}`, { headers });
     return res.ok ? res.json() : null;
   }
 

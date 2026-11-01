@@ -5,7 +5,8 @@ A synchronous PreOperation Dataverse plug-in that sets a table's **WBCodeFY** pr
 | | |
 |---|---|
 | Solution | `WBWBCodeFYName` (WilliamBuck publisher) in [`solution/`](solution/) |
-| VERIFY outcomes | [docs/decisions.md](docs/decisions.md) |
+| VERIFY outcomes and dev test matrix | [docs/decisions.md](docs/decisions.md) |
+| Deploying to William Buck environments | [docs/runbook.md](docs/runbook.md) |
 | Assembly | `WBCodeFYName`, classic, signed, .NET Framework 4.8, `AssemblyVersion` 1.0.0.0 |
 | Plug-in type | `WBCodeFYName.SetPrimaryName` |
 | Brief | [docs/briefs/2026-10-31-wbcodefy-name-plugin.md](../../docs/briefs/2026-10-31-wbcodefy-name-plugin.md) |
