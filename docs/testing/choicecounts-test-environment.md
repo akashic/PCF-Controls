@@ -27,7 +27,7 @@ node scripts/test-env/capture-choicecounts-fixtures.mjs  # optional: adds Urgent
 | Control settings | Table `wbsuper_smsftask`, group by `wbsuper_ragstatus`, relationship `wbsuper_smsfmatter`, filter `<condition attribute="statecode" operator="eq" value="0" />`, options `512340000,512340001`, Zero counts *Neutral*, no colour overrides, "Raise OnOptionSelect" |
 | Second instance | On `wbsuper_stage` ("Task status"): the same tasks grouped by **Status Reason**, every option, Zero counts *Option colour*, display-only. It checks Status Reason grouping and several instances on one form |
 | Yes/No column | `wbsuper_smsftask.wbsuper_urgent` "Urgent" (Yes coloured #D13438), for the Yes/No fixture |
-| Form script | Web resource `wbsuper_/choicecounts/drillthrough.js` (from `controls/ChoiceCounts/examples/drill-through.js`), on load: `WBChoiceCounts.DrillThrough.onLoad` |
+| Form script | Web resource `wbsuper_ChoiceCounts.wbsuper_smsfmatter.js` (from `controls/ChoiceCounts/examples/drill-through.js`), on load: `WBChoiceCounts.DrillThrough.onLoad` |
 | Solution | All in the unmanaged `WBSuperTest`, apart from the control (`WBChoiceCounts`) |
 
 ## Sample data and expected counts

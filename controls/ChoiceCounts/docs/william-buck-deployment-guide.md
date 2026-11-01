@@ -110,7 +110,7 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
      },
    };
    ```
-2. Add it to the **project's** solution as a web resource of type JavaScript, named with the project's prefix, for example `<prefix>_/choicecounts/smsfmatter.js`.
+2. Add it to the **project's** solution as a web resource of type JavaScript, named with the project's prefix, `<prefix>_ChoiceCounts.<table logical name>.js`, for example `wb_ChoiceCounts.wb_smsfmatter.js`. Don't put `/` in the name: it follows GridFormatter's `<prefix>_GridFormatter.<table>.json` ([ADR-0005](../../../docs/adr/0005-prefix-agnostic-controls.md)).
 3. Register it on the form:
    1. Form designer → **Form libraries → + Add library**, then choose the web resource.
    2. Then **Events → On Load → + Event handler**:

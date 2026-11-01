@@ -1,5 +1,6 @@
 // Puts ChoiceCounts on SMSF Matter's "Information" form in the test environment, with drill-through:
-//   - uploads controls/ChoiceCounts/examples/drill-through.js as web resource wbsuper_/choicecounts/drillthrough.js
+//   - uploads controls/ChoiceCounts/examples/drill-through.js as web resource wbsuper_ChoiceCounts.wbsuper_smsfmatter.js
+//     (named like GridFormatter's rules, <prefix>_ChoiceCounts.<table>.js, with no "/"; ADR-0005)
 //   - registers its onLoad on the form
 //   - puts wb_Controls.ChoiceCounts (web, tablet, phone) on each field in INSTANCES: Task RAG counts the matter's
 //     active tasks by RAG Status (Red and Amber, raising OnOptionSelect); Stage counts them by Status Reason
@@ -18,7 +19,7 @@ const RAG = { red: 512340000, amber: 512340001 };
 
 const SOLUTION = "WBSuperTest";
 const MATTER = "wbsuper_smsfmatter";
-const LIBRARY = "wbsuper_/choicecounts/drillthrough.js";
+const LIBRARY = `wbsuper_ChoiceCounts.${MATTER}.js`;
 const HANDLER = "WBChoiceCounts.DrillThrough.onLoad";
 const CONTROL = "wb_Controls.ChoiceCounts";
 const TEXT_CLASS = "{4273EDBD-AC1D-40d3-9FB2-095C621B552D}";
