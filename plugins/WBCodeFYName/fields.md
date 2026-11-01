@@ -6,7 +6,7 @@ The maker portal's **Name** column shows the *schema* name, for example `wbsuper
 
 ## Step configuration for dev
 
-The example step configuration, [`config/examples/step-config.example.json`](config/examples/step-config.example.json), uses these names. The photos don't show which tables the two lookups point to. The value columns above assume `wbsuper_wbcode` targets SuperFundClient and `wbsuper_fy` targets Financial Year. Confirm both in the lookups' relationship settings before registering the step (#59).
+The example step configuration, [`config/examples/step-config.example.json`](config/examples/step-config.example.json), uses these names. On SMSF Matter, the `wbsuper_wbcode` lookup targets SuperFundClient and the `wbsuper_fy` lookup targets Financial Year. The developer confirmed both on 1 November 2026.
 
 ## SMSF Matter (`wbsuper_smsfmatter`)
 
