@@ -37,6 +37,7 @@ What it shows:
 - **50,000 rows:** Dataverse's aggregate limit. Above it the control shows "Too many rows to count".
 - **No mobile offline counts.**
 - **Custom events are preview** in Microsoft's documentation.
+- **The form designer's preview** shows "Error loading control"; the running form works (decisions.md C-2).
 
 ## Development
 
@@ -49,6 +50,16 @@ dotnet build controls/ChoiceCounts/solution -c Release
 The pure logic is in `ChoiceCounts/logic/` (config, filter parser, query builder, results, metadata, display state). `ChoiceCountsControl.tsx` wires it to Dataverse through `data.ts`, and `ChoiceCountsView.tsx` renders it. The `LowCode` test setup is in [docs/testing/choicecounts-test-environment.md](../../docs/testing/choicecounts-test-environment.md).
 
 ## Changelog
+
+### 0.1.4 (unreleased)
+
+- Reads every input defensively, so a host that leaves out unconfigured inputs can't make it throw.
+- Known issue: the form designer's preview shows "Error loading control"; the running form is fine (decisions.md C-2).
+
+### 0.1.3 (unreleased)
+
+- Reads the column type from `getEntityMetadata`'s `attributeDescriptor.Type` ("picklist", "boolean", …), so the Web API metadata fallback is no longer needed (decisions.md C-4).
+- Real response fixtures for Status Reason, Status and Yes/No (C-3).
 
 ### 0.1.2 (unreleased)
 

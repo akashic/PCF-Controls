@@ -1,0 +1,22 @@
+{
+  "_source": "LowCode Web API, 2026-11-01, matter 00224570-27 (decisions.md C-3)",
+  "fetchXml": "<fetch aggregate=\"true\"><entity name=\"wbsuper_smsftask\"><attribute name=\"wbsuper_smsftaskid\" alias=\"choicecounts_count\" aggregate=\"countcolumn\" distinct=\"true\" /><attribute name=\"statecode\" alias=\"choicecounts_group\" groupby=\"true\" /><filter type=\"and\"><condition attribute=\"wbsuper_smsfmatter\" operator=\"eq\" value=\"05e03215-8fd5-f111-84e8-7ced8d6ed1fc\" /></filter><order alias=\"choicecounts_group\" /></entity></fetch>",
+  "value": [
+    {
+      "choicecounts_count@OData.Community.Display.V1.AttributeName": "wbsuper_smsftaskid",
+      "choicecounts_count@OData.Community.Display.V1.FormattedValue": "9",
+      "choicecounts_count": 9,
+      "choicecounts_group@OData.Community.Display.V1.AttributeName": "statecode",
+      "choicecounts_group@OData.Community.Display.V1.FormattedValue": "Active",
+      "choicecounts_group": 0
+    },
+    {
+      "choicecounts_count@OData.Community.Display.V1.AttributeName": "wbsuper_smsftaskid",
+      "choicecounts_count@OData.Community.Display.V1.FormattedValue": "1",
+      "choicecounts_count": 1,
+      "choicecounts_group@OData.Community.Display.V1.AttributeName": "statecode",
+      "choicecounts_group@OData.Community.Display.V1.FormattedValue": "Inactive",
+      "choicecounts_group": 1
+    }
+  ]
+}

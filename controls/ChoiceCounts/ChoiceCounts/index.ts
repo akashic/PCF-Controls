@@ -16,19 +16,21 @@ export class ChoiceCounts implements ComponentFramework.ReactControl<IInputs, IO
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
+    // Optional chaining on every input: a host may leave out inputs that aren't configured (the form
+    // designer's preview showed "Error loading control"), and the control must never throw while rendering.
     const p = context.parameters;
-    const onOptionSelect = p.badgeAction.raw === "1" ? context.events?.OnOptionSelect : undefined;
+    const onOptionSelect = p.badgeAction?.raw === "1" ? context.events?.OnOptionSelect : undefined;
     return React.createElement(ChoiceCountsControl, {
       inputs: {
-        tableName: p.tableName.raw,
-        groupColumn: p.groupColumn.raw,
-        relationshipColumn: p.relationshipColumn.raw,
-        filterXml: p.filterXml.raw,
-        optionValues: p.optionValues.raw,
-        optionColors: p.optionColors.raw,
-        zeroCounts: p.zeroCounts.raw,
+        tableName: p.tableName?.raw ?? null,
+        groupColumn: p.groupColumn?.raw ?? null,
+        relationshipColumn: p.relationshipColumn?.raw ?? null,
+        filterXml: p.filterXml?.raw ?? null,
+        optionValues: p.optionValues?.raw ?? null,
+        optionColors: p.optionColors?.raw ?? null,
+        zeroCounts: p.zeroCounts?.raw ?? null,
       },
-      recordId: p.recordId.raw,
+      recordId: p.recordId?.raw ?? null,
       utils: context.utils,
       webAPI: context.webAPI,
       theme: context.fluentDesignLanguage?.tokenTheme as Theme | undefined,

@@ -146,7 +146,29 @@ describe("Web API paths and readers", () => {
   });
 });
 
+describe("readEntityMetadata with getEntityMetadata's real shape (decisions.md C-4)", () => {
+  test("reads the descriptor's lower-case Type and a Yes/No option list", () => {
+    const yesNo = { Type: "boolean", OptionSet: [{ Label: "No", Value: 0, IsHidden: false }, { Color: "#D13438", Label: "Yes", Value: 1, IsHidden: false }] };
+    expect(readEntityMetadata(pcfMetadata(yesNo), "wbsuper_ragstatus")).toEqual({
+      primaryIdColumn: "wbsuper_smsftaskid",
+      kind: "yesNo",
+      options: [
+        { value: 0, label: "No", color: null, hidden: false },
+        { value: 1, label: "Yes", color: "#D13438", hidden: false },
+      ],
+    });
+    const choice = { Type: "picklist", OptionSet: [{ Color: "#D13438", Label: "Red", Value: 512340000, TransitionData: null, IsHidden: false }] };
+    expect(readEntityMetadata(pcfMetadata(choice), "wbsuper_ragstatus")).toMatchObject({ kind: "choice", options: [{ value: 512340000, color: "#D13438" }] });
+  });
+});
+
 describe("groupColumnKind", () => {
+  test("accepts every source's type names in any case, and rejects the rest", () => {
+    expect(["picklist", "status", "state", "boolean", "PicklistType", "BOOLEAN"].map(groupColumnKind)).toEqual(["choice", "status", "state", "yesNo", "choice", "yesNo"]);
+    expect([11, 13, 12, 0].map(groupColumnKind)).toEqual(["choice", "status", "state", "yesNo"]);
+    expect(["multiselectpicklist", "toString", 99, null, {}].map(groupColumnKind)).toEqual([null, null, null, null, null]);
+  });
+
   test("accepts the Web API's plain type names", () => {
     expect(["Picklist", "Status", "State", "Boolean"].map(groupColumnKind)).toEqual(["choice", "status", "state", "yesNo"]);
   });

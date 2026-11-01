@@ -34,32 +34,29 @@ export interface MergedCounts {
 /** The kinds of column that can be grouped (brief §2). Multi-select choices can't. */
 export type GroupColumnKind = "choice" | "status" | "state" | "yesNo";
 
+/** Type names, lower-cased, as each source writes them: getEntityMetadata's descriptor ("picklist"), the Web API ("Picklist", "PicklistType"). */
+const KIND_BY_NAME: Readonly<Record<string, GroupColumnKind>> = {
+  picklist: "choice",
+  picklisttype: "choice",
+  status: "status",
+  statustype: "status",
+  state: "state",
+  statetype: "state",
+  boolean: "yesNo",
+  booleantype: "yesNo",
+};
+const KIND_BY_CODE: Readonly<Record<number, GroupColumnKind>> = { 11: "choice", 13: "status", 12: "state", 0: "yesNo" };
+
 /**
- * The kind of a grouped column from its metadata type: an `AttributeType` code or an
- * `AttributeTypeName` such as "PicklistType". The shape getEntityMetadata returns from
- * PCF is VERIFY C-4. `null` means the column can't be grouped (including multi-select).
+ * The kind of a grouped column from its metadata type: an `AttributeType` code, or a type
+ * name in any case ("picklist" from getEntityMetadata, decisions.md C-4; "PicklistType" from
+ * the Web API). `null` means the column can't be grouped (including multi-select).
  */
 export function groupColumnKind(attributeType: unknown): GroupColumnKind | null {
-  switch (attributeType) {
-    case 11:
-    case "PicklistType":
-    case "Picklist":
-      return "choice";
-    case 13:
-    case "StatusType":
-    case "Status":
-      return "status";
-    case 12:
-    case "StateType":
-    case "State":
-      return "state";
-    case 0:
-    case "BooleanType":
-    case "Boolean":
-      return "yesNo";
-    default:
-      return null;
-  }
+  if (typeof attributeType === "number") return Object.prototype.hasOwnProperty.call(KIND_BY_CODE, attributeType) ? KIND_BY_CODE[attributeType] : null;
+  if (typeof attributeType !== "string") return null;
+  const name = attributeType.toLowerCase();
+  return Object.prototype.hasOwnProperty.call(KIND_BY_NAME, name) ? KIND_BY_NAME[name] : null;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;

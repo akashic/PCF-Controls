@@ -11,7 +11,8 @@ node scripts/test-env/create-smsf-tables.mjs           # SMSF Matter, SuperFundC
 node scripts/test-env/create-smsf-tasks.mjs            # RAG choice, SMSF Task table, views, Tasks tab, sample tasks
 dotnet build controls/ChoiceCounts/solution -c Release
 pac solution import --path controls/ChoiceCounts/solution/bin/Release/WBChoiceCounts.zip --publish-changes
-node scripts/test-env/add-choicecounts-to-smsf-form.mjs  # the control on Task RAG, and the drill-through script
+node scripts/test-env/add-choicecounts-to-smsf-form.mjs  # the control on Task RAG and Stage, and the drill-through script
+node scripts/test-env/capture-choicecounts-fixtures.mjs  # optional: adds Urgent (Yes/No) and re-captures the C-3 fixtures
 ```
 
 ## What's there
@@ -24,6 +25,8 @@ node scripts/test-env/add-choicecounts-to-smsf-form.mjs  # the control on Task R
 | Host column | `wbsuper_smsfmatter.wbsuper_taskrag` "Task RAG", text, never written |
 | Form | SMSF Matter "Information": Task RAG under FY, showing ChoiceCounts; a **Tasks** tab with subgrid `tasks_subgrid` (related tasks, view selector offering the three views) |
 | Control settings | Table `wbsuper_smsftask`, group by `wbsuper_ragstatus`, relationship `wbsuper_smsfmatter`, filter `<condition attribute="statecode" operator="eq" value="0" />`, options `512340000,512340001`, Zero counts *Neutral*, no colour overrides, "Raise OnOptionSelect" |
+| Second instance | On `wbsuper_stage` ("Task status"): the same tasks grouped by **Status Reason**, every option, Zero counts *Option colour*, display-only. It checks Status Reason grouping and several instances on one form |
+| Yes/No column | `wbsuper_smsftask.wbsuper_urgent` "Urgent" (Yes coloured #D13438), for the Yes/No fixture |
 | Form script | Web resource `wbsuper_/choicecounts/drillthrough.js` (from `controls/ChoiceCounts/examples/drill-through.js`), on load: `WBChoiceCounts.DrillThrough.onLoad` |
 | Solution | All in the unmanaged `WBSuperTest`, apart from the control (`WBChoiceCounts`) |
 

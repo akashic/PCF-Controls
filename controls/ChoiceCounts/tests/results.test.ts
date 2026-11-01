@@ -26,7 +26,7 @@ describe("groupColumnKind", () => {
     expect(groupColumnKind(type)).toBe(kind);
   });
 
-  test.each([14, "VirtualType", "MultiSelectPicklistType", 6, "LookupType", "picklist", undefined, null])("%p can't be grouped", (type) => {
+  test.each([14, "VirtualType", "MultiSelectPicklistType", "multiselectpicklist", 6, "LookupType", undefined, null])("%p can't be grouped", (type) => {
     expect(groupColumnKind(type)).toBeNull();
   });
 });
@@ -162,7 +162,32 @@ describe("mergeCounts with no usable option values", () => {
 
 describe("readGroupCounts with a real Dataverse response (decisions.md C-3)", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fixture = require("./fixtures/aggregate-choice.json") as { value: unknown[] };
+  const load = (name: string) => (require(`./fixtures/${name}`) as { value: unknown[] }).value;
+  const fixture = { value: load("aggregate-choice.json") };
+
+  test("Status Reason and Status groups are option values", () => {
+    expect(readGroupCounts(load("aggregate-status-reason.json"))).toEqual(
+      new Map([
+        [1, 9],
+        [2, 1],
+      ]),
+    );
+    expect(readGroupCounts(load("aggregate-status.json"))).toEqual(
+      new Map([
+        [0, 9],
+        [1, 1],
+      ]),
+    );
+  });
+
+  test("Yes/No groups arrive as booleans and become 0 and 1", () => {
+    expect(readGroupCounts(load("aggregate-yes-no.json"))).toEqual(
+      new Map([
+        [0, 8],
+        [1, 2],
+      ]),
+    );
+  });
 
   test("reads the counts, ignores the annotations and drops the blank group (no group key at all)", () => {
     expect(readGroupCounts(fixture.value)).toEqual(

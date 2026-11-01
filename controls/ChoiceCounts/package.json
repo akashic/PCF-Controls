@@ -1,6 +1,6 @@
 {
   "name": "@wb-pcf/choice-counts",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "private": true,
   "description": "WB ChoiceCounts: counts of related rows for each option of a choice column",
   "scripts": {
