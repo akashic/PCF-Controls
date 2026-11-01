@@ -40,6 +40,16 @@
     <property name="optionValues" display-name-key="Options to show"
               description-key="Comma-separated option values to show, in this order. Blank shows every option."
               of-type="SingleLine.Text" usage="input" />
+    <!-- Drill-through (brief amendment, 1 Nov 2026): a selected badge raises OnOptionSelect, and a form script
+         decides what to do, for example open a tab and switch a subgrid to a view. Off by default. -->
+    <property name="badgeAction" display-name-key="When a count is selected"
+              description-key="Nothing, or raise the OnOptionSelect event for a form script to handle"
+              of-type="Enum" usage="input" default-value="0">
+      <value name="none" display-name-key="Nothing">0</value>
+      <value name="raiseEvent" display-name-key="Raise OnOptionSelect">1</value>
+    </property>
+    <event name="OnOptionSelect" display-name-key="Option selected"
+           description-key="Raised when a count is selected. The handler gets the option value, label and count, and the counted table and column." />
     <resources>
       <code path="index.ts" order="1" />
       <platform-library name="React" version="16.14.0" />

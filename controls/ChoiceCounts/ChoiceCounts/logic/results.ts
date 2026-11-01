@@ -43,15 +43,19 @@ export function groupColumnKind(attributeType: unknown): GroupColumnKind | null 
   switch (attributeType) {
     case 11:
     case "PicklistType":
+    case "Picklist":
       return "choice";
     case 13:
     case "StatusType":
+    case "Status":
       return "status";
     case 12:
     case "StateType":
+    case "State":
       return "state";
     case 0:
     case "BooleanType":
+    case "Boolean":
       return "yesNo";
     default:
       return null;

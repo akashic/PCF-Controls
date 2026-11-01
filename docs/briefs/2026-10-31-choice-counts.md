@@ -43,7 +43,7 @@ Forms need to show at a glance how many related rows are in each status, for exa
 | Unsaved record | When a relationship lookup is set but the record ID is empty, show a muted **"Available after save"** and run no query. |
 | Errors | **Fail soft**: one `console.warn`, and a neutral **"—"** with a short generic tooltip ("Counts unavailable"). No error text on the form. |
 | Over 50,000 rows | Dataverse rejects the query (`8004E023`). Show "—" with the tooltip **"Too many rows to count"**, and document the limit. Never use `aggregatelimit`: it hides the error by counting an arbitrary subset. |
-| Interaction | **Display-only** in v1. No drill-through. |
+| Interaction | ~~**Display-only** in v1. No drill-through.~~ **Amended 1 Nov 2026 (product owner):** a maker can make the counts selectable. A selected count raises the control's `OnOptionSelect` event with the option's value, label and count, and a **form script in the project's solution** decides what happens: for example, open a tab and switch a related-rows subgrid to that option's view. The control never navigates or touches the form itself. See `controls/ChoiceCounts/examples/drill-through.js` and decisions.md C-5. |
 | Dropped from the original doc | `aggregateType`, `aggregateColumn`, `prefix`, `suffix`, `decimalPlaces`, `useCurrentRecord`, `label`, the plain-DOM `standard` control type, the hard-coded CSS colours, and the `WBSuper.Controls` namespace. |
 
 ---
@@ -192,4 +192,4 @@ Test with an administrator and the project's least-privileged role to confirm th
 
 ## 8. Future ideas (out of scope for v1, don't build)
 
-Drill-through from a badge to the matching rows; a total badge; a "(blank)" badge; sum, avg, min and max; several unrelated filtered counts in one instance.
+A total badge; a "(blank)" badge; sum, avg, min and max; several unrelated filtered counts in one instance.
