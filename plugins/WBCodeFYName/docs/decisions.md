@@ -4,7 +4,7 @@ The platform unknowns in the [brief](../../../docs/briefs/2026-10-31-wbcodefy-na
 
 ## W-1: steps created through the Web API run
 
-**Confirmed through the Web API.** [`scripts/register.mjs`](../scripts/register.mjs) uploaded the assembly and created the plug-in type, both steps and the PreImage with no Plug-in Registration Tool. Dataverse read the assembly's version, culture and public key token from the DLL, so the script doesn't send them. Saves through the Web API then behaved as the README says:
+**Confirmed, through the Web API and from a form.** [`scripts/register.mjs`](../scripts/register.mjs) uploaded the assembly and created the plug-in type, both steps and the PreImage with no Plug-in Registration Tool. Dataverse read the assembly's version, culture and public key token from the DLL, so the script doesn't send them. Saves through the Web API then behaved as the README says:
 
 | Save | Result |
 |---|---|
@@ -17,7 +17,13 @@ The platform unknowns in the [brief](../../../docs/briefs/2026-10-31-wbcodefy-na
 | Update a column outside the filter (Stage) | Plug-in didn't run, name unchanged |
 | Update WBCode to `00100512` | Blocked |
 
-**Still to do:** a save from the model-driven form, to see the message as a user sees it. The form now has both lookups and a read-only name.
+**Confirmed from the form.** A new SMSF Matter on the "Information" form, saved with the toolbar's Save button:
+- **WBCode `00100512` and FY26:** the save was blocked by a "Business Process Error" dialog reading `WBCode "00100512" must be eight digits ending in 70, for example 00224570.`, with the record still unsaved.
+- **WBCode changed to `00100370`:** the save worked, and the record's title became `00100370-26`.
+
+The lookups were set through the form's client API (`Xrm.Page.getAttribute(...).setValue`) rather than by typing in the lookup, then saved with the real Save button. The save goes through the same form save path either way.
+
+**Not explained:** the read-only name control is in the form XML, but the form doesn't load it. `Xrm.Page.ui.controls` lists only WBCode, FY and Owner. Its cell has an empty label, as the form Dataverse generated for the new table did. This affects only how the test form looks, not the plug-in.
 
 **Findings:**
 - Re-running the script is safe. On a re-run, the PreImage can be changed only by PATCHing `attributes`. A PATCH that repeats `name`, `entityalias`, `imagetype` or `messagepropertyname` fails with `0x80040216` "An unexpected error occurred", so the script only PATCHes the columns, and only when they differ.
