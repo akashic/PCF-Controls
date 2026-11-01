@@ -83,9 +83,10 @@ export function readGroupCounts(entities: unknown): Map<number, number> | null {
   const counts = new Map<number, number>();
   for (const row of entities as unknown[]) {
     if (!isRecord(row)) return null;
-    const count = groupValue(row[COUNT_ALIAS]);
+    // Dataverse returns a count as a whole number; anything else means a shape this code doesn't know.
+    const count = row[COUNT_ALIAS];
     const value = groupValue(row[GROUP_ALIAS]);
-    if (typeof count !== "number" || count < 0 || value === undefined) return null;
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0 || value === undefined) return null;
     if (value === null) continue;
     counts.set(value, (counts.get(value) ?? 0) + count);
   }
@@ -111,9 +112,10 @@ export function mergeCounts(
   });
 
   const unknownOptionValues: number[] = [];
+  const everyOption = (): ChoiceOption[] => options.filter((option) => !option.hidden || (counts.get(option.value) ?? 0) > 0);
   let shown: ChoiceOption[];
   if (optionValues === null) {
-    shown = options.filter((option) => !option.hidden || (counts.get(option.value) ?? 0) > 0);
+    shown = everyOption();
   } else {
     shown = [];
     for (const value of optionValues) {
@@ -121,6 +123,9 @@ export function mergeCounts(
       if (option) shown.push(option);
       else unknownOptionValues.push(value);
     }
+    // None of the listed values is an option: show every option rather than nothing, as a blank
+    // "Options to show" does. unknownOptionValues still says why, for the console warning.
+    if (shown.length === 0) shown = everyOption();
   }
 
   return {

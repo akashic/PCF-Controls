@@ -1,4 +1,4 @@
-import { normalizeRecordId, parseConfig, parseOptionValues } from "../ChoiceCounts/logic/config";
+import { normalizeRecordId, parseConfig, parseOptionValues, MAX_FILTER_LENGTH } from "../ChoiceCounts/logic/config";
 
 const valid = { tableName: "abc_task", groupColumn: "abc_ragstatus" };
 
@@ -115,4 +115,19 @@ describe("normalizeRecordId", () => {
       expect(normalizeRecordId(raw)).toEqual({ kind: "invalid", raw: raw.trim() });
     },
   );
+});
+
+describe("parseConfig review fixes (1 Nov 2026)", () => {
+  test("lower-cases logical names", () => {
+    const result = parseConfig({ tableName: "WBSuper_SMSFTask", groupColumn: "WBSuper_RAGStatus", relationshipColumn: "WBSuper_SMSFMatter" });
+    expect(result.ok && result.config).toMatchObject({ tableName: "wbsuper_smsftask", groupColumn: "wbsuper_ragstatus", relationshipColumn: "wbsuper_smsfmatter" });
+  });
+
+  test("rejects a filter longer than the limit", () => {
+    const condition = '<condition attribute="a" operator="eq" value="1" />';
+    const long = condition.repeat(Math.ceil((MAX_FILTER_LENGTH + 1) / condition.length));
+    const result = parseConfig({ tableName: "t", groupColumn: "c", filterXml: long });
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.errors[0]).toMatch(/keep it under 4000/);
+  });
 });

@@ -177,3 +177,42 @@ describe("serializeXml", () => {
     );
   });
 });
+
+describe("parseFilterXml review fixes (1 Nov 2026)", () => {
+  const reason = (fragment: string): string => {
+    const parsed = parseFilterXml(fragment);
+    return parsed.ok ? "accepted" : parsed.reason;
+  };
+
+  test("rejects inherited names as entities", () => {
+    expect(reason('<condition attribute="a" operator="eq" value="&constructor;" />')).toMatch(/unknown entity "&constructor;"/);
+    expect(reason('<condition attribute="a" operator="eq" value="&__proto__;" />')).toMatch(/unknown entity/);
+    expect(reason("<constructor />")).toMatch(/<constructor> isn't allowed/);
+  });
+
+  test("rejects character references XML doesn't allow", () => {
+    for (const ref of ["&#0;", "&#xD800;", "&#x1F;", "&#xFFFE;"]) {
+      expect(reason(`<condition attribute="a" operator="eq" value="${ref}" />`)).toMatch(/isn't a character XML allows/);
+    }
+    expect(reason('<condition attribute="a" operator="eq" value="&#9;&#xA;&#xD;&#x20;&#xE000;&#x10000;" />')).toBe("accepted");
+  });
+
+  test("checks names in the fragment are logical names", () => {
+    expect(reason('<condition attribute="abc status" operator="eq" value="1" />')).toMatch(/attribute="abc status"> isn't a logical name/);
+    expect(reason('<condition attribute="a" entityname="x-y" operator="eq" value="1" />')).toMatch(/entityname="x-y"> isn't a logical name/);
+    expect(reason('<condition attribute="a" operator="eq" valueof="link.col" />')).toBe("accepted");
+    expect(reason('<condition attribute="a" operator="eq" valueof="a.b.c" />')).toMatch(/valueof="a.b.c"> isn't a logical name/);
+    expect(reason('<link-entity name="account" from="accountid" to="parent id" />')).toMatch(/to="parent id"> isn't a logical name/);
+  });
+
+  test("allows only any, not any, all and not all for a link-entity inside a filter", () => {
+    expect(reason('<filter><link-entity name="a" from="b" to="c" link-type="inner" /></filter>')).toMatch(/inside a <filter> needs link-type/);
+    expect(reason('<filter><link-entity name="a" from="b" to="c" /></filter>')).toMatch(/inside a <filter> needs link-type/);
+    expect(reason('<filter><link-entity name="a" from="b" to="c" link-type="not any" /></filter>')).toBe("accepted");
+    expect(reason('<link-entity name="a" from="b" to="c" link-type="inner" />')).toBe("accepted");
+  });
+
+  test("rejects a condition with both a value attribute and <value> elements", () => {
+    expect(reason('<condition attribute="a" operator="in" value="1"><value>2</value></condition>')).toMatch(/both a "value" attribute and <value> elements/);
+  });
+});

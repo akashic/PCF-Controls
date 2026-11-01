@@ -7,6 +7,12 @@ import { parseFilterXml, type XmlElement } from "./filterXml";
 /** A logical name as Dataverse writes it. Anything else could inject into the query. */
 const LOGICAL_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+/**
+ * The longest filter accepted. The query travels in the URL (`?fetchXml=`), so a much
+ * longer fragment would make every query fail; this makes it a clear config error.
+ */
+export const MAX_FILTER_LENGTH = 4000;
+
 export interface CountsConfig {
   readonly tableName: string;
   readonly groupColumn: string;
@@ -50,7 +56,8 @@ export function parseConfig(raw: RawInputs): ConfigResult {
       errors.push(`${label} "${value}" isn't a logical name`);
       return null;
     }
-    return value;
+    // Logical names are lower case; lower-casing `Account` keeps one metadata cache entry per table.
+    return value.toLowerCase();
   };
 
   const tableName = name("Table to count", blankToNull(raw.tableName), true);
@@ -59,7 +66,9 @@ export function parseConfig(raw: RawInputs): ConfigResult {
 
   let filter: readonly XmlElement[] = [];
   const filterXml = blankToNull(raw.filterXml);
-  if (filterXml !== null) {
+  if (filterXml !== null && filterXml.length > MAX_FILTER_LENGTH) {
+    errors.push(`Filter (FetchXML) is ${filterXml.length} characters; keep it under ${MAX_FILTER_LENGTH}`);
+  } else if (filterXml !== null) {
     const parsed = parseFilterXml(filterXml);
     if (parsed.ok) filter = parsed.nodes;
     else errors.push(`Filter (FetchXML): ${parsed.reason}`);

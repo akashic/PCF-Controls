@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Controls" constructor="ChoiceCounts" version="0.1.0"
+  <control namespace="Controls" constructor="ChoiceCounts" version="0.1.1"
            display-name-key="Choice counts" description-key="Counts of related rows for each option of a choice column"
            control-type="virtual">
     <!-- No external services: declaring one would make the control premium-licensed. -->

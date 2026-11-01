@@ -1,0 +1,35 @@
+{
+  "_source": "LowCode Web API, 1 Nov 2026, Prefer odata.include-annotations=*, matter 00224570-27 (decisions.md C-3)",
+  "fetchXml": "<fetch aggregate=\"true\"><entity name=\"wbsuper_smsftask\"><attribute name=\"wbsuper_smsftaskid\" alias=\"choicecounts_count\" aggregate=\"countcolumn\" distinct=\"true\" /><attribute name=\"wbsuper_ragstatus\" alias=\"choicecounts_group\" groupby=\"true\" /><filter type=\"and\"><condition attribute=\"statecode\" operator=\"eq\" value=\"0\" /><condition attribute=\"wbsuper_smsfmatter\" operator=\"eq\" value=\"05e03215-8fd5-f111-84e8-7ced8d6ed1fc\" /></filter><order alias=\"choicecounts_group\" /></entity></fetch>",
+  "value": [
+    {
+      "choicecounts_count@OData.Community.Display.V1.AttributeName": "wbsuper_smsftaskid",
+      "choicecounts_count@OData.Community.Display.V1.FormattedValue": "1",
+      "choicecounts_count": 1
+    },
+    {
+      "choicecounts_count@OData.Community.Display.V1.AttributeName": "wbsuper_smsftaskid",
+      "choicecounts_count@OData.Community.Display.V1.FormattedValue": "3",
+      "choicecounts_count": 3,
+      "choicecounts_group@OData.Community.Display.V1.AttributeName": "wbsuper_ragstatus",
+      "choicecounts_group@OData.Community.Display.V1.FormattedValue": "Amber",
+      "choicecounts_group": 512340001
+    },
+    {
+      "choicecounts_count@OData.Community.Display.V1.AttributeName": "wbsuper_smsftaskid",
+      "choicecounts_count@OData.Community.Display.V1.FormattedValue": "3",
+      "choicecounts_count": 3,
+      "choicecounts_group@OData.Community.Display.V1.AttributeName": "wbsuper_ragstatus",
+      "choicecounts_group@OData.Community.Display.V1.FormattedValue": "Green",
+      "choicecounts_group": 512340002
+    },
+    {
+      "choicecounts_count@OData.Community.Display.V1.AttributeName": "wbsuper_smsftaskid",
+      "choicecounts_count@OData.Community.Display.V1.FormattedValue": "2",
+      "choicecounts_count": 2,
+      "choicecounts_group@OData.Community.Display.V1.AttributeName": "wbsuper_ragstatus",
+      "choicecounts_group@OData.Community.Display.V1.FormattedValue": "Red",
+      "choicecounts_group": 512340000
+    }
+  ]
+}

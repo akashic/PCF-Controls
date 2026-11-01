@@ -16,10 +16,16 @@ The platform unknowns in the [brief](../../../docs/briefs/2026-10-31-choice-coun
 
 ## C-3: the aggregate response
 
-**Works, but the shape isn't captured yet.** `retrieveMultipleRecords(table, "?fetchXml=…")` with the grouped `countcolumn distinct` query returns rows that `readGroupCounts` reads correctly: Red 2 and Amber 3 for matter `00224570-27`, matching the data. Still to do:
-- capture the raw response, including any FormattedValue annotations, as a fixture;
-- repeat for Status, Status Reason and Yes/No;
-- capture the 50,000-row error.
+**Shape confirmed for a Choice column.** The response to the control's query was captured through the Web API with all annotations, and is in [tests/fixtures/aggregate-choice.json](../tests/fixtures/aggregate-choice.json). Findings:
+- Each group is one row with `choicecounts_count` (a number) and `choicecounts_group` (the option value).
+- Both carry `…@OData.Community.Display.V1.FormattedValue` and `…AttributeName` annotations. Labels could be taken from these, but the control uses metadata, so zero-count options still get a label.
+- **The blank group has no `choicecounts_group` key at all**, rather than a `null` one. `readGroupCounts` drops it either way.
+- Rows are ordered by label (Amber, Green, Red), not by value. The control re-orders them into metadata order.
+- The PCF `retrieveMultipleRecords` path gives the same counts on the form: Red 2 and Amber 3 for `00224570-27`.
+
+**Still to do:**
+- Status, Status Reason and Yes/No grouping. Yes/No groups are expected as `true`/`false`, which the reader handles.
+- The 50,000-row error.
 
 ## C-4: metadata from PCF
 
