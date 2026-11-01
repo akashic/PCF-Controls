@@ -1,27 +1,16 @@
 # WBCodeFYName: tables and columns in dev
 
-The dev environment's tables and columns that WBCodeFYName uses, read from the photos in [`Images/`](Images/) taken on 1 November 2026. This is a record of one environment, not configuration. The plug-in reads every name from its step configuration (see the [README](README.md)).
+The dev environment's tables and columns that WBCodeFYName uses, read from photos of the maker portal taken on 1 November 2026. This is a record of one environment, not configuration. The plug-in reads every name from its step configuration (see the [README](README.md)).
 
 The maker portal's **Name** column shows the *schema* name, for example `wbsuper_FinancialYearId` and `wbsuper_Name`. The *logical* name is the same text in lower case, and that's what the step configuration and the Web API use.
 
 ## Step configuration for dev
 
-```json
-{
-  "targetTable": "wbsuper_smsfmatter",
-  "nameColumn": "wbsuper_wbcodefy",
-  "wbCodeLookup": "wbsuper_wbcode",
-  "wbCodeValueColumn": "wbsuper_wbcode",
-  "fyLookup": "wbsuper_fy",
-  "fyValueColumn": "wbsuper_name"
-}
-```
-
-The photos don't show which tables the two lookups point to. The value columns above assume `wbsuper_wbcode` targets SuperFundClient and `wbsuper_fy` targets Financial Year. Confirm both in the lookups' relationship settings before registering the step (#59).
+The example step configuration, [`config/examples/step-config.example.json`](config/examples/step-config.example.json), uses these names. The photos don't show which tables the two lookups point to. The value columns above assume `wbsuper_wbcode` targets SuperFundClient and `wbsuper_fy` targets Financial Year. Confirm both in the lookups' relationship settings before registering the step (#59).
 
 ## SMSF Matter (`wbsuper_smsfmatter`)
 
-The table the plug-in runs on. Its primary name column is WBCodeFY. Custom columns only ([IMG_2727](Images/IMG_2727.png)):
+The table the plug-in runs on. Its primary name column is WBCodeFY. Custom columns only:
 
 | Display name | Schema name | Data type | Plug-in role |
 |---|---|---|---|
@@ -39,7 +28,7 @@ The table the plug-in runs on. Its primary name column is WBCodeFY. Custom colum
 
 ## SuperFundClient (`wbsuper_superfundclient`)
 
-A super fund client, one row per WBCode. Its primary name column is WBCode. The dev table had 750 rows when photographed, and every WBCode shown ends in `70` ([IMG_2723](Images/IMG_2723.png)). Custom columns ([IMG_2725](Images/IMG_2725.png)):
+A super fund client, one row per WBCode. Its primary name column is WBCode. The dev table had 750 rows when photographed, and every WBCode shown ends in `70`. Custom columns:
 
 | Display name | Schema name | Data type | Required | Plug-in role |
 |---|---|---|---|---|
@@ -70,7 +59,7 @@ The data view also shows a column called SuperFundClient, which holds GUIDs. Tha
 
 ## Financial Year (`wbsuper_financialyear`)
 
-One row per financial year, named `FY25`, `FY26`, `FY27` and so on. Its primary name column is Name ([IMG_2721](Images/IMG_2721.png)). All columns ([IMG_2722](Images/IMG_2722.png)):
+One row per financial year, named `FY25`, `FY26`, `FY27` and so on. Its primary name column is Name. All columns:
 
 | Display name | Schema name | Data type | Required | Plug-in role |
 |---|---|---|---|---|
@@ -95,7 +84,7 @@ Sample rows:
 
 ## Other `wbsuper_` tables
 
-[IMG_2726](Images/IMG_2726.png) lists these tables, all custom and unmanaged. Only the three above matter to the plug-in.
+The maker portal lists these tables, all custom and unmanaged. Only the three above matter to the plug-in.
 
 `wbsuper_atosmartdocstask`, `wbsuper_ecagenttask`, `wbsuper_eccategory`, `wbsuper_ecconfig`, `wbsuper_ecemaileventlog`, `wbsuper_ecemaillog`, `wbsuper_ecmailboxfolders`, `wbsuper_ecrules`, `wbsuper_ecsupercentral`, `wbsuper_financialyear`, `wbsuper_smsf`, `wbsuper_smsfmatter`, `wbsuper_smsfstatus`, `wbsuper_superfundclient`, `wbsuper_superfundclientvi…` (a virtual table), `wbsuper_userpreference`, `wbsuper_vaultclients`.
 

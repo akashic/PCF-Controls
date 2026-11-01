@@ -45,7 +45,7 @@ The name column has to be in the Update filter. A direct write to the name, such
 
 ## Step configuration
 
-The unsecure configuration is JSON with exactly these properties, each a logical name. The schema is [`config/step-config.schema.json`](config/step-config.schema.json), and the example is in [`config/examples/`](config/examples/step-config.example.json).
+The unsecure configuration is JSON with exactly these properties, each a logical name. The schema is [`config/step-config.schema.json`](config/step-config.schema.json), and the example in [`config/examples/`](config/examples/step-config.example.json) is the dev environment's configuration (see [fields.md](fields.md)).
 
 | Property | What it names |
 |---|---|
