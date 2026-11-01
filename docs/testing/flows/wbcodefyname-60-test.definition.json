@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": { "defaultValue": {}, "type": "SecureObject" },
+    "$connections": { "defaultValue": {}, "type": "Object" }
+  },
+  "triggers": {
+    "manual": { "type": "Request", "kind": "Button", "inputs": { "schema": { "type": "object", "properties": {}, "required": [] } } }
+  },
+  "actions": {
+    "Add_SMSF_Matter": {
+      "type": "OpenApiConnection",
+      "runAfter": {},
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "CreateRecord", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "wbsuper_smsfmatters",
+          "item/wbsuper_WBCode@odata.bind": "/wbsuper_superfundclients(0acaba49-8dd5-f111-84e8-7ced8d6ed1fc)",
+          "item/wbsuper_FY@odata.bind": "/wbsuper_financialyears(05caba49-8dd5-f111-84e8-7ced8d6ed1fc)"
+        }
+      }
+    },
+    "Update_FY_to_FY26": {
+      "type": "OpenApiConnection",
+      "runAfter": { "Add_SMSF_Matter": ["Succeeded"] },
+      "inputs": {
+        "host": { "connectionName": "shared_commondataserviceforapps", "operationId": "UpdateOnlyRecord", "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps" },
+        "parameters": {
+          "entityName": "wbsuper_smsfmatters",
+          "recordId": "@outputs('Add_SMSF_Matter')?['body/wbsuper_smsfmatterid']",
+          "item/wbsuper_FY@odata.bind": "/wbsuper_financialyears(04caba49-8dd5-f111-84e8-7ced8d6ed1fc)"
+        }
+      }
+    },
+    "Names": {
+      "type": "Compose",
+      "runAfter": { "Update_FY_to_FY26": ["Succeeded"] },
+      "inputs": {
+        "afterAdd": "@outputs('Add_SMSF_Matter')?['body/wbsuper_wbcodefy']",
+        "afterUpdate": "@outputs('Update_FY_to_FY26')?['body/wbsuper_wbcodefy']",
+        "rowId": "@outputs('Add_SMSF_Matter')?['body/wbsuper_smsfmatterid']"
+      }
+    }
+  },
+  "outputs": {}
+}
