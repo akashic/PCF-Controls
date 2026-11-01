@@ -196,10 +196,31 @@ async function ensureRows(set, nameColumn, rows) {
   }
 }
 
+// Adds both lookups to SMSF Matter's main form, under the name, and makes the name read-only
+// (the plug-in README's prerequisites), so the plug-in can be tested from a form.
+async function ensureForm() {
+  const form = (await get("systemforms?$select=formid,formxml&$filter=objecttypecode eq 'wbsuper_smsfmatter' and type eq 2 and name eq 'Information'"))?.value?.[0];
+  if (!form) throw new Error("SMSF Matter has no main form called Information");
+  if (form.formxml.includes('id="wbsuper_wbcode"')) return console.log("form has the lookups");
+  const lookupRow = (field, text) =>
+    `<row><cell id="{${crypto.randomUUID()}}"><labels><label description="${text}" languagecode="1033" /></labels>` +
+    `<control id="${field}" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="${field}" disabled="false" /></cell></row>`;
+  const nameControl = /<control id="wbsuper_wbcodefy"([^>]*?)\s*\/>/;
+  const match = form.formxml.match(nameControl);
+  if (!match) throw new Error("the form has no wbsuper_wbcodefy control");
+  const readOnlyName = `<control id="wbsuper_wbcodefy"${match[1].replace(/\sdisabled="[^"]*"/, "")} disabled="true" />`;
+  // The name's row ends at the first </row> after its control; the lookups go straight after it.
+  const at = form.formxml.indexOf("</row>", match.index) + "</row>".length;
+  const formxml = (form.formxml.slice(0, at) + lookupRow("wbsuper_wbcode", "WBCode") + lookupRow("wbsuper_fy", "FY") + form.formxml.slice(at)).replace(nameControl, readOnlyName);
+  await call("PATCH", `systemforms(${form.formid})`, { formxml }, { solution: SOLUTION });
+  console.log("added WBCode and FY to the SMSF Matter form; name is read-only");
+}
+
 const publisherId = await ensurePublisher();
 await ensureSolution(publisherId);
 for (const t of tables) await ensureTable(t);
 for (const t of tables) await ensureColumns(t);
+await ensureForm();
 await publish({ entities: tables.map((t) => t.logical) });
 await ensureRows("wbsuper_financialyears", "wbsuper_name", financialYears);
 await ensureRows("wbsuper_superfundclients", "wbsuper_wbcode", clients);

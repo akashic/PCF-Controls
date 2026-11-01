@@ -25,7 +25,11 @@ Because the names match dev, the plug-in's [example step configuration](../../pl
 - **Lookups left out:** the targets of SMSF Matter's Internal Contact, Manager, Reviewer and Wealth Advisory Contact, and SuperFundClient's Partner, aren't recorded. The plug-in uses none of them.
 - **Guessed names:** `wbsuper_clientterminationdate` and `wbsuper_partnerterminationdate` (cut off in the photos), and `wbsuper_year` (not shown). The plug-in uses none of them.
 - **Text lengths:** every text column is 100 characters and every memo 4,000, because dev's lengths aren't recorded.
-- **Forms and views:** these are the defaults Dataverse creates for a new table. Add the lookups to the SMSF Matter main form before testing in the app.
+- **Forms and views:** these are the defaults Dataverse creates for a new table. The script also adds WBCode and FY to SMSF Matter's "Information" form and makes the name read-only (the plug-in README's prerequisites). There's no alternate key on the two lookups.
+
+## Plug-in registration
+
+WBCodeFYName is registered here by [`plugins/WBCodeFYName/scripts/register.mjs`](../../plugins/WBCodeFYName/scripts/register.mjs), in the unmanaged `WBWBCodeFYName` solution. The results are in [decisions.md](../../plugins/WBCodeFYName/docs/decisions.md). Import a rebuilt solution with `--activate-plugins`, or the steps are disabled.
 
 ## 2. Data
 
