@@ -67,7 +67,7 @@ The brief's §5.2 matrix, run in `LowCode` on 1 Nov 2026. `LowCode` is the dev e
 | Channel / case | Expected | Result |
 |---|---|---|
 | Model-driven form: create, then change FY, then change WBCode | Generated and regenerated | **Pass.** Create gave `00100370-26` (W-1). Changing FY to FY25 and saving gave `00100370-25`, then changing WBCode to `00100270` gave `00100270-25` |
-| Power Automate add and update a row | Same as the form | *Pending* |
+| Power Automate add and update a row | Same as the form | **Pass.** See note 4 |
 | Data import (both lookups set; one missing) | Generated; the row missing a lookup is rejected | **Pass.** See note 1 |
 | Web API PATCH of the name only | Recomputed and the write overwritten | **Pass** (W-1) |
 | Duplicate WBCode and FY | Rejected by the alternate key | **Pass.** See note 2 |
@@ -84,3 +84,8 @@ The brief's §5.2 matrix, run in `LowCode` on 1 Nov 2026. `LowCode` is the dev e
    The app's "Import from Excel" panel only accepts workbooks exported from Dataverse, with their hidden mapping sheets, so a hand-made file can't be used there.
 2. **Duplicate.** Creating `00224570` + FY27, which already exists, failed with `Entity Key WBCode and FY violated. A record with the same value for FY, WBCode already exists.` The key runs after the plug-in names the row, so the user sees the key's message, not the plug-in's.
 3. **Broken configuration.** With the Create step's configuration set to `{"targetTable":"wbsuper_smsfmatter"}`, then removed, both creates failed with `WBCodeFY isn't configured correctly. Contact your administrator.` The trace log has the reason: `the step configuration is invalid: Missing property "nameColumn".` and `The step's unsecure configuration is empty.`. **Trace log entries appear one to two minutes after the failure**, so wait before deciding there aren't any. `register.mjs` then restored the configuration.
+4. **Power Automate.** The instant flow "WBCodeFYName #60 test" in `LowCode` uses the Dataverse connector. Its "Add a new row" sets only the two lookups, to `00100370` and FY27, and its "Update a row" changes the FY to FY26. Run `08584081075335976733533152003CU18` succeeded:
+   - The add returned `00100370-27`.
+   - The update returned `00100370-26` (row `57c45024-9ad5-f111-84e8-7ced8d6ed1fc`).
+
+   In the flow definition, lookups are set as `item/<navigation property>@odata.bind`, for example `item/wbsuper_WBCode@odata.bind` = `/wbsuper_superfundclients(<id>)`. The plain column name is rejected (`WorkflowOperationParametersExtraParameter`). The flow was left in `LowCode` for re-runs. It isn't in a solution.
