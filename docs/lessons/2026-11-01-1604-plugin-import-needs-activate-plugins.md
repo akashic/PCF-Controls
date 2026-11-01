@@ -10,7 +10,7 @@ rule: >
   silently stops running while saves keep succeeding.
 lesson_type: pitfall
 phase: deployment
-domain: [solutions-alm]
+domain: [plugins, solutions-alm]
 tech: [dataverse, pac-cli]
 scope: this-stack
 cost_if_ignored: outage
@@ -25,7 +25,7 @@ provenance:
   evidence: "PR #66 (commit 24d8783); plugins/WBCodeFYName/docs/decisions.md W-3; README Deployment"
   author:
 related: []
-proposed_tags: [plugins]
+proposed_tags: []
 ---
 
 When a solution containing plug-in steps is imported with `pac solution import` and no `--activate-plugins`, the import leaves every step **disabled**. Saves still succeed, but the plug-in no longer runs.
