@@ -51,21 +51,21 @@ The pure logic is in `ChoiceCounts/logic/` (config, filter parser, query builder
 
 ## Changelog
 
-### 0.1.4 (unreleased)
+### 0.1.4 (2026-11-01)
 
 - Reads every input defensively, so a host that leaves out unconfigured inputs can't make it throw.
 - Known issue: the form designer's preview shows "Error loading control"; the running form is fine (decisions.md C-2).
 
-### 0.1.3 (unreleased)
+### 0.1.3 (not released; included in 0.1.4)
 
 - Reads the column type from `getEntityMetadata`'s `attributeDescriptor.Type` ("picklist", "boolean", …), so the Web API metadata fallback is no longer needed (decisions.md C-4).
 - Real response fixtures for Status Reason, Status and Yes/No (C-3).
 
-### 0.1.2 (unreleased)
+### 0.1.2 (not released; included in 0.1.4)
 
 - Configurable colours: **Colours** overrides the choice's colours per option value, and **Zero counts** shows zero counts in grey by default (brief amendment, 1 Nov 2026).
 
-### 0.1.1 (unreleased)
+### 0.1.1 (not released; included in 0.1.4)
 
 - The counts UI: metadata, query, badges, refresh and every state (#54).
 - Drill-through: the OnOptionSelect event and the example form script (brief amendment, 1 Nov 2026).
@@ -78,6 +78,6 @@ The pure logic is in `ChoiceCounts/logic/` (config, filter parser, query builder
   - Counts must be whole numbers.
   - "Options to show" that match nothing fall back to every option.
 
-### 0.1.0
+### 0.1.0 (not released; included in 0.1.4)
 
 - Scaffold (#51) and the pure logic (#53).
