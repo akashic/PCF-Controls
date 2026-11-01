@@ -11,7 +11,7 @@
 // Usage: node scripts/check-controls.mjs [--tag <Name>-v<x.y.z>]   (a control or a plug-in name)
 // Tests: npm run test:scripts
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
@@ -31,6 +31,9 @@ const SOURCE_FILE = /\.(tsx?|jsx?|mjs)$/;
 const PREFIX = /\bwb(_|\[_\])/i;
 
 const xmlValue = (xml, element) => xml.match(new RegExp(`<${element}>([^<]*)</${element}>`))?.[1];
+
+/** `path` relative to the repo root, with `/` on every platform, so messages (and their tests) match on Windows too (#67). */
+export const repoPath = (root, path) => relative(root, path).split(sep).join("/");
 
 /**
  * Returns the comment ranges in a TypeScript/JavaScript file, found with the TypeScript parser so that
@@ -95,7 +98,7 @@ export function checkPrefixHardCoding(root) {
       if (!SOURCE_FILE.test(file) || parts.includes("generated") || parts.includes("node_modules")) continue;
       const path = join(dir, file);
       for (const { line, text } of findPrefixHardCoding(readFileSync(path, "utf8"), file)) {
-        errors.push(`${owner}: ${relative(root, path)}:${line} hard-codes the wb_ prefix (${text}); find project components under any prefix (ADR-0005)`);
+        errors.push(`${owner}: ${repoPath(root, path)}:${line} hard-codes the wb_ prefix (${text}); find project components under any prefix (ADR-0005)`);
       }
     }
   }
@@ -320,7 +323,7 @@ export function checkPlugins(root, tag = null) {
     for (const file of csFiles(projectDir)) {
       const path = join(projectDir, file);
       for (const { line, text } of findLogicalNameHardCoding(readFileSync(path, "utf8"))) {
-        errors.push(`${name}: ${relative(root, path)}:${line} hard-codes a logical name ("${text}"); read it from the step configuration (ADR-0006)`);
+        errors.push(`${name}: ${repoPath(root, path)}:${line} hard-codes a logical name ("${text}"); read it from the step configuration (ADR-0006)`);
       }
     }
   }
