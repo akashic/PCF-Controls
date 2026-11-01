@@ -32,7 +32,7 @@ Forms need to show at a glance how many related rows are in each status, for exa
 | Grouped column types | Choice, Status Reason, Status and Yes/No. Multi-select choice is rejected with a warning. |
 | Which options show | **Every option in metadata order, including zero counts**, with an optional property that limits the display to a subset of option values, in the order given. |
 | Blank values | Rows with no value in the grouped column are **left out**. |
-| Look | A row of **coloured badges** (option label + count), tinted with the option's metadata colour using `@wb-pcf/shared` (the same approach as RagChoice). Text is always visible. |
+| Look | A row of **coloured badges** (option label + count), tinted with the option's metadata colour using `@wb-pcf/shared` (the same approach as RagChoice). Text is always visible. **Amended 1 Nov 2026 (product owner):** colours are configurable. Two optional properties: **Colours** (`value:#hex` pairs that override the choice's colours per option) and **Zero counts** (*Neutral*, the default, shows a zero count as a grey badge, so only non-zero counts are coloured; *Option colour* colours every badge). Both are plain configuration, so the control works on any choice with any values. |
 | Label | **No label property.** The form draws the host column's label, and makers can rename it on each form. |
 | Hosting | The bound property is a **type-group of common column types**, so makers can host the control on an existing column. The control **never writes** to the bound column. |
 | Filter | An optional **FetchXML fragment**, parsed and checked against an allow-list of `<filter>`, `<condition>`, `<value>` and **`<link-entity>`**. Anything else is rejected with a warning. |
@@ -43,7 +43,7 @@ Forms need to show at a glance how many related rows are in each status, for exa
 | Unsaved record | When a relationship lookup is set but the record ID is empty, show a muted **"Available after save"** and run no query. |
 | Errors | **Fail soft**: one `console.warn`, and a neutral **"—"** with a short generic tooltip ("Counts unavailable"). No error text on the form. |
 | Over 50,000 rows | Dataverse rejects the query (`8004E023`). Show "—" with the tooltip **"Too many rows to count"**, and document the limit. Never use `aggregatelimit`: it hides the error by counting an arbitrary subset. |
-| Interaction | **Display-only** in v1. No drill-through. |
+| Interaction | ~~**Display-only** in v1. No drill-through.~~ **Amended 1 Nov 2026 (product owner):** a maker can make the counts selectable. A selected count raises the control's `OnOptionSelect` event with the option's value, label and count, and a **form script in the project's solution** decides what happens: for example, open a tab and switch a related-rows subgrid to that option's view. The control never navigates or touches the form itself. See `controls/ChoiceCounts/examples/drill-through.js` and decisions.md C-5. |
 | Dropped from the original doc | `aggregateType`, `aggregateColumn`, `prefix`, `suffix`, `decimalPlaces`, `useCurrentRecord`, `label`, the plain-DOM `standard` control type, the hard-coded CSS colours, and the `WBSuper.Controls` namespace. |
 
 ---
@@ -192,4 +192,4 @@ Test with an administrator and the project's least-privileged role to confirm th
 
 ## 8. Future ideas (out of scope for v1, don't build)
 
-Drill-through from a badge to the matching rows; a total badge; a "(blank)" badge; sum, avg, min and max; several unrelated filtered counts in one instance.
+A total badge; a "(blank)" badge; sum, avg, min and max; several unrelated filtered counts in one instance.

@@ -57,6 +57,25 @@ const MAX_DEPTH = 20;
 const NAME = /^[A-Za-z][A-Za-z0-9_.-]*/;
 const ENTITIES: Readonly<Record<string, string>> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 
+/** Own keys only: `in` would also match inherited names such as "constructor" and "__proto__". */
+const has = (record: object, key: string): boolean => Object.prototype.hasOwnProperty.call(record, key);
+
+/** A logical name, as the brief requires of every configured name (§4). */
+const LOGICAL_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/** `valueof` can name a column of a link-entity as `alias.column`. */
+const COLUMN_REFERENCE = /^[A-Za-z_][A-Za-z0-9_]*(.[A-Za-z_][A-Za-z0-9_]*)?$/;
+/** Attributes whose values are names; anything else there only fails in Dataverse, as a generic "—". */
+const NAME_ATTRIBUTES: Readonly<Record<string, Readonly<Record<string, RegExp>>>> = {
+  condition: { attribute: LOGICAL_NAME, entityname: LOGICAL_NAME, valueof: COLUMN_REFERENCE },
+  "link-entity": { name: LOGICAL_NAME, from: LOGICAL_NAME, to: LOGICAL_NAME, alias: LOGICAL_NAME },
+};
+/** A <link-entity> inside a <filter> can only use these link types (FetchXML reference). */
+const FILTER_LINK_TYPES = ["any", "not any", "all", "not all"];
+
+/** Code points XML 1.0 allows (its Char production). */
+const isXmlChar = (code: number): boolean =>
+  code === 0x9 || code === 0xa || code === 0xd || (code >= 0x20 && code <= 0xd7ff) || (code >= 0xe000 && code <= 0xfffd) || (code >= 0x10000 && code <= 0x10ffff);
+
 class FilterXmlError extends Error {}
 
 class Reader {
@@ -102,22 +121,22 @@ class Reader {
       }
       this.pos++;
       const name = this.readName();
-      if (!(name in RULES) || !allowed.includes(name)) {
+      if (!has(RULES, name) || !allowed.includes(name)) {
         throw new FilterXmlError(`<${name}> isn't allowed ${parent === null ? "here" : `in <${parent}>`}; use ${allowed.map((a) => `<${a}>`).join(", ") || "no elements"}`);
       }
       if (depth >= MAX_DEPTH) throw new FilterXmlError(`elements are nested more than ${MAX_DEPTH} deep`);
-      children.push(this.element(name, depth + 1));
+      children.push(this.element(name, depth + 1, parent));
     }
   }
 
-  private element(name: string, depth: number): XmlElement {
+  private element(name: string, depth: number, parent: string | null): XmlElement {
     const rule = RULES[name];
     const attributes: [string, string][] = [];
     for (;;) {
       this.skipWhitespace();
       if (this.text.startsWith("/>", this.pos)) {
         this.pos += 2;
-        return this.finish(name, rule, attributes, [], null);
+        return this.finish(name, rule, attributes, [], null, parent);
       }
       if (this.text[this.pos] === ">") {
         this.pos++;
@@ -136,18 +155,36 @@ class Reader {
       const text = decode(this.text.slice(this.pos, end === -1 ? this.text.length : end)).trim();
       this.pos = end === -1 ? this.text.length : end;
       this.content(name, depth);
-      return this.finish(name, rule, attributes, [], text);
+      return this.finish(name, rule, attributes, [], text, parent);
     }
-    return this.finish(name, rule, attributes, this.content(name, depth), null);
+    return this.finish(name, rule, attributes, this.content(name, depth), null, parent);
   }
 
-  private finish(name: string, rule: ElementRule, attributes: [string, string][], children: XmlElement[], text: string | null): XmlElement {
+  private finish(
+    name: string,
+    rule: ElementRule,
+    attributes: [string, string][],
+    children: XmlElement[],
+    text: string | null,
+    parent: string | null,
+  ): XmlElement {
     for (const required of rule.required) {
       if (!attributes.some(([attribute]) => attribute === required)) throw new FilterXmlError(`<${name}> needs a "${required}" attribute`);
     }
     for (const [attribute, value] of attributes) {
       const allowed = rule.values?.[attribute];
       if (allowed && !allowed.includes(value)) throw new FilterXmlError(`<${name} ${attribute}="${value}"> isn't allowed; use ${allowed.join(", ")}`);
+      const pattern = NAME_ATTRIBUTES[name]?.[attribute];
+      if (pattern && !pattern.test(value)) throw new FilterXmlError(`<${name} ${attribute}="${value}"> isn't a logical name`);
+    }
+    if (name === "link-entity" && parent === "filter") {
+      const linkType = attributes.find(([attribute]) => attribute === "link-type")?.[1];
+      if (linkType === undefined || !FILTER_LINK_TYPES.includes(linkType)) {
+        throw new FilterXmlError(`a <link-entity> inside a <filter> needs link-type ${FILTER_LINK_TYPES.map((t) => `"${t}"`).join(", ")}`);
+      }
+    }
+    if (name === "condition" && children.length > 0 && attributes.some(([attribute]) => attribute === "value")) {
+      throw new FilterXmlError(`a <condition> can't have both a "value" attribute and <value> elements`);
     }
     return { name, attributes, children, text: rule.text ? (text ?? "") : null };
   }
@@ -184,10 +221,11 @@ class Reader {
 function decode(raw: string): string {
   return raw.replace(/&([^;\s&]*);?/g, (match, body: string) => {
     if (!match.endsWith(";")) throw new FilterXmlError(`"&" must be written as &amp;`);
-    if (body in ENTITIES) return ENTITIES[body];
+    if (has(ENTITIES, body)) return ENTITIES[body];
     const numeric = /^#(?:x([0-9a-fA-F]{1,6})|([0-9]{1,7}))$/.exec(body);
     const code = numeric ? parseInt(numeric[1] ?? numeric[2], numeric[1] ? 16 : 10) : NaN;
     if (!Number.isInteger(code) || code > 0x10ffff) throw new FilterXmlError(`unknown entity "&${body};"`);
+    if (!isXmlChar(code)) throw new FilterXmlError(`"&${body};" isn't a character XML allows`);
     return String.fromCodePoint(code);
   });
 }

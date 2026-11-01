@@ -1,4 +1,4 @@
-import { normalizeHex } from "@wb-pcf/shared";
+import { normalizeHex, type HexColor } from "@wb-pcf/shared";
 import { COUNT_ALIAS, GROUP_ALIAS } from "../ChoiceCounts/logic/fetchXml";
 import { accessibleName, groupColumnKind, mergeCounts, readGroupCounts, type ChoiceOption } from "../ChoiceCounts/logic/results";
 
@@ -42,13 +42,18 @@ describe("readGroupCounts", () => {
     );
   });
 
-  test("reads numeric strings, and Yes/No as 1 and 0", () => {
-    expect(readGroupCounts([row("1", "4"), row(true, 3), row(false, 1)])).toEqual(
+  test("reads Yes/No groups as 1 and 0, and numeric-string group values", () => {
+    expect(readGroupCounts([row(true, 3), row(false, 1)])).toEqual(
       new Map([
-        [1, 4],
+        [1, 3],
         [0, 1],
-      ]).set(1, 7),
+      ]),
     );
+    expect(readGroupCounts([row("2", 4)])).toEqual(new Map([[2, 4]]));
+  });
+
+  test("rejects counts that aren't whole numbers, as Dataverse never sends them", () => {
+    for (const count of ["4", true, 1.5, -1, null]) expect(readGroupCounts([row(1, count)])).toBeNull();
   });
 
   test("adds up a value that appears twice", () => {
@@ -137,5 +142,72 @@ describe("accessibleName", () => {
 
   test("is empty with no badges", () => {
     expect(accessibleName([])).toBe("");
+  });
+});
+
+describe("mergeCounts with no usable option values", () => {
+  test("shows every option, and still reports the unknown values", () => {
+    const options = [
+      { value: 1, label: "Red", color: "#D13438", hidden: false },
+      { value: 2, label: "Amber", color: null, hidden: false },
+    ];
+    const merged = mergeCounts(options, new Map([[1, 2]]), [100000000, 100000001]);
+    expect(merged.badges.map((b) => [b.label, b.count])).toEqual([
+      ["Red", 2],
+      ["Amber", 0],
+    ]);
+    expect(merged.unknownOptionValues).toEqual([100000000, 100000001]);
+  });
+});
+
+describe("readGroupCounts with a real Dataverse response (decisions.md C-3)", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fixture = require("./fixtures/aggregate-choice.json") as { value: unknown[] };
+
+  test("reads the counts, ignores the annotations and drops the blank group (no group key at all)", () => {
+    expect(readGroupCounts(fixture.value)).toEqual(
+      new Map([
+        [512340001, 3],
+        [512340002, 3],
+        [512340000, 2],
+      ]),
+    );
+  });
+});
+
+describe("mergeCounts colouring (brief amendment, 1 Nov 2026)", () => {
+  const hex = (color: string): HexColor => normalizeHex(color) as HexColor;
+  const options = [
+    { value: 1, label: "Red", color: "#D13438", hidden: false },
+    { value: 2, label: "Amber", color: "#FFB900", hidden: false },
+    { value: 3, label: "Green", color: null, hidden: false },
+  ];
+  const colours = (badges: readonly { label: string; color: string | null }[]) => badges.map((b) => [b.label, b.color]);
+
+  test("neutral zero counts: only non-zero counts get a colour", () => {
+    const merged = mergeCounts(options, new Map([[2, 3]]), null, { overrides: new Map(), neutralZeroCounts: true });
+    expect(colours(merged.badges)).toEqual([
+      ["Red", null],
+      ["Amber", "#FFB900"],
+      ["Green", null],
+    ]);
+  });
+
+  test("overrides replace the choice colour, and give an option with none a colour", () => {
+    const overrides = new Map([
+      [1, hex("#C50F1F")],
+      [3, hex("#0B6A0B")],
+    ]);
+    const merged = mergeCounts(options, new Map([[1, 1], [3, 1]]), null, { overrides, neutralZeroCounts: false });
+    expect(colours(merged.badges)).toEqual([
+      ["Red", "#C50F1F"],
+      ["Amber", "#FFB900"],
+      ["Green", "#0B6A0B"],
+    ]);
+  });
+
+  test("an override doesn't colour a zero count when zero counts are neutral", () => {
+    const merged = mergeCounts(options, new Map(), [1], { overrides: new Map([[1, hex("#C50F1F")]]), neutralZeroCounts: true });
+    expect(colours(merged.badges)).toEqual([["Red", null]]);
   });
 });
