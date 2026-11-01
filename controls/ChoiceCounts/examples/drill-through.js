@@ -7,7 +7,8 @@
  * its relationship, so it shows only this record's rows with that value.
  *
  * Set up, on the form:
- *   1. Upload this file as a JavaScript web resource in the project's solution, and edit CONFIG below.
+ *   1. Upload this file as a JavaScript web resource in the project's solution, named
+ *      <prefix>_ChoiceCounts.<table logical name>.js (no "/", like GridFormatter's rules files), and edit CONFIG below.
  *   2. Form properties > Events > On Load: add the library, function "WBChoiceCounts.DrillThrough.onLoad",
  *      with "Pass execution context as first parameter" ticked.
  *   3. The subgrid must show related rows only, and its view selector must be on and must offer every view
