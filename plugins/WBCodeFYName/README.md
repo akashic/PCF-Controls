@@ -96,7 +96,7 @@ Version: `<FileVersion>` in the csproj (`x.y.z.0`), which must match `solution/s
 
 ## Changelog
 
-### 0.2.0 (unreleased)
+### 0.2.0 (2026-11-02)
 
 - A WBCode can end in any two digits, not only `70`. It must still be eight digits.
 
