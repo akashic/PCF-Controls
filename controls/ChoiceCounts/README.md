@@ -11,6 +11,19 @@ A virtual (React, Fluent 9) **field control** that shows how many related rows h
 | Deploying to William Buck | [docs/william-buck-deployment-guide.md](docs/william-buck-deployment-guide.md) |
 | Drill-through form script | [examples/drill-through.js](examples/drill-through.js) |
 
+## Screenshots
+
+Version 0.1.4 on the SMSF Matter form in `LowCode`, set up as described in the [test environment](../../docs/testing/choicecounts-test-environment.md). There are two instances: **Task RAG** counts the matter's active tasks by RAG Status (Red and Amber only, Zero counts *Neutral*), and **Task status** counts every task by Status Reason. Captured 2 Nov 2026.
+
+| | |
+|---|---|
+| ![Task RAG showing Red 2 and Amber 3, Task status showing Active 9 and Inactive 1](docs/images/light-counts.jpg) | ![The same form in dark mode](docs/images/dark-counts.jpg) |
+| Counts in the light theme | The same matter in the dark theme |
+| ![Red 1 in red and Amber 0 as a grey badge](docs/images/light-zero-count.jpg) | ![The Tasks tab showing the Red tasks view with two tasks](docs/images/drill-through-red.jpg) |
+| A zero count is a grey badge when Zero counts is *Neutral* | Selecting **Red 2** opens the Tasks tab with the "Red tasks" view |
+| ![The Tasks tab showing the Status: Inactive view with one task](docs/images/drill-through-inactive.jpg) | |
+| Selecting **Inactive 1** on the second instance opens "Status: Inactive", handled by the same form script | |
+
 ## Properties
 
 | Property | Type | Purpose |
