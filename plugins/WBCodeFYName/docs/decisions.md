@@ -1,5 +1,7 @@
 # WBCodeFYName: VERIFY outcomes
 
+> **0.2.0 note:** these results are for 0.1.0, which only accepted WBCodes ending in `70`. From 0.2.0, any eight-digit WBCode is accepted, so `00100512` now saves (as `00100512-26`), and the error reads `WBCode "…" must be eight digits, for example 00224570.` `1234570` (seven digits) is still blocked.
+
 The platform unknowns in the [brief](../../../docs/briefs/2026-10-31-wbcodefy-name-plugin.md) §3, tested on 1 Nov 2026 for #59. They were tested in `LowCode`, a test copy of the dev tables with dev's `wbsuper_` names ([test environment](../../../docs/testing/wbcodefyname-test-environment.md)), from Windows with the Azure CLI and `pac` 2.14.1. Registration and sync don't use any Windows-only tool, so the same steps work on macOS.
 
 ## W-1: steps created through the Web API run
