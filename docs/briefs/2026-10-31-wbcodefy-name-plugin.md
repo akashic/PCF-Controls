@@ -31,9 +31,9 @@ A business rule or formula column can't do this: the values come from referenced
 | Generic or specific | **Specific to WBCodeFY.** The validation rules are compiled in. Only logical names are configured. |
 | Logical names | Come from the step's **unsecure configuration (JSON)**, never from constants, so the C# contains no `wbsuper_` or any other prefix (ADR-0005 spirit). The config holds the target table, the WBCode lookup, the FY lookup, the name column, and the value column on each referenced table. |
 | Bad configuration | **Block the save** with an `InvalidPluginExecutionException` ("WBCodeFY isn't configured correctly. Contact your administrator."). Write the details to the trace log. Parse and validate the configuration once, in the constructor. |
-| WBCode rule | `^\d{6}70$` (eight digits ending in 70), compiled. |
+| WBCode rule | `^\d{8}$` (eight digits), compiled. Until 0.2.0 it was `^\d{6}70$`; the product owner removed the `70` restriction on 2 November 2026. |
 | FY rule | **`^FY\d{2}$`** (broadened from `FY2\d` so saves don't start failing at FY30), compiled, case-insensitive. |
-| Result | `<WBCode>-<FY without "FY">`, which must match `^\d{6}70-\d{2}$`. |
+| Result | `<WBCode>-<FY without "FY">`, which must match `^\d{8}-\d{2}$`. |
 | Missing lookup | **Reject** a Create or Update that leaves either lookup empty. |
 | Direct edits of the name | **One Update step filtered on all three columns**, WBCode, FY and WBCodeFY, with a pre-image of both lookups. Any direct write to the name is recomputed and overwritten. There's no separate reject step. |
 | Security context | Retrieve the referenced rows as the **calling user**. Every role that saves the target table needs Read on both reference tables, which goes in the README as a project prerequisite. |
@@ -110,7 +110,7 @@ The image name `PreImage` is case-sensitive. Both steps carry the same unsecure 
 
 ### 5.1 MSTest (no Dataverse)
 
-- **`NameRules`:** valid values; a WBCode that doesn't end in 70; the wrong WBCode length; non-digits; `FY26`, `fy26`, `FY30` and `FY05` accepted; `2026`, `FY2026` and `FY` rejected; surrounding whitespace trimmed.
+- **`NameRules`:** valid values; any two-digit WBCode suffix accepted; the wrong WBCode length; non-digits; `FY26`, `fy26`, `FY30` and `FY05` accepted; `2026`, `FY2026` and `FY` rejected; surrounding whitespace trimmed.
 - **`StepConfig`:** valid config; missing, empty, malformed and unknown properties; a bad logical name.
 - **`Execute` through fakes:**
   - Create with both lookups.

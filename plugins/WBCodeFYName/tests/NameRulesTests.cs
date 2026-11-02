@@ -8,6 +8,9 @@ public sealed class NameRulesTests
     [TestMethod]
     [DataRow("00224570", "FY26", "00224570-26")]
     [DataRow("00145570", "FY25", "00145570-25")]
+    [DataRow("00224571", "FY26", "00224571-26")]
+    [DataRow("00224500", "FY26", "00224500-26")]
+    [DataRow("00224599", "FY26", "00224599-26")]
     [DataRow("00224570", "fy26", "00224570-26")]
     [DataRow("00224570", "FY30", "00224570-30")]
     [DataRow("00224570", "FY05", "00224570-05")]
@@ -18,7 +21,6 @@ public sealed class NameRulesTests
     }
 
     [TestMethod]
-    [DataRow("00224571", DisplayName = "doesn't end in 70")]
     [DataRow("224570", DisplayName = "too short")]
     [DataRow("0022457", DisplayName = "seven digits")]
     [DataRow("000224570", DisplayName = "nine digits")]
@@ -28,7 +30,7 @@ public sealed class NameRulesTests
     public void Rejects_an_invalid_WBCode(string wbCode)
     {
         var error = Assert.ThrowsExactly<InvalidPluginExecutionException>(() => NameRules.Compose(wbCode, "FY26"));
-        Assert.AreEqual("WBCode \"" + wbCode + "\" must be eight digits ending in 70, for example 00224570.", error.Message);
+        Assert.AreEqual("WBCode \"" + wbCode + "\" must be eight digits, for example 00224570.", error.Message);
     }
 
     [TestMethod]

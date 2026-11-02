@@ -45,17 +45,17 @@ If any name differs (for example a different prefix), **stop**: the solution won
 Check the columns with `pac`:
 
 ```sh
-pac org fetch --xml "<fetch top='1'><entity name='wbsuper_smsfmatter'><attribute name='wbsuper_wbcodefy'/><attribute name='wbsuper_wbcode'/><attribute name='wbsuper_fy'/></entity></fetch>"
+pac org fetch --xml "<fetch count='1'><entity name='wbsuper_smsfmatter'><attribute name='wbsuper_wbcodefy'/><attribute name='wbsuper_wbcode'/><attribute name='wbsuper_fy'/></entity></fetch>"
 ```
 
-It must return a row or an empty result, not an error naming a column.
+It must return a row or an empty result, not an error naming a column. Use `count`, not `top`: `pac org fetch` pages through results, and Dataverse rejects `top` with `The top attribute can't be specified with paging attribute page`.
 
 ## 3. Prepare existing data
 
 Rows that already exist keep their current name until they're saved again (§7), so check them before importing:
 
 1. **Duplicates.** The alternate key can't be activated while two rows share a WBCode and FY. Find them in Advanced Find, or with a grouped FetchXML query on `wbsuper_wbcode` and `wbsuper_fy` using `having count > 1`. Merge or fix them with the business before you continue.
-2. **Missing or invalid lookups.** Once the plug-in is live, any save of a row with an empty WBCode or FY, a WBCode that isn't eight digits ending in `70`, or an FY that isn't `FY` plus two digits **will be blocked**. That affects users editing other fields on those rows too. List such rows and fix them first, or agree with the business that they'll be fixed when next edited.
+2. **Missing or invalid lookups.** Once the plug-in is live, any save of a row with an empty WBCode or FY, a WBCode that isn't eight digits, or an FY that isn't `FY` plus two digits **will be blocked**. That affects users editing other fields on those rows too. List such rows and fix them first, or agree with the business that they'll be fixed when next edited.
 
 ## 4. Pre-import checks
 
@@ -90,7 +90,7 @@ Steps 1 and 2 apply in every environment. Steps 3 to 7 change data, so run them 
 2. **One assembly:** the §4 assembly query returns exactly one `WBCodeFYName`, version `1.0.0.0`.
 3. **Form save:** create an SMSF Matter with a valid WBCode and FY. Its name becomes `<WBCode>-<FY digits>`, for example `00224570` + FY26 gives `00224570-26`.
 4. **Regeneration:** change its FY, save, and the name follows. Change its WBCode, save, and the name follows.
-5. **Blocked saves:** try a WBCode that doesn't end in `70` (if one exists), or clear the FY. The save is blocked with the README's message, for example `FY must be set before the record can be saved.`
+5. **Blocked saves:** try a WBCode that isn't eight digits (if one exists), or clear the FY. The save is blocked with the README's message, for example `FY must be set before the record can be saved.`
 6. **User without Read on Financial Year (UAT, required).** This wasn't tested in `LowCode`, which has a single user ([#60](decisions.md#dev-test-matrix-60)). Use a UAT user, or a temporary copy of a role, that can create SMSF Matter but has **no Read on Financial Year**. Their save should fail with `WBCodeFY couldn't be generated. Check the WBCode and FY, and that you can read both, then try again.`, with the details in the trace log. Record the result in [decisions.md](decisions.md), then put the role back.
 7. **Duplicate:** create a second row with the same WBCode and FY. The alternate key rejects it.
 

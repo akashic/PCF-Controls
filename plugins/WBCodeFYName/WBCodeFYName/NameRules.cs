@@ -9,9 +9,9 @@ namespace WBCodeFYName
     /// </summary>
     public static class NameRules
     {
-        // A WBCode is the six-digit Client ID followed by 70, the super fund suffix (GLOSSARY.md).
-        // [0-9] rather than \d: in .NET, \d also matches non-ASCII digits.
-        private static readonly Regex WBCodePattern = new Regex("^[0-9]{6}70$", RegexOptions.CultureInvariant);
+        // A WBCode is the six-digit Client ID followed by a two-digit suffix (GLOSSARY.md). Any suffix is accepted,
+        // not only 70 (super fund). [0-9] rather than \d: in .NET, \d also matches non-ASCII digits.
+        private static readonly Regex WBCodePattern = new Regex("^[0-9]{8}$", RegexOptions.CultureInvariant);
 
         // FY followed by two digits. FY2n would stop working at FY30, so any two digits are accepted.
         private static readonly Regex FYPattern = new Regex("^FY([0-9]{2})$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
@@ -30,7 +30,7 @@ namespace WBCodeFYName
             if (!WBCodePattern.IsMatch(code))
             {
                 throw new InvalidPluginExecutionException(
-                    "WBCode \"" + code + "\" must be eight digits ending in 70, for example 00224570.");
+                    "WBCode \"" + code + "\" must be eight digits, for example 00224570.");
             }
             if (year.Length == 0)
             {

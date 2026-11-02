@@ -20,7 +20,7 @@ On every Create, and on any Update that touches either lookup or the name:
 2. **Rejects a save that leaves either lookup empty.**
 3. **Reads the WBCode and FY values** from the referenced rows, as the user who's saving.
 4. **Checks the values.**
-   - The WBCode must be eight digits ending in `70`, which marks a super fund.
+   - The WBCode must be eight digits: the six-digit Client ID and any two-digit suffix.
    - The FY must be `FY` plus two digits, in any case.
 5. **Writes `<WBCode>-<two FY digits>` to the name column**, replacing whatever value the save supplied.
 
@@ -30,7 +30,7 @@ The user sees one of these messages when a save is rejected:
 |---|---|
 | A lookup is empty | `WBCode must be set before the record can be saved.` / `FY must be set before the record can be saved.` |
 | The referenced row has no value | `The selected WBCode has no value.` / `The selected FY has no value.` |
-| A value breaks its rule | `WBCode "00224571" must be eight digits ending in 70, for example 00224570.` / `FY "2026" must be FY followed by two digits, for example FY26.` |
+| A value breaks its rule | `WBCode "0022457" must be eight digits, for example 00224570.` / `FY "2026" must be FY followed by two digits, for example FY26.` |
 | The step configuration is missing or invalid, or the step isn't PreOperation | `WBCodeFY isn't configured correctly. Contact your administrator.` (the reason is in the plug-in trace log) |
 | Anything else, such as no Read privilege on a reference table | `WBCodeFY couldn't be generated. Check the WBCode and FY, and that you can read both, then try again.` (the details are in the trace log) |
 
@@ -95,6 +95,10 @@ pac solution import --path plugins/WBCodeFYName/solution/bin/Release/WBWBCodeFYN
 Version: `<FileVersion>` in the csproj (`x.y.z.0`), which must match `solution/src/Other/Solution.xml`. Never change `AssemblyVersion`.
 
 ## Changelog
+
+### 0.2.0 (unreleased)
+
+- A WBCode can end in any two digits, not only `70`. It must still be eight digits.
 
 ### 0.1.0 (2026-11-01)
 
