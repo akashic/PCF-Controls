@@ -648,7 +648,7 @@ In the messages below, `<file>` is the web resource name, for example `abc_GridF
 
 | Symptom | Usual cause |
 |---|---|
-| No formatting, and no `[GridFormatter]` messages at all | The grid doesn't use the control. Check the grid's **Customizer control** is `wb_Controls.GridFormatter` ([README](../README.md#set-up-a-table)). |
+| No formatting, and no `[GridFormatter]` messages even with the [debug log](#turn-on-the-debug-log) on | The grid doesn't use the control. A working control logs nothing without the debug log, so turn it on first. Then check the grid setup ([README](../README.md#the-grid-isnt-using-the-control)). |
 | The main grid is formatted but a subgrid isn't | The subgrid hasn't been given its own Power Apps grid control with the customizer: the main grid's setting doesn't reach subgrids ([README](../README.md#subgrids-on-forms)). Then hard-reload the form. |
 | No formatting, and the `no config web resource` info line | Wrong file name (`_GridFormatter.`, table logical name, `.json`), or not published. Names from before 0.3.0 (`wb_/GridFormatter/<table>.json`) aren't read any more; recreate the file under the new name. |
 | The old rules still show | Not published, or the page wasn't reloaded. |

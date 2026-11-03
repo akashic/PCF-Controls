@@ -46,12 +46,18 @@ Pointing a grid at the control is a customisation of that **table**, so do it in
 
 ### Main grid (every view of the table)
 
-1. In the project solution, open the table in the classic designer: **Settings → Customizations → Customize the system → Entities → *table* → Controls** (from make.powerapps.com: open the table, then **Switch to classic**).
-2. **Add Control… → Power Apps grid control → Add**, and select it for **Web** (and Phone and Tablet if wanted).
-3. In its properties:
-   - **Customizer control:** `wb_Controls.GridFormatter`
+1. Open the project solution in the classic solution explorer, then **Entities → *table* → Controls**. Microsoft documents this as the only place to set a grid control for every view of a table.
+   - From make.powerapps.com: open the solution, then **… → Switch to classic**.
+   - If **Switch to classic** isn't offered, open `https://<org host>/tools/solution/edit.aspx?id=<solution id>`. The solution id is the GUID after `/solutions/` in the maker portal's address bar, and the org host is under **Settings → Session details → Instance url**.
+   - Avoid **Advanced Settings → Customize the system**: it edits the Default Solution, so the setting isn't in the solution that moves to UAT and prod.
+2. **Add Control… → Power Apps grid control → Add**. In the **Power Apps grid control** row, select the **Web** radio button (and Phone and Tablet if wanted). If Web stays on **Read-only Grid (default)**, the views keep the old grid and the customizer never runs.
+3. Select the **Power Apps grid control** row to show its properties, and use each property's pencil icon:
+   - **Customizer control:** **Bind to static value**, `wb_Controls.GridFormatter`. That's the control's full name, and it's case-sensitive. `WBGridFormatter` must already be imported.
    - **Enable OptionSet colors:** **No**, so the grid doesn't colour choice cells as well as the control.
-4. **Save** and **Publish**.
+   - Leave the other grid properties (editing, filtering and so on) as the views need them.
+4. **Save** and **Publish**, then hard-reload the app (Cmd+Shift+R or Ctrl+Shift+R), because the app caches grid settings.
+
+If the views still aren't formatted, see [Troubleshooting](#troubleshooting).
 
 ### Subgrids on forms
 
@@ -81,15 +87,44 @@ Check a file against the schema from the repo root:
 npm run validate:config
 ```
 
-## Debugging
+## Troubleshooting
 
-Every console message starts with `[GridFormatter]`. To log which rules matched each row, run this in the browser console on the app's tab and reload:
+Every console message starts with `[GridFormatter]`. **The control only logs problems**, so a working grid with a valid rules file writes nothing, and an empty console doesn't show whether the control is running.
+
+### Is the control running?
+
+Open the grid, then in the browser console (F12) on the app's tab run this and hard-reload:
 
 ```js
 sessionStorage.setItem("GridFormatter.debug", "1")
 ```
 
-Turn it off with `sessionStorage.removeItem("GridFormatter.debug")`. The [troubleshooting section](docs/configuration.md#troubleshooting) lists every message and what to do about it.
+| What the console shows | Meaning | Next |
+|---|---|---|
+| `[GridFormatter] [debug] row …: matched …` lines | The control runs on this grid | The setup is fine. If a rule doesn't show, it didn't match or a column it reads isn't in the view ([view rule](docs/configuration.md#the-view-rule)) |
+| `no config web resource <prefix>_GridFormatter.<table>.json …` | The control runs, but finds no rules file | [Deploy the rules](#deploy-the-rules): check the name exactly, then publish |
+| Any other `[GridFormatter]` line | The control runs and hit a problem | Look the message up in the [configuration guide](docs/configuration.md#troubleshooting) |
+| Nothing | The grid isn't using the control | [The grid isn't using the control](#the-grid-isnt-using-the-control) |
+
+Turn the log off with `sessionStorage.removeItem("GridFormatter.debug")`. It only lasts for that browser tab anyway.
+
+### The grid isn't using the control
+
+Check, in order:
+
+1. **Web is on the Power Apps grid control.** On the table's Controls tab ([Main grid](#main-grid-every-view-of-the-table) step 2), the **Web** radio button must be on the **Power Apps grid control** row, not **Read-only Grid (default)**.
+2. **Published and reloaded.** **Save** alone doesn't change the app: **Publish**, then hard-reload. A normal reload can keep the old grid settings.
+3. **The customizer name.** **Customizer control** is exactly `wb_Controls.GridFormatter`, and `WBGridFormatter` is imported in this environment.
+4. **The view's own control.** A view can have its own control (classic view designer → **Custom Controls**), which overrides the table's setting for that view. Check the view that isn't formatted.
+5. **The right table.** The app's navigation item or subgrid shows the table you set up. Subgrids need their own setup ([Subgrids on forms](#subgrids-on-forms)).
+
+To see what the table has actually saved, open this in the browser (it only reads):
+
+```text
+https://<org host>/api/data/v9.2/customcontroldefaultconfigs?$select=controldescriptionxml&$filter=primaryentitytypecode eq '<table logical name>'
+```
+
+The XML should have a `Microsoft.PowerApps.PowerAppsOneGrid` control with `GridCustomizerControlFullName` set to `wb_Controls.GridFormatter`. If it doesn't, the setting wasn't saved or published. If it does, check items 1, 4 and the hard reload.
 
 ## Develop and test
 
