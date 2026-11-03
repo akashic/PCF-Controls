@@ -125,8 +125,10 @@ In dev, in the form designer for the SMSF Matter main form, inside the project's
       - **Pass execution context as first parameter:** ticked.
       - Enabled: ticked.
 4. Save and publish.
+5. Hard-reload the form (Ctrl+Shift+R), or open it in a new InPrivate window. Do the same after **every** change to the web resource.
 
 Notes:
+- **The browser caches the web resource.** Until it fetches the new copy, the form keeps running the old script, with the old `CONFIG`. In William Buck's dev environment this showed up first as "method does not exist", then as "subgrid … isn't on the form" naming a subgrid that had already been renamed. Both went away once the new copy loaded. If the console names a tab, subgrid or view that isn't in your current `CONFIG`, the form is still running the old copy (§8).
 - Selecting a count raises the control's **OnOptionSelect** event, and the script opens the tab and switches the subgrid. The control itself never navigates.
 - Custom control events are documented by Microsoft as **preview**. They work in `LowCode` (decisions.md C-5). Recheck them after major platform updates.
 
@@ -182,6 +184,9 @@ Open the browser's developer tools (F12), go to Console, and reload the form. Th
 | Counts aren't buttons | That instance's "When a count is selected" is "Nothing", which is display-only by design | §5, or "Making another instance clickable" in §6 |
 | Selecting a count does nothing | The script isn't registered; no `CONFIG.controls` entry has that instance's host column as `control`; that option has no view in the entry's `views`; or the form is cached | Check §6, then **hard-reload** the form (Ctrl+Shift+R) |
 | The tab opens but the view doesn't change | The view selector is off, or doesn't offer that view, or the view name in the entry's `views` differs | §3 step 3 and §6 step 1. The console says which |
+| On form load: "`WBChoiceCounts.DrillThrough.onLoad` … method does not exist" | The form loaded an old or unpublished copy of the web resource, or the script didn't parse. A `CONFIG` with a missing comma or a leftover `<Red value>` placeholder doesn't parse, so the console also shows `Uncaught SyntaxError` | Publish the web resource, then hard-reload (§6 step 5). Otherwise fix the line the `SyntaxError` names |
+| `ChoiceCounts drill-through (<column>): subgrid <name> isn't on the form` | The form is running an old copy whose `CONFIG` has an old name; or `subgrid` isn't the subgrid's **Name** (case matters); or `tab` is wrong, so the tab never opens and the subgrid never loads | Hard-reload first. If it persists, open the subgrid's tab, then list the names in the console: `Xrm.Page.ui.controls.get().filter(c => c.getControlType() === "subgrid").map(c => c.getName())` and `Xrm.Page.ui.tabs.get().map(t => t.getName())`. A subgrid on an unopened tab isn't listed |
+| The console names a tab, subgrid or view that isn't in your `CONFIG` | The browser is still running the old copy of the web resource | Publish, then hard-reload or use an InPrivate window |
 
 ## 9. Limits
 
