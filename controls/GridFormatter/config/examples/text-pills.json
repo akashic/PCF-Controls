@@ -4,10 +4,10 @@
   "rules": [
     {
       "id": "job-not-in",
-      "description": "Job Not In: dark red pill, white text (6.8:1)",
+      "description": "Job Not In: maroon pill, white text (9.2:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
       "display": "pill",
-      "style": { "backgroundColor": "#B3192D" }
+      "style": { "backgroundColor": "#8F1424" }
     },
     {
       "id": "job-in-not-started",
@@ -18,10 +18,60 @@
     },
     {
       "id": "wip",
-      "description": "WIP: dark green pill, white text (5.7:1)",
+      "description": "WIP: olive green pill, white text (5.7:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
       "display": "pill",
       "style": { "backgroundColor": "#49711E" }
+    },
+    {
+      "id": "manager-review",
+      "description": "Manager Review: dark gold pill, white text (5.6:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Manager Review" },
+      "display": "pill",
+      "style": { "backgroundColor": "#7F6500" }
+    },
+    {
+      "id": "partner-review",
+      "description": "Partner Review: purple pill, white text (5.7:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Partner Review" },
+      "display": "pill",
+      "style": { "backgroundColor": "#8E32E2" }
+    },
+    {
+      "id": "audit",
+      "description": "Audit: red pill, white text (5.5:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Audit" },
+      "display": "pill",
+      "style": { "backgroundColor": "#CD1D29" }
+    },
+    {
+      "id": "out-for-signing",
+      "description": "Out for Signing: dark green pill, white text (8.4:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Out for Signing" },
+      "display": "pill",
+      "style": { "backgroundColor": "#0B5A12" }
+    },
+    {
+      "id": "awaiting-audit-clearance",
+      "description": "Awaiting audit clearance: crimson pill, white text (5.5:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Awaiting audit clearance" },
+      "display": "pill",
+      "style": { "backgroundColor": "#C91D5A" }
+    },
+    {
+      "id": "completed-and-lodged",
+      "description": "Completed & Lodged: magenta pill, white text (5.6:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Completed & Lodged" },
+      "display": "pill",
+      "style": { "backgroundColor": "#B71AAF" }
+    },
+    {
+      "id": "other-stage",
+      "description": "Any other stage: grey pill, white text (5.7:1). Runs last; empty cells get no pill",
+      "priority": 100,
+      "scope": { "columns": ["wbsuper_stage"] },
+      "display": "pill",
+      "style": { "backgroundColor": "#666666" }
     }
   ]
 }

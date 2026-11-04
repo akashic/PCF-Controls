@@ -587,7 +587,7 @@ Use it with the row tint, or on its own. Put both rules in one file to get both,
 
 ### Text value as a solid cell colour
 
-[`text-cell-background.json`](../config/examples/text-cell-background.json): colour a single line of text cell by its value, with a solid background and black text.
+[`text-cell-background.json`](../config/examples/text-cell-background.json): colour a single line of text cell by its value, with a solid background and black text, and light grey for any other value.
 
 ```json
 {
@@ -596,35 +596,79 @@ Use it with the row tint, or on its own. Put both rules in one file to get both,
   "rules": [
     {
       "id": "job-not-in",
-      "description": "Job Not In: solid pink cell, black text",
+      "description": "Job Not In: solid pink cell, black text (14.3:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
       "style": { "backgroundColor": { "hex": "#FFC7CE", "alpha": 1 }, "color": "#000000" }
     },
     {
       "id": "job-in-not-started",
-      "description": "Job in not Started: solid light blue cell, black text",
+      "description": "Job in not Started: solid light blue cell, black text (13.4:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job in not Started" },
       "style": { "backgroundColor": { "hex": "#A9D5EC", "alpha": 1 }, "color": "#000000" }
     },
     {
       "id": "wip",
-      "description": "WIP: solid green cell, black text",
+      "description": "WIP: solid green cell, black text (11.4:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
       "style": { "backgroundColor": { "hex": "#92D050", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "manager-review",
+      "description": "Manager Review: solid yellow cell, black text (19.9:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Manager Review" },
+      "style": { "backgroundColor": { "hex": "#FFFF84", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "partner-review",
+      "description": "Partner Review: solid lilac cell, black text (8.4:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Partner Review" },
+      "style": { "backgroundColor": { "hex": "#C58AFA", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "audit",
+      "description": "Audit: solid coral cell, black text (8.0:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Audit" },
+      "style": { "backgroundColor": { "hex": "#FF747D", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "out-for-signing",
+      "description": "Out for Signing: solid mint cell, black text (17.7:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Out for Signing" },
+      "style": { "backgroundColor": { "hex": "#C6F8C9", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "awaiting-audit-clearance",
+      "description": "Awaiting audit clearance: solid raspberry cell, black text (5.2:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Awaiting audit clearance" },
+      "style": { "backgroundColor": { "hex": "#EB3073", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "completed-and-lodged",
+      "description": "Completed & Lodged: solid pale pink cell, black text (14.3:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Completed & Lodged" },
+      "style": { "backgroundColor": { "hex": "#FFC1FC", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "other-stage",
+      "description": "Any other stage, and empty cells: solid light grey cell, black text (17.6:1). Runs last",
+      "priority": 100,
+      "scope": { "columns": ["wbsuper_stage"] },
+      "style": { "backgroundColor": { "hex": "#EBEBEB", "alpha": 1 }, "color": "#000000" }
     }
   ]
 }
 ```
 
-- Each `when` is a single leaf with no `scope`, so only the `wbsuper_stage` cell is styled, not the row.
+- Each value rule's `when` is a single leaf with no `scope`, so only the `wbsuper_stage` cell is styled, not the row.
 - `eq` on text ignores case but nothing else: the wording and spaces must match the data.
-- `"alpha": 1` draws the exact colour, as these pale colours were chosen to match a spreadsheet. A plain hex would show at `tintAlpha` (18%). The cost is that a solid background hides the grid's hover and selection colours on those cells; the [pill version](#text-value-as-a-pill) doesn't.
-- Black text contrast: 14.3:1 on `#FFC7CE`, 13.4:1 on `#A9D5EC`, 11.4:1 on `#92D050`. White text on these fills is under 2:1, and the control warns about it.
+- `other-stage` is the default. It has no `when`, so it matches every row, and needs a `scope`. Its `priority` of 100 makes it run after the value rules (priority 0), and the first rule to set a property wins, so it only colours cells no value rule matched, including empty ones. To leave empty cells alone, add `"when": { "column": "wbsuper_stage", "op": "isNotNull" }`.
+- `"alpha": 1` draws the exact colour, as these colours were chosen to match a spreadsheet. A plain hex would show at `tintAlpha` (18%). The cost is that a solid background hides the grid's hover and selection colours on those cells; the [pill version](#text-value-as-a-pill) doesn't.
+- Every rule's description gives its black text contrast. The lowest is 5.2:1 on `#EB3073`. White text would be under 2:1 on most of these fills, and the control warns about that.
 - The colours are fixed hex, so they look the same in dark mode. The text and background are both fixed, so the contrast holds there too.
 
 ### Text value as a pill
 
-[`text-pills.json`](../config/examples/text-pills.json): the same values as pills in darker shades, which get white text.
+[`text-pills.json`](../config/examples/text-pills.json): the same values as pills in darker shades, which get white text, and a grey pill for any other value.
 
 ```json
 {
@@ -633,10 +677,10 @@ Use it with the row tint, or on its own. Put both rules in one file to get both,
   "rules": [
     {
       "id": "job-not-in",
-      "description": "Job Not In: dark red pill, white text (6.8:1)",
+      "description": "Job Not In: maroon pill, white text (9.2:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
       "display": "pill",
-      "style": { "backgroundColor": "#B3192D" }
+      "style": { "backgroundColor": "#8F1424" }
     },
     {
       "id": "job-in-not-started",
@@ -647,16 +691,68 @@ Use it with the row tint, or on its own. Put both rules in one file to get both,
     },
     {
       "id": "wip",
-      "description": "WIP: dark green pill, white text (5.7:1)",
+      "description": "WIP: olive green pill, white text (5.7:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
       "display": "pill",
       "style": { "backgroundColor": "#49711E" }
+    },
+    {
+      "id": "manager-review",
+      "description": "Manager Review: dark gold pill, white text (5.6:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Manager Review" },
+      "display": "pill",
+      "style": { "backgroundColor": "#7F6500" }
+    },
+    {
+      "id": "partner-review",
+      "description": "Partner Review: purple pill, white text (5.7:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Partner Review" },
+      "display": "pill",
+      "style": { "backgroundColor": "#8E32E2" }
+    },
+    {
+      "id": "audit",
+      "description": "Audit: red pill, white text (5.5:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Audit" },
+      "display": "pill",
+      "style": { "backgroundColor": "#CD1D29" }
+    },
+    {
+      "id": "out-for-signing",
+      "description": "Out for Signing: dark green pill, white text (8.4:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Out for Signing" },
+      "display": "pill",
+      "style": { "backgroundColor": "#0B5A12" }
+    },
+    {
+      "id": "awaiting-audit-clearance",
+      "description": "Awaiting audit clearance: crimson pill, white text (5.5:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Awaiting audit clearance" },
+      "display": "pill",
+      "style": { "backgroundColor": "#C91D5A" }
+    },
+    {
+      "id": "completed-and-lodged",
+      "description": "Completed & Lodged: magenta pill, white text (5.6:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Completed & Lodged" },
+      "display": "pill",
+      "style": { "backgroundColor": "#B71AAF" }
+    },
+    {
+      "id": "other-stage",
+      "description": "Any other stage: grey pill, white text (5.7:1). Runs last; empty cells get no pill",
+      "priority": 100,
+      "scope": { "columns": ["wbsuper_stage"] },
+      "display": "pill",
+      "style": { "backgroundColor": "#666666" }
     }
   ]
 }
 ```
 
-- The fills are the hues of `#FFC7CE`, `#A9D5EC` and `#92D050` darkened until white text wins. A pill picks black or white text itself, so there's no `color`.
+- Each fill is the hue of the matching pale colour above, darkened until white text is at least 5.5:1. A pill picks black or white text itself, so there's no `color`. Yellow can't stay yellow at that darkness, so Manager Review is dark gold.
+- Job Not In is maroon rather than red so it stands apart from Audit, whose pale colours are both pinkish reds.
+- `other-stage` works as in the solid version. An empty cell never gets a pill, so it stays plain.
 - Pill fills are always solid, and the cell's own background stays clear, so hover and selection still show.
 
 ### All together

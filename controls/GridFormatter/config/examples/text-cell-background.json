@@ -4,21 +4,64 @@
   "rules": [
     {
       "id": "job-not-in",
-      "description": "Job Not In: solid pink cell, black text",
+      "description": "Job Not In: solid pink cell, black text (14.3:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
       "style": { "backgroundColor": { "hex": "#FFC7CE", "alpha": 1 }, "color": "#000000" }
     },
     {
       "id": "job-in-not-started",
-      "description": "Job in not Started: solid light blue cell, black text",
+      "description": "Job in not Started: solid light blue cell, black text (13.4:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job in not Started" },
       "style": { "backgroundColor": { "hex": "#A9D5EC", "alpha": 1 }, "color": "#000000" }
     },
     {
       "id": "wip",
-      "description": "WIP: solid green cell, black text",
+      "description": "WIP: solid green cell, black text (11.4:1)",
       "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
       "style": { "backgroundColor": { "hex": "#92D050", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "manager-review",
+      "description": "Manager Review: solid yellow cell, black text (19.9:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Manager Review" },
+      "style": { "backgroundColor": { "hex": "#FFFF84", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "partner-review",
+      "description": "Partner Review: solid lilac cell, black text (8.4:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Partner Review" },
+      "style": { "backgroundColor": { "hex": "#C58AFA", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "audit",
+      "description": "Audit: solid coral cell, black text (8.0:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Audit" },
+      "style": { "backgroundColor": { "hex": "#FF747D", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "out-for-signing",
+      "description": "Out for Signing: solid mint cell, black text (17.7:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Out for Signing" },
+      "style": { "backgroundColor": { "hex": "#C6F8C9", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "awaiting-audit-clearance",
+      "description": "Awaiting audit clearance: solid raspberry cell, black text (5.2:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Awaiting audit clearance" },
+      "style": { "backgroundColor": { "hex": "#EB3073", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "completed-and-lodged",
+      "description": "Completed & Lodged: solid pale pink cell, black text (14.3:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Completed & Lodged" },
+      "style": { "backgroundColor": { "hex": "#FFC1FC", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "other-stage",
+      "description": "Any other stage, and empty cells: solid light grey cell, black text (17.6:1). Runs last",
+      "priority": 100,
+      "scope": { "columns": ["wbsuper_stage"] },
+      "style": { "backgroundColor": { "hex": "#EBEBEB", "alpha": 1 }, "color": "#000000" }
     }
   ]
 }
