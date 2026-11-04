@@ -1,0 +1,27 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "job-not-in",
+      "description": "Job Not In: dark red pill, white text (6.8:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
+      "display": "pill",
+      "style": { "backgroundColor": "#B3192D" }
+    },
+    {
+      "id": "job-in-not-started",
+      "description": "Job in not Started: dark blue pill, white text (5.9:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job in not Started" },
+      "display": "pill",
+      "style": { "backgroundColor": "#206B92" }
+    },
+    {
+      "id": "wip",
+      "description": "WIP: dark green pill, white text (5.7:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
+      "display": "pill",
+      "style": { "backgroundColor": "#49711E" }
+    }
+  ]
+}

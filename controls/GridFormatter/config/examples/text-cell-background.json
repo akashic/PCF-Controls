@@ -1,0 +1,24 @@
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "job-not-in",
+      "description": "Job Not In: solid pink cell, black text",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
+      "style": { "backgroundColor": { "hex": "#FFC7CE", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "job-in-not-started",
+      "description": "Job in not Started: solid light blue cell, black text",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job in not Started" },
+      "style": { "backgroundColor": { "hex": "#A9D5EC", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "wip",
+      "description": "WIP: solid green cell, black text",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
+      "style": { "backgroundColor": { "hex": "#92D050", "alpha": 1 }, "color": "#000000" }
+    }
+  ]
+}
