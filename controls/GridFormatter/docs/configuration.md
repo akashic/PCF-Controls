@@ -585,6 +585,80 @@ Use it with the row tint, or on its own. Put both rules in one file to get both,
 - The `isNotNull` check makes the intent explicit. The comparison alone is already false when the budget is empty.
 - To make its background win over a RAG row tint, give it a lower priority than the tint (as `wb_gridspike.json` does with 15).
 
+### Text value as a solid cell colour
+
+[`text-cell-background.json`](../config/examples/text-cell-background.json): colour a single line of text cell by its value, with a solid background and black text.
+
+```json
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "job-not-in",
+      "description": "Job Not In: solid pink cell, black text",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
+      "style": { "backgroundColor": { "hex": "#FFC7CE", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "job-in-not-started",
+      "description": "Job in not Started: solid light blue cell, black text",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job in not Started" },
+      "style": { "backgroundColor": { "hex": "#A9D5EC", "alpha": 1 }, "color": "#000000" }
+    },
+    {
+      "id": "wip",
+      "description": "WIP: solid green cell, black text",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
+      "style": { "backgroundColor": { "hex": "#92D050", "alpha": 1 }, "color": "#000000" }
+    }
+  ]
+}
+```
+
+- Each `when` is a single leaf with no `scope`, so only the `wbsuper_stage` cell is styled, not the row.
+- `eq` on text ignores case but nothing else: the wording and spaces must match the data.
+- `"alpha": 1` draws the exact colour, as these pale colours were chosen to match a spreadsheet. A plain hex would show at `tintAlpha` (18%). The cost is that a solid background hides the grid's hover and selection colours on those cells; the [pill version](#text-value-as-a-pill) doesn't.
+- Black text contrast: 14.3:1 on `#FFC7CE`, 13.4:1 on `#A9D5EC`, 11.4:1 on `#92D050`. White text on these fills is under 2:1, and the control warns about it.
+- The colours are fixed hex, so they look the same in dark mode. The text and background are both fixed, so the contrast holds there too.
+
+### Text value as a pill
+
+[`text-pills.json`](../config/examples/text-pills.json): the same values as pills in darker shades, which get white text.
+
+```json
+{
+  "$schema": "../grid-format.schema.json",
+  "version": 1,
+  "rules": [
+    {
+      "id": "job-not-in",
+      "description": "Job Not In: dark red pill, white text (6.8:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job Not In" },
+      "display": "pill",
+      "style": { "backgroundColor": "#B3192D" }
+    },
+    {
+      "id": "job-in-not-started",
+      "description": "Job in not Started: dark blue pill, white text (5.9:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "Job in not Started" },
+      "display": "pill",
+      "style": { "backgroundColor": "#206B92" }
+    },
+    {
+      "id": "wip",
+      "description": "WIP: dark green pill, white text (5.7:1)",
+      "when": { "column": "wbsuper_stage", "op": "eq", "value": "WIP" },
+      "display": "pill",
+      "style": { "backgroundColor": "#49711E" }
+    }
+  ]
+}
+```
+
+- The fills are the hues of `#FFC7CE`, `#A9D5EC` and `#92D050` darkened until white text wins. A pill picks black or white text itself, so there's no `color`.
+- Pill fills are always solid, and the cell's own background stays clear, so hover and selection still show.
+
 ### All together
 
 [`combined.json`](../config/examples/combined.json) has inactive grey, RAG row tint and overdue in one file, and [`wb_gridspike.json`](../config/examples/wb_gridspike.json) adds over budget, the pill and an underlined name. The [worked examples](#worked-examples) walk through it.
