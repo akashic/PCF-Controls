@@ -32,12 +32,13 @@ jobs:
             echo "has-workspaces=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # Manual runs, first pushes, and changes to shared code or tooling build every control and plug-in.
+          # Manual runs, first pushes, and changes to shared code or tooling (including the SDK pin in global.json)
+          # build every control and plug-in.
           selected="$all"
           selected_plugins="$all_plugins"
           if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -n "$BASE_SHA" ] && ! [[ "$BASE_SHA" =~ ^0+$ ]]; then
             changed=$(git diff --name-only "$BASE_SHA" HEAD)
-            if ! echo "$changed" | grep -qE '^(packages/|package(-lock)?\.json$|scripts/|\.github/|\.nvmrc$)'; then
+            if ! echo "$changed" | grep -qE '^(packages/|package(-lock)?\.json$|scripts/|\.github/|\.nvmrc$|global\.json$)'; then
               touched=$(echo "$changed" | sed -nE 's#^controls/([^/]+)/.*#\1#p' | sort -u)
               selected=$(comm -12 <(echo "$all") <(echo "$touched"))
               touched_plugins=$(echo "$changed" | sed -nE 's#^plugins/([^/]+)/.*#\1#p' | sort -u)
