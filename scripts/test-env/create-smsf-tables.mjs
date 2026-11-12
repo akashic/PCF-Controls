@@ -2,6 +2,8 @@
 // SMSF Matter, SuperFundClient and Financial Year, with dev's wbsuper_ names, so the plug-in's example
 // step configuration works unchanged. Adds a few Financial Years and SuperFundClients, valid and invalid.
 // No SMSF Matter rows: creating one is how the plug-in is tested.
+// Also creates SMSF Query, which TextHash runs against (docs/testing/texthash-test-environment.md), with its hash
+// column and the alternate key on fund + hash. No SMSF Query rows: creating one is how that plug-in is tested.
 // Idempotent: anything that already exists is left alone, so it's safe to re-run.
 // Usage: node scripts/test-env/create-smsf-tables.mjs [--solution WBSuperTest] [--option-prefix 51234]
 // See docs/testing/wbcodefyname-test-environment.md.
@@ -17,15 +19,15 @@ const none = { Value: "None", CanBeChanged: true, ManagedPropertyLogicalName: "c
 const required = { ...none, Value: "ApplicationRequired" };
 const req = (isRequired) => (isRequired ? required : none);
 
-const text = (schema, display, isRequired = false, format = "Text") => ({
+const text = (schema, display, isRequired = false, format = "Text", maxLength = 100) => ({
   "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
-  SchemaName: schema, DisplayName: label(display), RequiredLevel: req(isRequired), MaxLength: 100, FormatName: { Value: format },
+  SchemaName: schema, DisplayName: label(display), RequiredLevel: req(isRequired), MaxLength: maxLength, FormatName: { Value: format },
 });
 const email = (schema, display) => text(schema, display, false, "Email");
 const phone = (schema, display) => text(schema, display, false, "Phone");
-const memo = (schema, display) => ({
+const memo = (schema, display, isRequired = false, maxLength = 4000) => ({
   "@odata.type": "Microsoft.Dynamics.CRM.MemoAttributeMetadata",
-  SchemaName: schema, DisplayName: label(display), RequiredLevel: none, MaxLength: 4000, Format: "TextArea",
+  SchemaName: schema, DisplayName: label(display), RequiredLevel: req(isRequired), MaxLength: maxLength, Format: "TextArea",
 });
 const whole = (schema, display, isRequired = false) => ({
   "@odata.type": "Microsoft.Dynamics.CRM.IntegerAttributeMetadata",
@@ -106,6 +108,20 @@ const tables = [
       { schema: "wbsuper_FY", display: "FY", target: "wbsuper_financialyear", relationship: "wbsuper_FinancialYear_SMSFMatter_FY" },
     ],
   },
+  {
+    // TextHash's table. Dev's primary name column isn't recorded, so wbsuper_Name is a guess; the plug-in doesn't use it.
+    logical: "wbsuper_smsfquery", schema: "wbsuper_SMSFQuery", display: "SMSF Query", plural: "SMSF Queries",
+    description: "Test copy of the dev table for TextHash (docs/testing/texthash-test-environment.md). Safe to delete.",
+    primary: text("wbsuper_Name", "Name"),
+    columns: [
+      memo("wbsuper_QueryDescription", "Query Description", true, 10000),
+      // Set by the plug-in; 64 characters holds a SHA-256 in hex.
+      text("wbsuper_Hash", "Hash", false, "Text", 64),
+    ],
+    lookups: [
+      { schema: "wbsuper_SMSF", display: "SMSF", target: "wbsuper_smsfmatter", relationship: "wbsuper_SMSFMatter_SMSFQuery_SMSF", required: true },
+    ],
+  },
 ];
 
 async function ensurePublisher() {
@@ -139,7 +155,7 @@ async function ensureTable(t) {
   await call("POST", "EntityDefinitions", {
     "@odata.type": "Microsoft.Dynamics.CRM.EntityMetadata",
     SchemaName: t.schema, DisplayName: label(t.display), DisplayCollectionName: label(t.plural),
-    Description: label("Test copy of the dev table for WBCodeFYName (plugins/WBCodeFYName/fields.md). Safe to delete."),
+    Description: label(t.description ?? "Test copy of the dev table for WBCodeFYName (plugins/WBCodeFYName/fields.md). Safe to delete."),
     OwnershipType: "UserOwned", HasActivities: false, HasNotes: false, IsActivity: false,
     Attributes: [{ ...t.primary, IsPrimaryName: true }],
   }, { solution: SOLUTION });
@@ -161,7 +177,7 @@ async function ensureColumns(t) {
     await call("POST", "RelationshipDefinitions", {
       "@odata.type": "Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata",
       SchemaName: l.relationship, ReferencedEntity: l.target, ReferencingEntity: t.logical,
-      Lookup: { "@odata.type": "Microsoft.Dynamics.CRM.LookupAttributeMetadata", SchemaName: l.schema, DisplayName: label(l.display), RequiredLevel: none },
+      Lookup: { "@odata.type": "Microsoft.Dynamics.CRM.LookupAttributeMetadata", SchemaName: l.schema, DisplayName: label(l.display), RequiredLevel: req(l.required) },
     }, { solution: SOLUTION });
     console.log(`created lookup ${t.logical}.${l.schema.toLowerCase()} → ${l.target}`);
   }
@@ -218,17 +234,19 @@ async function ensureForm() {
   console.log("added WBCode and FY to the SMSF Matter form; name is read-only");
 }
 
-// The alternate key on WBCode + FY that the plug-in README requires of the project, so each pair appears once.
-// Dataverse builds the key's index in the background: it's Pending, then Active (or Failed if duplicates exist).
-async function ensureAlternateKey() {
-  const keys = await get("EntityDefinitions(LogicalName='wbsuper_smsfmatter')/Keys?$select=LogicalName,EntityKeyIndexStatus");
-  if (!keys) throw new Error("couldn't read SMSF Matter's keys");
-  const existing = keys.value.find((k) => k.LogicalName === "wbsuper_wbcodefykey");
-  if (existing) return console.log(`alternate key wbsuper_wbcodefykey exists (${existing.EntityKeyIndexStatus})`);
-  await call("POST", "EntityDefinitions(LogicalName='wbsuper_smsfmatter')/Keys", {
-    SchemaName: "wbsuper_WBCodeFYKey", DisplayName: label("WBCode and FY"), KeyAttributes: ["wbsuper_wbcode", "wbsuper_fy"],
+// The alternate keys the plug-in READMEs require of the project: WBCode + FY on SMSF Matter, so each pair appears once,
+// and fund + hash on SMSF Query, so each description appears once per fund.
+// Dataverse builds a key's index in the background: it's Pending, then Active (or Failed if duplicates exist).
+async function ensureAlternateKey(table, schema, display, columns) {
+  const keys = await get(`EntityDefinitions(LogicalName='${table}')/Keys?$select=LogicalName,EntityKeyIndexStatus`);
+  if (!keys) throw new Error(`couldn't read ${table}'s keys`);
+  const logical = schema.toLowerCase();
+  const existing = keys.value.find((k) => k.LogicalName === logical);
+  if (existing) return console.log(`alternate key ${logical} exists (${existing.EntityKeyIndexStatus})`);
+  await call("POST", `EntityDefinitions(LogicalName='${table}')/Keys`, {
+    SchemaName: schema, DisplayName: label(display), KeyAttributes: columns,
   }, { solution: SOLUTION });
-  console.log("created alternate key wbsuper_wbcodefykey (WBCode + FY); its index builds in the background");
+  console.log(`created alternate key ${logical} (${columns.join(" + ")}); its index builds in the background`);
 }
 
 const publisherId = await ensurePublisher();
@@ -236,7 +254,8 @@ await ensureSolution(publisherId);
 for (const t of tables) await ensureTable(t);
 for (const t of tables) await ensureColumns(t);
 await ensureForm();
-await ensureAlternateKey();
+await ensureAlternateKey("wbsuper_smsfmatter", "wbsuper_WBCodeFYKey", "WBCode and FY", ["wbsuper_wbcode", "wbsuper_fy"]);
+await ensureAlternateKey("wbsuper_smsfquery", "wbsuper_FundHashKey", "SMSF and Hash", ["wbsuper_smsf", "wbsuper_hash"]);
 await publish({ entities: tables.map((t) => t.logical) });
 await ensureRows("wbsuper_financialyears", "wbsuper_name", financialYears);
 await ensureRows("wbsuper_superfundclients", "wbsuper_wbcode", clients);

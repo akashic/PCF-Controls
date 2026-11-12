@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SdkMessageProcessingStep Name="TextHash.SetTextHash: Update of wbsuper_smsfquery" SdkMessageProcessingStepId="{d2d71276-9cde-f111-84e8-70a8a5af8744}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SdkMessageId>20bebb1b-ea3e-db11-86a7-000a3a5473e8</SdkMessageId>
+  <PluginTypeName>TextHash.SetTextHash, TextHash, Version=1.0.0.0, Culture=neutral, PublicKeyToken=d1b67c57877d4806</PluginTypeName>
+  <PluginTypeId>ced71276-9cde-f111-84e8-70a8a5af8744</PluginTypeId>
+  <PrimaryEntity>wbsuper_smsfquery</PrimaryEntity>
+  <AsyncAutoDelete>0</AsyncAutoDelete>
+  <Configuration>{"targetTable":"wbsuper_smsfquery","textColumn":"wbsuper_querydescription","hashColumn":"wbsuper_hash","scopeLookup":"wbsuper_smsf","duplicateMessage":"This query already exists for this fund."}</Configuration>
+  <Description>Sets wbsuper_hash from wbsuper_querydescription and blocks duplicates within wbsuper_smsf.</Description>
+  <FilteringAttributes>wbsuper_querydescription,wbsuper_hash,wbsuper_smsf</FilteringAttributes>
+  <ImpersonatingUserIdName></ImpersonatingUserIdName>
+  <InvocationSource>1</InvocationSource>
+  <Mode>0</Mode>
+  <Rank>20</Rank>
+  <EventHandlerTypeCode>4602</EventHandlerTypeCode>
+  <Stage>20</Stage>
+  <IsCustomizable>1</IsCustomizable>
+  <IsHidden>0</IsHidden>
+  <SupportedDeployment>0</SupportedDeployment>
+  <IntroducedVersion>0.1.0.0</IntroducedVersion>
+  <SdkMessageProcessingStepImages>
+    <SdkMessageProcessingStepImage Name="PreImage">
+      <SdkMessageProcessingStepImageId>{1f32237c-9cde-f111-84e8-70a8a5af8744}</SdkMessageProcessingStepImageId>
+      <Attributes>wbsuper_querydescription,wbsuper_smsf</Attributes>
+      <EntityAlias>PreImage</EntityAlias>
+      <ImageType>0</ImageType>
+      <MessagePropertyName>Target</MessagePropertyName>
+      <IsCustomizable>1</IsCustomizable>
+    </SdkMessageProcessingStepImage>
+  </SdkMessageProcessingStepImages>
+</SdkMessageProcessingStep>

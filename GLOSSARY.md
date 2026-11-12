@@ -19,3 +19,14 @@ _Avoid_: financial year record, year
 **WBCodeFY**:
 The identifier of one WBCode in one FY, written `<WBCode>-<last two digits of the FY>` (for example `00224570-26`). Each pair of WBCode and FY has at most one.
 _Avoid_: WBCode-FY, code year
+
+**SMSF Matter**:
+One super fund's work for one FY, named by its WBCodeFY. Users call it the "fund" in messages such as "This query already exists for this fund."
+_Avoid_: matter record
+
+**SMSF Query**:
+A query raised on one SMSF Matter, with a free-text **query description**. An SMSF Matter can't have two queries with the same description, ignoring differences of case and spacing.
+_Avoid_: question, issue
+
+**Duplicate query**:
+An SMSF Query whose description matches another query's on the same SMSF Matter once case and spacing are ignored. The TextHash plug-in blocks it with "This query already exists for this fund."
