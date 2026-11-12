@@ -90,7 +90,7 @@ Everything builds on macOS (Apple Silicon) and Windows 11. Only Node, the .NET S
 | Tool | Version | Notes |
 |---|---|---|
 | Node.js | 24 LTS (see `.nvmrc`) | npm 11+ |
-| .NET SDK | 10.0 | Needed for `pac` and for `dotnet build` of solutions |
+| .NET SDK | 10.0 | Needed for `pac` and for `dotnet build` of solutions. `global.json` pins it to 10.0.x, so a newer SDK on the machine or the CI runner isn't picked instead. On 13 Nov 2026 a CI job whose runner image had SDK 11.0.100 used it despite `setup-dotnet` asking for 10.0.x, and the plug-in build failed with NU5017 |
 | Power Platform CLI (`pac`) | 2.14.1 | Installed as a .NET global tool |
 | VS Code | current | With the **Power Platform Tools** extension |
 
