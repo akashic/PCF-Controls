@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "step-config.schema.json",
+  "title": "TextHash step configuration",
+  "description": "Unsecure configuration for both TextHash steps (Create and Update): the logical names of the project's table and columns, and the duplicate message. The plug-in enforces the same rules at runtime (StepConfig.cs) and the tests keep the two in step.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targetTable", "textColumn", "hashColumn", "duplicateMessage"],
+  "properties": {
+    "targetTable": { "$ref": "#/$defs/logicalName", "description": "The table the steps are registered on." },
+    "textColumn": { "$ref": "#/$defs/logicalName", "description": "The text column whose content must be unique, e.g. a multiple lines of text column." },
+    "hashColumn": { "$ref": "#/$defs/logicalName", "description": "The single line of text column (64 characters) that receives the SHA-256 hash and is in the alternate key." },
+    "scopeLookup": { "$ref": "#/$defs/logicalName", "description": "Optional. The lookup the text must be unique within, e.g. the fund. It's in the alternate key with the hash. Leave it out for uniqueness across the whole table." },
+    "duplicateMessage": { "$ref": "#/$defs/message", "description": "The message a user sees when the text is a duplicate." }
+  },
+  "$defs": {
+    "logicalName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+    "message": { "type": "string", "pattern": "\\S" }
+  }
+}

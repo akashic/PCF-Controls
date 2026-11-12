@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PluginAssembly FullName="TextHash, Version=1.0.0.0, Culture=neutral, PublicKeyToken=d1b67c57877d4806" PluginAssemblyId="cbd71276-9cde-f111-84e8-70a8a5af8744" CustomizationLevel="1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Description>TextHash 0.1.0.0</Description>
+  <IsolationMode>2</IsolationMode>
+  <SourceType>0</SourceType>
+  <IntroducedVersion>0.1.0.0</IntroducedVersion>
+  <FileName>/PluginAssemblies/TextHash-CBD71276-9CDE-F111-84E8-70A8A5AF8744/TextHash.dll</FileName>
+  <PluginTypes>
+    <PluginType AssemblyQualifiedName="TextHash.SetTextHash, TextHash, Version=1.0.0.0, Culture=neutral, PublicKeyToken=d1b67c57877d4806" PluginTypeId="ced71276-9cde-f111-84e8-70a8a5af8744" Name="TextHash.SetTextHash">
+      <Description>Hashes a long text column so an alternate key blocks duplicates, with a friendly message.</Description>
+      <FriendlyName>TextHash.SetTextHash</FriendlyName>
+    </PluginType>
+  </PluginTypes>
+</PluginAssembly>

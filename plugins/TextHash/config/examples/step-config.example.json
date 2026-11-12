@@ -1,0 +1,7 @@
+{
+  "targetTable": "wbsuper_smsfquery",
+  "textColumn": "wbsuper_querydescription",
+  "hashColumn": "wbsuper_hash",
+  "scopeLookup": "wbsuper_smsf",
+  "duplicateMessage": "This query already exists for this fund."
+}
