@@ -2,7 +2,7 @@
 
 > **Audience:** an AI coding agent (or developer) building the plug-in in this repo.
 > **Date written:** 13 November 2026, from the product owner's answers on the original requirements, [`plugins/TextHash/requirements.md`](../../plugins/TextHash/requirements.md). That file's pattern and sample code are useful background, but **this brief overrides it** wherever they differ: names come from configuration, the hash column is `wbsuper_hash`, uniqueness is per fund, and the plug-in checks for a duplicate itself so users see a clear message. Platform facts were checked against Microsoft Learn on 13 November 2026. Anything not confirmed is marked **VERIFY**. Prove those with a spike in `LowCode` and record the result in `plugins/TextHash/docs/decisions.md`.
-> **Status (13 Nov 2026):** built as 0.1.0 and tested in `LowCode`. See [`plugins/TextHash/README.md`](../../plugins/TextHash/README.md), the [test results](../../plugins/TextHash/docs/decisions.md) and the [runbook](../../plugins/TextHash/docs/runbook.md).
+> **Status (13 Nov 2026):** built and tested in `LowCode`, and released as GitHub Release `TextHash-v0.1.0` (zips in [`releases/TextHash/0.1.0/`](../../releases/TextHash/0.1.0/); UAT pending). See [`plugins/TextHash/README.md`](../../plugins/TextHash/README.md), the [test results](../../plugins/TextHash/docs/decisions.md) and the [runbook](../../plugins/TextHash/docs/runbook.md).
 > Conventions come from [ADR-0006](../adr/0006-plugins-folder.md) and the README's "Adding a plug-in". WBCodeFYName is the worked example: copy its `StepConfig`, fakes, schema test, registration script and solution fixes rather than re-deriving them.
 
 ---

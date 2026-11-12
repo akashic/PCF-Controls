@@ -21,7 +21,7 @@ Update this table when a control is added, released or retired.
 | Plug-in | What it does | Solution | Status | Docs |
 |---|---|---|---|---|
 | WBCodeFYName | Sets the WBCodeFY primary name from the WBCode and FY lookups (synchronous PreOperation) | `WBWBCodeFYName` | Released 0.2.0 (UAT pending) | [README](plugins/WBCodeFYName/README.md), [runbook](plugins/WBCodeFYName/docs/runbook.md) |
-| TextHash | Blocks duplicate long text (first use: SMSF Query descriptions, per SMSF Matter) by hashing it into an alternate key, with a friendly message (synchronous PreOperation) | `WBTextHash` | 0.1.0 tested in `LowCode`, not yet released | [README](plugins/TextHash/README.md), [runbook](plugins/TextHash/docs/runbook.md) |
+| TextHash | Blocks duplicate long text (first use: SMSF Query descriptions, per SMSF Matter) by hashing it into an alternate key, with a friendly message (synchronous PreOperation) | `WBTextHash` | Released 0.1.0 (UAT pending) | [README](plugins/TextHash/README.md), [runbook](plugins/TextHash/docs/runbook.md) |
 
 Update this table when a plug-in is added, released or retired. See [Plug-ins](#plug-ins) for how they're built.
 
